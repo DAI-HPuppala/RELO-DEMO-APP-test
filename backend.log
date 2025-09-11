@@ -1054,3 +1054,5 @@ task: <Task pending name='Task-32' coro=<StatePersistence._start_checkpoint_writ
 2025-09-11 12:51:03,163 - api.websocket - WARNING - Session stop error (may already be stopped): Session bffa4920-8987-48f8-9470-0799e2d14b91 not found
 2025-09-11 12:51:03,163 - api.websocket - INFO - Session bffa4920-8987-48f8-9470-0799e2d14b91 stop completed
 2025-09-11 12:51:03,317 - api.websocket - INFO - V1-to-V2 monitoring flow stopped after 5 cycles
+2025-09-11 13:05:44,896 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-153' coro=<StatePersistence._start_checkpoint_writer.<locals>.writer_loop() running at /home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/state_persistence.py:40> wait_for=<Future pending cb=[Task.task_wakeup()]>>
