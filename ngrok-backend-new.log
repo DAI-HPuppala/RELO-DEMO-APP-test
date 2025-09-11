@@ -1,0 +1,13 @@
+t=2025-09-11T10:11:52-0700 lvl=info msg="no configuration paths supplied"
+t=2025-09-11T10:11:52-0700 lvl=info msg="using configuration at default config path" path=/home/automation-dev/.config/ngrok/ngrok.yml
+t=2025-09-11T10:11:52-0700 lvl=info msg="open config file" path=/home/automation-dev/.config/ngrok/ngrok.yml err=nil
+t=2025-09-11T10:11:52-0700 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4040 allow_hosts=[]
+t=2025-09-11T10:11:53-0700 lvl=info msg="client session established" obj=tunnels.session
+t=2025-09-11T10:11:53-0700 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2025-09-11T10:11:53-0700 lvl=info msg="started tunnel" obj=tunnels name=command_line addr=http://localhost:8000 url=https://f1097a1bfd4e.ngrok-free.app
+t=2025-09-11T10:11:53-0700 lvl=info msg="update available" obj=updater
+t=2025-09-11T10:12:22-0700 lvl=info msg=start pg=/api/tunnels id=e0bf45464776a391
+t=2025-09-11T10:12:22-0700 lvl=info msg=end pg=/api/tunnels id=e0bf45464776a391 status=200 dur=168.879µs
+t=2025-09-11T10:22:01-0700 lvl=info msg=start pg=/api/tunnels id=bab737e5d21ee04e
+t=2025-09-11T10:22:01-0700 lvl=info msg=end pg=/api/tunnels id=bab737e5d21ee04e status=200 dur=113.957µs
+t=2025-09-11T10:22:05-0700 lvl=info msg="join connections" obj=join id=8525e8a16809 l=127.0.0.1:8000 r=155.190.3.7:54270

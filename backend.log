@@ -1,0 +1,20 @@
+/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:318: UserWarning: Valid config keys have changed in V2:
+* 'fields' has been removed
+  warnings.warn(message, UserWarning)
+INFO:     Started server process [2088775]
+INFO:     Waiting for application startup.
+2025-09-11 10:21:58,005 - api.main - INFO - Starting Returns Classifier API
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+[ WARN:0@0.576] global cap_v4l.cpp:982 open VIDEOIO(V4L2:/dev/video0): can't open camera by index
+[ERROR:0@0.576] global obsensor_uvc_stream_channel.cpp:156 getStreamChannelGroup Camera index out of range
+Starting backend server...
+Working directory: /home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend
+INFO:     127.0.0.1:37018 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     155.190.3.7:0 - "GET / HTTP/1.1" 200 OK
+INFO:     155.190.3.7:0 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2025-09-11 10:24:15,916 - api.main - INFO - Shutting down Returns Classifier API
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2088775]

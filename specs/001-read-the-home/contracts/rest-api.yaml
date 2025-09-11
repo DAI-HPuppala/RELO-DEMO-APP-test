@@ -1,0 +1,363 @@
+openapi: 3.0.0
+info:
+  title: Returns Classifier REST API
+  version: 1.0.0
+  description: REST endpoints for session management and results export
+
+servers:
+  - url: http://localhost:8000/api
+    description: Local development server
+
+paths:
+  /session/start:
+    post:
+      summary: Initialize a new classification session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mode
+              properties:
+                mode:
+                  type: string
+                  enum: [automatic, manual]
+                  description: Operating mode for the session
+                camera_source:
+                  type: string
+                  enum: [webcam, realsense, zebra, builtin]
+                  default: webcam
+                agent_timers:
+                  type: object
+                  properties:
+                    initial_classifier:
+                      type: number
+                      default: 4
+                    detail_extractor:
+                      type: number
+                      default: 3
+                    damage_detector:
+                      type: number
+                      default: 4
+      responses:
+        '200':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [initializing]
+                  mode:
+                    type: string
+                  websocket_url:
+                    type: string
+                    example: ws://localhost:8000/ws/stream
+        '500':
+          description: Server error
+
+  /session/{session_id}/status:
+    get:
+      summary: Get current session status and progress
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [initializing, processing, completed, error, interrupted]
+                  current_agent:
+                    type: string
+                    nullable: true
+                  progress_percentage:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                  agents_completed:
+                    type: array
+                    items:
+                      type: string
+                  timer_remaining:
+                    type: number
+                    nullable: true
+                  frames_analyzed:
+                    type: integer
+        '404':
+          description: Session not found
+
+  /session/{session_id}/trigger:
+    post:
+      summary: Manually trigger next agent (manual mode only)
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                agent:
+                  type: string
+                  description: Specific agent to trigger, or null for next
+                  nullable: true
+                skip_current:
+                  type: boolean
+                  default: false
+                  description: Skip the current agent and move to next
+      responses:
+        '200':
+          description: Agent triggered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  triggered_agent:
+                    type: string
+                  status:
+                    type: string
+        '400':
+          description: Cannot trigger in automatic mode
+        '404':
+          description: Session not found
+
+  /session/{session_id}/results:
+    get:
+      summary: Get final classification results
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Classification results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                  status:
+                    type: string
+                  final_classification:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      color_primary:
+                        type: string
+                      color_secondary:
+                        type: string
+                        nullable: true
+                      pattern:
+                        type: string
+                      brand:
+                        type: string
+                        nullable: true
+                      size:
+                        type: string
+                        nullable: true
+                      has_damage:
+                        type: boolean
+                      damage_type:
+                        type: string
+                        nullable: true
+                      damage_locations:
+                        type: array
+                        items:
+                          type: string
+                  agent_results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        agent_name:
+                          type: string
+                        attributes:
+                          type: object
+                        confidence:
+                          type: number
+                        reasoning:
+                          type: string
+                  processing_time_seconds:
+                    type: number
+                  total_frames_analyzed:
+                    type: integer
+        '404':
+          description: Session not found
+        '425':
+          description: Results not ready yet
+
+  /session/{session_id}/export:
+    post:
+      summary: Export session results
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                format:
+                  type: string
+                  enum: [json]
+                  default: json
+      responses:
+        '200':
+          description: Export file generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  download_url:
+                    type: string
+                  format:
+                    type: string
+                  size_bytes:
+                    type: integer
+                  expires_at:
+                    type: string
+                    format: date-time
+        '404':
+          description: Session not found
+
+  /session/{session_id}/stop:
+    post:
+      summary: Stop an active session
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                  final_status:
+                    type: string
+                  results_available:
+                    type: boolean
+        '404':
+          description: Session not found
+
+  /session/{session_id}/resume:
+    post:
+      summary: Resume an interrupted session (manual mode only)
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session resumed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                  status:
+                    type: string
+                  last_checkpoint:
+                    type: object
+        '400':
+          description: Session not resumable
+        '404':
+          description: Session not found
+
+  /camera/list:
+    get:
+      summary: List available cameras
+      responses:
+        '200':
+          description: Available cameras
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cameras:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        type:
+                          type: string
+                          enum: [webcam, realsense, zebra, builtin]
+                        name:
+                          type: string
+                        available:
+                          type: boolean
+
+  /health:
+    get:
+      summary: System health check
+      responses:
+        '200':
+          description: System healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy]
+                  gpu_available:
+                    type: boolean
+                  model_loaded:
+                    type: boolean
+                  camera_connected:
+                    type: boolean
+                  version:
+                    type: string
