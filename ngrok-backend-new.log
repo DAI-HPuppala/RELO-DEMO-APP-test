@@ -11,3 +11,8 @@ t=2025-09-11T10:12:22-0700 lvl=info msg=end pg=/api/tunnels id=e0bf45464776a391 
 t=2025-09-11T10:22:01-0700 lvl=info msg=start pg=/api/tunnels id=bab737e5d21ee04e
 t=2025-09-11T10:22:01-0700 lvl=info msg=end pg=/api/tunnels id=bab737e5d21ee04e status=200 dur=113.957µs
 t=2025-09-11T10:22:05-0700 lvl=info msg="join connections" obj=join id=8525e8a16809 l=127.0.0.1:8000 r=155.190.3.7:54270
+t=2025-09-11T10:28:19-0700 lvl=info msg=start pg=/api/tunnels id=7f4b6a71ab8ee2de
+t=2025-09-11T10:28:19-0700 lvl=info msg=end pg=/api/tunnels id=7f4b6a71ab8ee2de status=200 dur=128.776µs
+t=2025-09-11T10:28:51-0700 lvl=info msg="join connections" obj=join id=388ccf849635 l=127.0.0.1:8000 r=155.190.3.7:43476
+t=2025-09-11T10:30:39-0700 lvl=info msg="received stop request" obj=app stopReq="{err:<nil> restart:false}"
+t=2025-09-11T10:30:39-0700 lvl=info msg="session closing" obj=tunnels.session err=nil
