@@ -41,6 +41,8 @@ class WebRTCManager:
         # Frame buffer for each session - stores latest frames
         self.frame_buffers: Dict[str, list] = {}
         self.max_buffer_size = 10  # Keep last 10 frames per session
+        # Callback for handling control messages from data channel
+        self.control_message_handler = None
     
     async def create_peer_connection(self, session_id: str) -> RTCPeerConnection:
         """Create a new peer connection for a session."""
@@ -78,16 +80,25 @@ class WebRTCManager:
         
         @pc.on("datachannel")
         def on_datachannel(channel):
-            logger.info(f"Data channel created for {session_id}: {channel.label}")
+            logger.info(f"Data channel received from client for {session_id}: {channel.label}")
+            # Store the data channel that the CLIENT created
+            # Use both session_id and session_id_results as keys for compatibility
             self.data_channels[session_id] = channel
+            self.data_channels[f"{session_id}_results"] = channel
             
             @channel.on("message")
             async def on_message(message):
                 await self.handle_data_channel_message(session_id, message)
+            
+            @channel.on("open")
+            def on_open():
+                logger.info(f"Data channel opened for {session_id}: {channel.label}")
+            
+            @channel.on("close")
+            def on_close():
+                logger.info(f"Data channel closed for {session_id}: {channel.label}")
         
-        # Create data channel for results
-        results_channel = pc.createDataChannel("results")
-        self.data_channels[f"{session_id}_results"] = results_channel
+        # DO NOT create our own data channel - wait for the client to create one
         
         logger.info(f"Created peer connection for session {session_id}")
         
@@ -201,16 +212,26 @@ class WebRTCManager:
         channel_id = f"{session_id}_results"
         channel = self.data_channels.get(channel_id)
         
-        if not channel or channel.readyState != "open":
-            logger.warning(f"Data channel not ready for session {session_id}")
+        if not channel:
+            logger.warning(f"No data channel found for session {session_id}")
+            return False
+        
+        if channel.readyState != "open":
+            logger.warning(f"Data channel not open for session {session_id}, state: {channel.readyState}")
             return False
         
         try:
-            channel.send(json.dumps(message))
+            msg_str = json.dumps(message)
+            channel.send(msg_str)
+            logger.debug(f"Sent data channel message: {message.get('type')} for {message.get('agent', 'N/A')}")
             return True
         except Exception as e:
             logger.error(f"Error sending data channel message: {e}")
             return False
+    
+    def set_control_message_handler(self, handler):
+        """Set the handler for control messages from data channel."""
+        self.control_message_handler = handler
     
     async def handle_data_channel_message(self, session_id: str, message: str):
         """Handle incoming data channel message."""
@@ -218,13 +239,24 @@ class WebRTCManager:
             data = json.loads(message)
             logger.info(f"Received data channel message for {session_id}: {data.get('type')}")
             
+            msg_type = data.get("type")
+            
             # Handle different message types
-            if data.get("type") == "frame_request":
+            if msg_type == "frame_request":
                 # Client requesting frame analysis
                 pass
-            elif data.get("type") == "client_log":
+            elif msg_type == "client_log":
                 # Frontend log message
                 logger.info(f"Client log [{session_id}]: {data.get('message')}")
+            elif msg_type in ["stop_session", "pause_flow", "resume_flow"]:
+                # Forward control messages to websocket handler
+                logger.info(f"Forwarding control message {msg_type} to websocket handler")
+                if self.control_message_handler:
+                    await self.control_message_handler(session_id, data)
+                else:
+                    logger.warning(f"No control message handler set for {msg_type}")
+            else:
+                logger.debug(f"Unhandled message type: {msg_type}")
         except json.JSONDecodeError:
             logger.error(f"Invalid JSON in data channel message: {message}")
     

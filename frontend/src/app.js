@@ -22,6 +22,7 @@ class ApplicationController {
         this.sessionId = null;
         this.monitoringActive = false;
         this.mode = 'automatic';
+        this.isPaused = false;
         
         // If there's already a video stream from initialization, display it
         if (window.initVideoStream) {
@@ -73,8 +74,21 @@ class ApplicationController {
                 this.resultsDisplay.setMode(this.mode);
                 this.agentMonitor.setMode(this.mode);
                 this.updateManualControls();
+                this.updatePauseResumeButtons();
             });
         });
+        
+        // Pause/Resume buttons (only for automatic mode)
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        
+        if (pauseBtn) {
+            pauseBtn.addEventListener('click', () => this.pauseMonitoring());
+        }
+        
+        if (resumeBtn) {
+            resumeBtn.addEventListener('click', () => this.resumeMonitoring());
+        }
         
         // Export button
         const exportBtn = document.getElementById('exportBtn');
@@ -154,6 +168,12 @@ class ApplicationController {
             case 'status_update':
                 this.handleStatusUpdate(data);
                 break;
+            case 'flow_paused':
+                this.handleFlowPaused(data);
+                break;
+            case 'flow_resumed':
+                this.handleFlowResumed(data);
+                break;
             default:
                 console.log('Unknown message type:', data.type);
         }
@@ -180,8 +200,10 @@ class ApplicationController {
             if (stopBtn) stopBtn.disabled = false;
             
             this.monitoringActive = true;
+            this.isPaused = false;
             this.streamViewer.hideOverlay();
             this.updateManualControls();
+            this.updatePauseResumeButtons();
             
             // The session is already started by initialization manager
             // Start automatic mode if selected
@@ -220,6 +242,55 @@ class ApplicationController {
     }
 
     /**
+     * Pause monitoring (only in automatic mode)
+     */
+    pauseMonitoring() {
+        if (this.mode !== 'automatic' || !this.monitoringActive || this.isPaused) {
+            console.log('Cannot pause - wrong mode or state');
+            return;
+        }
+        
+        console.log('Pausing monitoring...');
+        this.isPaused = true;
+        
+        // Send pause signal via data channel
+        if (this.webrtcClient.dataChannel && this.webrtcClient.dataChannel.readyState === 'open') {
+            this.webrtcClient.dataChannel.send(JSON.stringify({
+                type: 'pause_flow',
+                session_id: this.sessionId
+            }));
+        }
+        
+        this.updatePauseResumeButtons();
+        this.statusMonitor.updateSystemStatus('Paused');
+    }
+    
+    /**
+     * Resume monitoring (only in automatic mode)
+     */
+    resumeMonitoring() {
+        if (this.mode !== 'automatic' || !this.monitoringActive || !this.isPaused) {
+            console.log('Cannot resume - wrong mode or state');
+            return;
+        }
+        
+        console.log('Resuming monitoring...');
+        this.isPaused = false;
+        
+        // Send resume signal via data channel
+        if (this.webrtcClient.dataChannel && this.webrtcClient.dataChannel.readyState === 'open') {
+            this.webrtcClient.dataChannel.send(JSON.stringify({
+                type: 'resume_flow',
+                session_id: this.sessionId,
+                restart_agent: false  // Don't restart the current agent
+            }));
+        }
+        
+        this.updatePauseResumeButtons();
+        this.statusMonitor.updateSystemStatus('Automatic Mode Active');
+    }
+
+    /**
      * Stop monitoring
      */
     stopMonitoring() {
@@ -233,15 +304,18 @@ class ApplicationController {
         if (startBtn) startBtn.disabled = false;
         if (stopBtn) stopBtn.disabled = true;
         
-        // Send stop signal via data channel
+        // Send stop signal via data channel with session_id
         if (this.webrtcClient.dataChannel && this.webrtcClient.dataChannel.readyState === 'open') {
             this.webrtcClient.dataChannel.send(JSON.stringify({
-                type: 'stop_session'
+                type: 'stop_session',
+                session_id: this.sessionId || this.webrtcClient.sessionId
             }));
         }
         
         this.statusMonitor.stopMonitoring();
         this.streamViewer.showOverlay('Monitoring stopped');
+        this.isPaused = false;
+        this.updatePauseResumeButtons();
     }
 
 
@@ -306,10 +380,17 @@ class ApplicationController {
      */
     handleAgentProgress(data) {
         console.log('[App] Agent progress:', data.agent, data.progress);
-        this.agentMonitor.onProgressUpdate(data);
+        
+        // Log detailed progressive classification results
         if (data.partial_results) {
+            console.log(`[PROGRESSIVE RESULTS] Agent: ${data.agent}, Inference #${data.inference_num || data.progress}`);
+            console.log('[PROGRESSIVE RESULTS] Attributes received:', data.partial_results);
+            console.log('[PROGRESSIVE RESULTS] Full message:', JSON.stringify(data, null, 2));
+            
             this.resultsDisplay.displayPartialResults(data.agent, data.partial_results);
         }
+        
+        this.agentMonitor.onProgressUpdate(data);
     }
 
     /**
@@ -317,9 +398,35 @@ class ApplicationController {
      */
     handleAgentCompleted(data) {
         console.log('[App] Agent completed:', data.agent, data.results);
+        
+        // Log detailed finalized classification results for this agent
+        console.log(`[AGENT FINALIZED] Agent: ${data.agent} has completed all inferences`);
+        console.log('[AGENT FINALIZED] Final attributes for this agent:', data.results);
+        console.log('[AGENT FINALIZED] Full message:', JSON.stringify(data, null, 2));
+        
         this.resultsDisplay.updateAgentProgress(data.agent, 'Completed');
         this.resultsDisplay.displayPartialResults(data.agent, data.results);
         this.agentMonitor.onAgentCompleted(data);
+    }
+
+    /**
+     * Handle flow paused
+     */
+    handleFlowPaused(data) {
+        console.log('[App] Flow paused at agent:', data.paused_agent);
+        this.isPaused = true;
+        this.updatePauseResumeButtons();
+        this.statusMonitor.updateSystemStatus(`Paused at ${data.paused_agent || 'agent'}`);
+    }
+    
+    /**
+     * Handle flow resumed
+     */
+    handleFlowResumed(data) {
+        console.log('[App] Flow resumed at agent:', data.resuming_agent);
+        this.isPaused = false;
+        this.updatePauseResumeButtons();
+        this.statusMonitor.updateSystemStatus('Automatic Mode Active');
     }
 
     /**
@@ -327,6 +434,13 @@ class ApplicationController {
      */
     handleFinalResults(data) {
         console.log('[App] Final results received:', data);
+        
+        // Log detailed final classification results
+        console.log('[FINAL CLASSIFICATION] Complete classification results from all agents');
+        console.log('[FINAL CLASSIFICATION] Final attributes:', data.results);
+        console.log('[FINAL CLASSIFICATION] Processing time:', data.processing_time);
+        console.log('[FINAL CLASSIFICATION] Agents completed:', data.agents_completed);
+        console.log('[FINAL CLASSIFICATION] Full message:', JSON.stringify(data, null, 2));
         
         this.resultsDisplay.displayFinalResults(data.results);
         this.statusMonitor.updateSystemStatus('Classification Complete');
@@ -392,6 +506,33 @@ class ApplicationController {
         if (triggerAllBtn) {
             triggerAllBtn.style.display = 
                 (this.mode === 'manual' && this.monitoringActive) ? 'inline-block' : 'none';
+        }
+    }
+    
+    /**
+     * Update pause/resume button visibility and state
+     */
+    updatePauseResumeButtons() {
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        
+        if (!pauseBtn || !resumeBtn) return;
+        
+        // Only show pause/resume in automatic mode when monitoring is active
+        if (this.mode === 'automatic' && this.monitoringActive) {
+            if (this.isPaused) {
+                pauseBtn.style.display = 'none';
+                resumeBtn.style.display = 'inline-block';
+                resumeBtn.disabled = false;
+            } else {
+                pauseBtn.style.display = 'inline-block';
+                pauseBtn.disabled = false;
+                resumeBtn.style.display = 'none';
+            }
+        } else {
+            // Hide both buttons in manual mode or when not monitoring
+            pauseBtn.style.display = 'none';
+            resumeBtn.style.display = 'none';
         }
     }
 

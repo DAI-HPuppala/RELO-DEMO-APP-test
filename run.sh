@@ -15,9 +15,35 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# CRITICAL: Kill ALL ngrok processes first (multiple methods to ensure cleanup)
+echo -e "${YELLOW}Forcefully killing ALL ngrok instances...${NC}"
+# Method 1: Kill by name
+pkill -9 -f ngrok 2>/dev/null || true
+killall -9 ngrok 2>/dev/null || true
+# Method 2: Kill by port usage
+lsof -ti:4040 | xargs -r kill -9 2>/dev/null || true
+lsof -ti:4041 | xargs -r kill -9 2>/dev/null || true
+# Method 3: Find and kill any remaining ngrok
+for pid in $(ps aux | grep '[n]grok' | awk '{print $2}'); do
+    kill -9 $pid 2>/dev/null || true
+done
+sleep 2  # Give time for ports to be released
+
 # Get the directory of this script
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
+
+# Kill any other existing instances
+echo -e "${YELLOW}Killing any existing backend/frontend instances...${NC}"
+pkill -9 -f "python.*src/api/main.py" 2>/dev/null || true
+pkill -9 -f "python.*run_backend.py" 2>/dev/null || true
+pkill -9 -f "python.*http.server.*8080" 2>/dev/null || true
+pkill -9 -f "python.*-m.*http.server" 2>/dev/null || true
+pkill -9 -f "uvicorn" 2>/dev/null || true
+# Also kill any process using port 8080
+lsof -ti:8080 | xargs -r kill -9 2>/dev/null || true
+lsof -ti:8000 | xargs -r kill -9 2>/dev/null || true
+sleep 1
 
 # Check if Ollama is running
 echo -e "${YELLOW}Checking Ollama status...${NC}"
@@ -65,14 +91,36 @@ if [ -d "venv" ]; then
     source venv/bin/activate
 fi
 
-# Clear previous logs and captured frames
-echo -e "${YELLOW}Clearing previous logs and captured frames...${NC}"
-# Truncate or create backend.log
-: > backend.log
-# Remove captured frames (images) across the directory
-if [ -d "backend/captured_frames" ]; then
-    rm -rf backend/captured_frames/* 2>/dev/null || true
-fi
+# Clear ALL logs, captured frames, and session data
+echo -e "${YELLOW}Clearing all logs, captured frames, and session data...${NC}"
+
+# Clear all log files
+rm -f backend.log frontend.log ngrok.log 2>/dev/null || true
+rm -f backend/*.log 2>/dev/null || true
+rm -f *.log 2>/dev/null || true
+
+# Clear all captured frames
+rm -rf captured_frames/* 2>/dev/null || true
+rm -rf backend/captured_frames/* 2>/dev/null || true
+rm -rf /tmp/captured_frames/* 2>/dev/null || true
+mkdir -p captured_frames 2>/dev/null || true
+
+# Clear session data and checkpoints
+rm -rf backend/data/sessions/* 2>/dev/null || true
+rm -rf backend/data/checkpoints/* 2>/dev/null || true
+rm -rf data/sessions/* 2>/dev/null || true
+rm -rf data/checkpoints/* 2>/dev/null || true
+
+# Clear any temporary files
+rm -rf /tmp/relo-classifier-* 2>/dev/null || true
+rm -rf /tmp/*.frame /tmp/*.jpg /tmp/*.png 2>/dev/null || true
+
+# Clear Python cache to ensure fresh start
+find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+find . -type f -name "*.pyc" -delete 2>/dev/null || true
+
+# Create new log files
+touch backend.log frontend.log ngrok.log
 
 # Start Backend
 echo -e "${GREEN}Starting Backend Server...${NC}"
@@ -95,6 +143,17 @@ done
 echo -e "${GREEN}Starting Frontend Server...${NC}"
 python -m http.server 8080 --directory frontend > /dev/null 2>&1 &
 FRONTEND_PID=$!
+
+# IMPORTANT: Wait for frontend to be fully ready before starting ngrok
+echo -e "${YELLOW}Waiting for frontend server to be ready...${NC}"
+sleep 3
+for i in {1..10}; do
+    if curl -s http://localhost:8080 > /dev/null; then
+        echo -e "${GREEN}Frontend server is ready!${NC}"
+        break
+    fi
+    sleep 1
+done
 
 # Start ngrok tunnel
 echo -e "${GREEN}Starting ngrok tunnel...${NC}"

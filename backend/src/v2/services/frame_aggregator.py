@@ -17,16 +17,17 @@ class FrameAggregator:
                        inferences: List[InferenceResult]) -> AggregatedResult:
         """Aggregate inference results based on count-specific rules"""
         
-        result = AggregatedResult(
-            agent_name=agent_name,
-            total_inferences=len(inferences)
-        )
-        
         if not inferences:
             logger.warning(f"No inferences to aggregate for {agent_name}")
+            # Return empty result with proper initialization
+            result = AggregatedResult(
+                agent_name=agent_name,
+                total_inferences=0,
+                aggregation_method="none"
+            )
             return result
         
-        # Determine aggregation method
+        # Determine aggregation method and delegate
         if len(inferences) == 1:
             result = self._aggregate_single(agent_name, inferences[0])
         elif len(inferences) == 2:

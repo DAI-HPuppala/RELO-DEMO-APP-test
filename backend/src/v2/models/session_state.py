@@ -103,3 +103,18 @@ class SessionState:
         """Mark session as errored"""
         self.status = SessionStatus.ERROR
         self.updated_at = datetime.now()
+    
+    def reset_for_new_cycle(self) -> None:
+        """Reset the session state for a new monitoring cycle"""
+        # Reset to initial state while keeping session_id
+        self.status = SessionStatus.ACTIVE
+        self.current_agent_index = 0
+        self.agents_completed = []
+        self.agent_states = {}
+        self.paused_at = None
+        self.paused_agent = None
+        self.resume_from_agent = None
+        self.shared_frames = {}
+        self.final_classification = None
+        self.updated_at = datetime.now()
+        self.completed_at = None

@@ -1,148 +1,1056 @@
 /home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:318: UserWarning: Valid config keys have changed in V2:
 * 'fields' has been removed
   warnings.warn(message, UserWarning)
-INFO:     Started server process [2094660]
+INFO:     Started server process [2223229]
 INFO:     Waiting for application startup.
-2025-09-11 10:28:15,981 - api.main - INFO - Starting Returns Classifier API
+2025-09-11 12:49:03,545 - api.main - INFO - Starting Returns Classifier API
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-[ WARN:0@0.530] global cap_v4l.cpp:982 open VIDEOIO(V4L2:/dev/video0): can't open camera by index
-[ERROR:0@0.530] global obsensor_uvc_stream_channel.cpp:156 getStreamChannelGroup Camera index out of range
+[ WARN:0@0.988] global cap_v4l.cpp:982 open VIDEOIO(V4L2:/dev/video0): can't open camera by index
+[ERROR:0@0.988] global obsensor_uvc_stream_channel.cpp:156 getStreamChannelGroup Camera index out of range
 Starting backend server...
 Working directory: /home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend
-INFO:     127.0.0.1:37984 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     155.190.3.7:0 - "GET / HTTP/1.1" 200 OK
-[ WARN:0@226.998] global cap_v4l.cpp:982 open VIDEOIO(V4L2:/dev/video0): can't open camera by index
-[ERROR:0@226.998] global obsensor_uvc_stream_channel.cpp:156 getStreamChannelGroup Camera index out of range
-INFO:     127.0.0.1:49734 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49734 - "GET /api/camera/status HTTP/1.1" 200 OK
-INFO:     ('127.0.0.1', 49746) - "WebSocket /ws/stream" [accepted]
+INFO:     127.0.0.1:47980 - "GET /api/health HTTP/1.1" 200 OK
+[ WARN:0@22.647] global cap_v4l.cpp:982 open VIDEOIO(V4L2:/dev/video0): can't open camera by index
+[ERROR:0@22.647] global obsensor_uvc_stream_channel.cpp:156 getStreamChannelGroup Camera index out of range
+INFO:     127.0.0.1:60616 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60616 - "GET /api/camera/status HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 60644) - "WebSocket /ws/stream" [accepted]
 INFO:     connection open
-2025-09-11 10:32:04,945 - api.websocket - INFO - Handling WebSocket message type: start_session
-2025-09-11 10:32:04,945 - services.session_manager - INFO - Created session 67a362f4-0951-4ed3-b4da-d1ead6874598 in SessionMode.AUTOMATIC mode
-2025-09-11 10:32:04,996 - api.websocket - INFO - Handling WebSocket message type: offer
-2025-09-11 10:32:04,999 - services.webrtc_manager - INFO - Created peer connection for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:32:04,999 - services.realsense_camera - INFO - RealSenseCameraService initialized
-2025-09-11 10:32:04,999 - services.realsense_camera - INFO - Camera initialized: realsense
-2025-09-11 10:32:04,999 - services.webrtc_manager - INFO - RealSenseCameraService initialized
-2025-09-11 10:32:05,006 - services.realsense_camera - INFO - Found RealSense device: Intel RealSense D415 (Serial: 104122063513)
-2025-09-11 10:32:05,021 - services.realsense_camera - INFO - Disabled auto-exposure
-2025-09-11 10:32:05,024 - services.realsense_camera - INFO - Set manual exposure to 200
-2025-09-11 10:32:05,028 - services.realsense_camera - INFO - Set gain to 16
-2025-09-11 10:32:05,031 - services.realsense_camera - INFO - Enabled auto white balance
-2025-09-11 10:32:05,031 - services.realsense_camera - INFO - Camera warmup...
-2025-09-11 10:32:05,614 - services.realsense_camera - INFO - RealSense camera initialized successfully
-2025-09-11 10:32:05,614 - services.realsense_camera - INFO - Frame capture thread started
-2025-09-11 10:32:05,614 - services.webrtc_manager - INFO - Video track created for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:32:05,616 - services.webrtc_manager - INFO - Added video track to peer connection
-2025-09-11 10:32:05,618 - services.webrtc_manager - INFO - ICE gathering state for 67a362f4-0951-4ed3-b4da-d1ead6874598: gathering
-2025-09-11 10:32:10,619 - services.webrtc_manager - INFO - ICE gathering state for 67a362f4-0951-4ed3-b4da-d1ead6874598: complete
-2025-09-11 10:32:10,619 - services.webrtc_manager - INFO - ICE gathering complete for 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:32:10,619 - services.webrtc_manager - INFO - ICE connection state for 67a362f4-0951-4ed3-b4da-d1ead6874598: checking
-2025-09-11 10:32:10,619 - services.webrtc_manager - INFO - Connection state for 67a362f4-0951-4ed3-b4da-d1ead6874598: connecting
-2025-09-11 10:32:12,620 - services.webrtc_manager - WARNING - ICE gathering timeout, proceeding with current candidates
-2025-09-11 10:32:12,620 - services.webrtc_manager - INFO - Created answer for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:32:12,620 - services.webrtc_manager - INFO - Answer SDP (first 500 chars): v=0
-o=- 3966600725 3966600725 IN IP4 0.0.0.0
+2025-09-11 12:49:28,204 - api.websocket - INFO - Control message handler set up for WebRTC manager
+2025-09-11 12:49:28,204 - api.websocket - INFO - Handling WebSocket message type: start_session
+2025-09-11 12:49:28,205 - services.session_manager - INFO - Created session bffa4920-8987-48f8-9470-0799e2d14b91 in SessionMode.AUTOMATIC mode
+2025-09-11 12:49:28,253 - api.websocket - INFO - Handling WebSocket message type: offer
+2025-09-11 12:49:28,256 - services.webrtc_manager - INFO - Created peer connection for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:28,257 - services.realsense_camera - INFO - RealSenseCameraService initialized
+2025-09-11 12:49:28,257 - services.realsense_camera - INFO - Camera initialized: realsense
+2025-09-11 12:49:28,257 - services.webrtc_manager - INFO - RealSenseCameraService initialized
+2025-09-11 12:49:28,263 - services.realsense_camera - INFO - Found RealSense device: Intel RealSense D415 (Serial: 104122063513)
+2025-09-11 12:49:28,277 - services.realsense_camera - INFO - Disabled auto-exposure
+2025-09-11 12:49:28,280 - services.realsense_camera - INFO - Set manual exposure to 200
+2025-09-11 12:49:28,284 - services.realsense_camera - INFO - Set gain to 16
+2025-09-11 12:49:28,287 - services.realsense_camera - INFO - Enabled auto white balance
+2025-09-11 12:49:28,287 - services.realsense_camera - INFO - Camera warmup...
+2025-09-11 12:49:28,870 - services.realsense_camera - INFO - RealSense camera initialized successfully
+2025-09-11 12:49:28,870 - services.realsense_camera - INFO - Frame capture thread started
+2025-09-11 12:49:28,870 - services.webrtc_manager - INFO - Video track created for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:28,873 - services.webrtc_manager - INFO - Added video track to peer connection
+2025-09-11 12:49:28,874 - services.webrtc_manager - INFO - ICE gathering state for bffa4920-8987-48f8-9470-0799e2d14b91: gathering
+2025-09-11 12:49:33,875 - services.webrtc_manager - INFO - ICE gathering state for bffa4920-8987-48f8-9470-0799e2d14b91: complete
+2025-09-11 12:49:33,875 - services.webrtc_manager - INFO - ICE gathering complete for bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:33,876 - services.webrtc_manager - INFO - ICE connection state for bffa4920-8987-48f8-9470-0799e2d14b91: checking
+2025-09-11 12:49:33,876 - services.webrtc_manager - INFO - Connection state for bffa4920-8987-48f8-9470-0799e2d14b91: connecting
+2025-09-11 12:49:35,876 - services.webrtc_manager - WARNING - ICE gathering timeout, proceeding with current candidates
+2025-09-11 12:49:35,876 - services.webrtc_manager - INFO - Created answer for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:35,876 - services.webrtc_manager - INFO - Answer SDP (first 500 chars): v=0
+o=- 3966608968 3966608968 IN IP4 0.0.0.0
 s=-
 t=0 0
 a=group:BUNDLE 0 1
 a=msid-semantic:WMS *
-m=video 56076 UDP/TLS/RTP/SAVPF 96 97 103 104 109 114
+m=video 51139 UDP/TLS/RTP/SAVPF 96 97 103 104 109 114
 c=IN IP4 10.202.8.43
 a=sendonly
 a=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time
 a=extmap:9 urn:ietf:params:rtp-hdrext:sdes:mid
 a=mid:0
-a=msid:d862bc3e-c28e-4bc2-93d3-95b5fc08ac54 67037e39-d206-4779-870b-4f930e9b68c0
+a=msid:2e70c3cc-b804-43ba-893a-8bb1c5cf8149 118b81b2-afa0-4400-aec3-c94dec93b03b
 a=rtcp:9 IN IP4 0.0.0.0
 a=rtcp-mux
-a=ssrc-group:FID 4137036039 3093239415
-a=ssrc:4137036039 cnam
-2025-09-11 10:32:12,620 - api.websocket - INFO - WebRTC signaling complete for 67a362f4-0951-4ed3-b4da-d1ead6874598, keeping connection alive
-2025-09-11 10:32:12,620 - api.websocket - INFO - Handling WebSocket message type: ice_candidate
-2025-09-11 10:32:12,620 - services.webrtc_manager - INFO - Received ICE candidate for session 67a362f4-0951-4ed3-b4da-d1ead6874598 (handled automatically by aiortc)
-2025-09-11 10:32:12,620 - api.websocket - INFO - WebRTC signaling complete for 67a362f4-0951-4ed3-b4da-d1ead6874598, keeping connection alive
-2025-09-11 10:32:12,620 - api.websocket - INFO - Handling WebSocket message type: ice_candidate
-2025-09-11 10:32:12,620 - services.webrtc_manager - INFO - Received ICE candidate for session 67a362f4-0951-4ed3-b4da-d1ead6874598 (handled automatically by aiortc)
-2025-09-11 10:32:12,620 - api.websocket - INFO - WebRTC signaling complete for 67a362f4-0951-4ed3-b4da-d1ead6874598, keeping connection alive
-2025-09-11 10:32:12,620 - api.websocket - INFO - Handling WebSocket message type: ice_candidate
-2025-09-11 10:32:12,620 - services.webrtc_manager - INFO - Received ICE candidate for session 67a362f4-0951-4ed3-b4da-d1ead6874598 (handled automatically by aiortc)
-2025-09-11 10:32:12,620 - api.websocket - INFO - WebRTC signaling complete for 67a362f4-0951-4ed3-b4da-d1ead6874598, keeping connection alive
-2025-09-11 10:32:12,620 - api.websocket - INFO - Handling WebSocket message type: ice_candidate
-2025-09-11 10:32:12,620 - services.webrtc_manager - INFO - Received ICE candidate for session 67a362f4-0951-4ed3-b4da-d1ead6874598 (handled automatically by aiortc)
-2025-09-11 10:32:12,620 - api.websocket - INFO - WebRTC signaling complete for 67a362f4-0951-4ed3-b4da-d1ead6874598, keeping connection alive
-2025-09-11 10:32:12,648 - services.webrtc_manager - INFO - ICE connection state for 67a362f4-0951-4ed3-b4da-d1ead6874598: completed
-2025-09-11 10:32:12,654 - services.webrtc_manager - INFO - Connection state for 67a362f4-0951-4ed3-b4da-d1ead6874598: connected
-2025-09-11 10:32:12,654 - services.webrtc_manager - INFO - WebRTC connection established for 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:32:12,663 - services.webrtc_manager - INFO - Data channel created for 67a362f4-0951-4ed3-b4da-d1ead6874598: results
-2025-09-11 10:32:55,577 - api.websocket - INFO - Handling WebSocket message type: start_automatic
-2025-09-11 10:32:55,577 - v2.services.frame_registry - INFO - FrameRegistry initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:32:55,577 - v2.services.frame_registry - INFO - FrameRegistry initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:32:55,577 - v2.services.frame_manager - INFO - FrameManager initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:32:55,577 - v2.services.state_persistence - INFO - StatePersistence initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:32:55,577 - v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
-2025-09-11 10:32:55,578 - v2.services.stateful_orchestrator - INFO - StatefulOrchestrator initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:32:55,578 - v2.services.stateful_orchestrator - INFO - Custom timers set: {'initial_classifier': 4, 'detail_extractor': 3, 'damage_detector': 4, 'final_compiler': 2}
-2025-09-11 10:32:55,578 - api.websocket - INFO - Starting V1-to-V2 monitoring flow for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:32:55,584 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
-2025-09-11 10:32:55,584 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
-2025-09-11 10:32:55,584 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
-2025-09-11 10:32:55,584 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
-2025-09-11 10:32:55,584 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
-2025-09-11 10:32:55,584 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
-2025-09-11 10:32:55,584 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
-2025-09-11 10:32:55,584 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
-2025-09-11 10:32:55,584 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
-2025-09-11 10:32:55,584 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
-2025-09-11 10:32:55,584 - api.websocket - INFO - Running initial_classifier with 4s timer
-2025-09-11 10:32:55,584 - api.websocket - ERROR - Error in V1-to-V2 monitoring flow: object numpy.ndarray can't be used in 'await' expression
-Traceback (most recent call last):
-  File "/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/api/websocket.py", line 416, in run_v1_to_v2_monitoring_flow
-    agent_state = await orchestrator.run_agent_with_timer(agent_name, timer_seconds)
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/stateful_orchestrator.py", line 97, in run_agent_with_timer
-    frames = await self._collect_frames(agent_name, batch_size, inference_num)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/stateful_orchestrator.py", line 152, in _collect_frames
-    frame = await self.frame_provider()
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: object numpy.ndarray can't be used in 'await' expression
-2025-09-11 10:33:03,082 - services.webrtc_manager - INFO - Received data channel message for 67a362f4-0951-4ed3-b4da-d1ead6874598: stop_session
-2025-09-11 10:33:04,779 - api.websocket - INFO - Handling WebSocket message type: start_automatic
-2025-09-11 10:33:04,779 - v2.services.frame_registry - INFO - FrameRegistry initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:33:04,779 - v2.services.frame_registry - INFO - FrameRegistry initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:33:04,779 - v2.services.frame_manager - INFO - FrameManager initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:33:04,779 - v2.services.state_persistence - INFO - StatePersistence initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:33:04,779 - v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
-2025-09-11 10:33:04,779 - v2.services.stateful_orchestrator - INFO - StatefulOrchestrator initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:33:04,779 - v2.services.stateful_orchestrator - INFO - Custom timers set: {'initial_classifier': 4, 'detail_extractor': 3, 'damage_detector': 4, 'final_compiler': 2}
-2025-09-11 10:33:04,779 - api.websocket - INFO - Starting V1-to-V2 monitoring flow for session 67a362f4-0951-4ed3-b4da-d1ead6874598
-2025-09-11 10:33:04,779 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
-2025-09-11 10:33:04,779 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
-2025-09-11 10:33:04,779 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
-2025-09-11 10:33:04,780 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
-2025-09-11 10:33:04,780 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
-2025-09-11 10:33:04,780 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
-2025-09-11 10:33:04,780 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
-2025-09-11 10:33:04,780 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
-2025-09-11 10:33:04,780 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
-2025-09-11 10:33:04,780 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
-2025-09-11 10:33:04,780 - api.websocket - INFO - Running initial_classifier with 4s timer
-2025-09-11 10:33:04,780 - api.websocket - ERROR - Error in V1-to-V2 monitoring flow: object numpy.ndarray can't be used in 'await' expression
-Traceback (most recent call last):
-  File "/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/api/websocket.py", line 416, in run_v1_to_v2_monitoring_flow
-    agent_state = await orchestrator.run_agent_with_timer(agent_name, timer_seconds)
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/stateful_orchestrator.py", line 97, in run_agent_with_timer
-    frames = await self._collect_frames(agent_name, batch_size, inference_num)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/stateful_orchestrator.py", line 152, in _collect_frames
-    frame = await self.frame_provider()
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: object numpy.ndarray can't be used in 'await' expression
-2025-09-11 10:33:07,038 - services.webrtc_manager - INFO - Received data channel message for 67a362f4-0951-4ed3-b4da-d1ead6874598: stop_session
-2025-09-11 10:33:07,792 - asyncio - ERROR - Task was destroyed but it is pending!
-task: <Task pending name='Task-34' coro=<StatePersistence._start_checkpoint_writer.<locals>.writer_loop() running at /home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/state_persistence.py:40> wait_for=<Future pending cb=[Task.task_wakeup()]>>
-2025-09-11 10:33:07,792 - asyncio - ERROR - Task was destroyed but it is pending!
-task: <Task pending name='Task-41' coro=<StatePersistence._start_checkpoint_writer.<locals>.writer_loop() running at /home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/state_persistence.py:40> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+a=ssrc-group:FID 1918751230 225509660
+a=ssrc:1918751230 cname
+2025-09-11 12:49:35,877 - api.websocket - INFO - WebRTC signaling complete for bffa4920-8987-48f8-9470-0799e2d14b91, keeping connection alive
+2025-09-11 12:49:35,877 - api.websocket - INFO - Handling WebSocket message type: ice_candidate
+2025-09-11 12:49:35,877 - services.webrtc_manager - INFO - Received ICE candidate for session bffa4920-8987-48f8-9470-0799e2d14b91 (handled automatically by aiortc)
+2025-09-11 12:49:35,877 - api.websocket - INFO - WebRTC signaling complete for bffa4920-8987-48f8-9470-0799e2d14b91, keeping connection alive
+2025-09-11 12:49:35,877 - api.websocket - INFO - Handling WebSocket message type: ice_candidate
+2025-09-11 12:49:35,877 - services.webrtc_manager - INFO - Received ICE candidate for session bffa4920-8987-48f8-9470-0799e2d14b91 (handled automatically by aiortc)
+2025-09-11 12:49:35,877 - api.websocket - INFO - WebRTC signaling complete for bffa4920-8987-48f8-9470-0799e2d14b91, keeping connection alive
+2025-09-11 12:49:35,877 - api.websocket - INFO - Handling WebSocket message type: ice_candidate
+2025-09-11 12:49:35,877 - services.webrtc_manager - INFO - Received ICE candidate for session bffa4920-8987-48f8-9470-0799e2d14b91 (handled automatically by aiortc)
+2025-09-11 12:49:35,877 - api.websocket - INFO - WebRTC signaling complete for bffa4920-8987-48f8-9470-0799e2d14b91, keeping connection alive
+2025-09-11 12:49:35,877 - api.websocket - INFO - Handling WebSocket message type: ice_candidate
+2025-09-11 12:49:35,877 - services.webrtc_manager - INFO - Received ICE candidate for session bffa4920-8987-48f8-9470-0799e2d14b91 (handled automatically by aiortc)
+2025-09-11 12:49:35,877 - api.websocket - INFO - WebRTC signaling complete for bffa4920-8987-48f8-9470-0799e2d14b91, keeping connection alive
+2025-09-11 12:49:35,908 - services.webrtc_manager - INFO - ICE connection state for bffa4920-8987-48f8-9470-0799e2d14b91: completed
+2025-09-11 12:49:35,912 - services.webrtc_manager - INFO - Connection state for bffa4920-8987-48f8-9470-0799e2d14b91: connected
+2025-09-11 12:49:35,912 - services.webrtc_manager - INFO - WebRTC connection established for bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:35,921 - services.webrtc_manager - INFO - Data channel received from client for bffa4920-8987-48f8-9470-0799e2d14b91: results
+2025-09-11 12:49:42,342 - api.websocket - INFO - Handling WebSocket message type: start_automatic
+2025-09-11 12:49:42,342 - v2.services.frame_registry - INFO - FrameRegistry initialized for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:42,342 - v2.services.frame_registry - INFO - FrameRegistry initialized for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:42,342 - v2.services.frame_manager - INFO - FrameManager initialized for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:42,342 - v2.services.state_persistence - INFO - StatePersistence initialized for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:42,342 - v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:49:42,342 - v2.services.stateful_orchestrator - INFO - StatefulOrchestrator initialized for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:42,342 - v2.services.stateful_orchestrator - INFO - Custom timers set: {'initial_classifier': 4, 'detail_extractor': 3, 'damage_detector': 4, 'final_compiler': 2}
+2025-09-11 12:49:42,342 - api.websocket - INFO - Starting continuous V1-to-V2 monitoring flow for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:42,342 - api.websocket - INFO - Starting monitoring cycle 1 with session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_1
+2025-09-11 12:49:42,342 - api.websocket - INFO - [TO FRONTEND] Sending monitoring_cycle_started for N/A
+2025-09-11 12:49:42,343 - services.webrtc_manager - DEBUG - Sent data channel message: monitoring_cycle_started for N/A
+2025-09-11 12:49:42,348 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:49:42,349 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
+2025-09-11 12:49:42,349 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
+2025-09-11 12:49:42,349 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:49:42,349 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
+2025-09-11 12:49:42,349 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
+2025-09-11 12:49:42,349 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:49:42,349 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
+2025-09-11 12:49:42,349 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
+2025-09-11 12:49:42,349 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
+2025-09-11 12:49:42,349 - api.websocket - INFO - Running initial_classifier with 4s timer
+2025-09-11 12:49:42,349 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:49:42,349 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:49:42,349 - api.websocket - ERROR - Error running agent initial_classifier: cannot access local variable 'asyncio' where it is not associated with a value
+2025-09-11 12:49:42,349 - api.websocket - INFO - Running detail_extractor with 3s timer
+2025-09-11 12:49:42,349 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:49:42,349 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:49:42,349 - api.websocket - ERROR - Error running agent detail_extractor: cannot access local variable 'asyncio' where it is not associated with a value
+2025-09-11 12:49:42,349 - api.websocket - INFO - Running damage_detector with 4s timer
+2025-09-11 12:49:42,349 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:49:42,349 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:49:42,349 - api.websocket - ERROR - Error running agent damage_detector: cannot access local variable 'asyncio' where it is not associated with a value
+2025-09-11 12:49:42,349 - api.websocket - INFO - Running final_compiler to aggregate results
+2025-09-11 12:49:42,349 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for final
+2025-09-11 12:49:42,349 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for final
+2025-09-11 12:49:42,349 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 compiling results from all agents
+2025-09-11 12:49:42,349 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 completed:  - Total inferences: 0, Confidence: 0.00
+2025-09-11 12:49:42,349 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for final
+2025-09-11 12:49:42,349 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'item_type': '', 'color': '', 'pattern': None, 'neckline': None, 'sleeve_type': None, 'closure_type': None, 'brand': None, 'size': None, 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification:  () - Good condition'}], 'overall_confidence': 0.0, 'processing_time_ms': 0, 'total_inferences': 0, 'agents_used': []}
+2025-09-11 12:49:42,349 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for final
+2025-09-11 12:49:42,349 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Sending complete classification
+2025-09-11 12:49:42,349 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Results: {'item_type': '', 'color': '', 'pattern': None, 'neckline': None, 'sleeve_type': None, 'closure_type': None, 'brand': None, 'size': None, 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification:  () - Good condition'}], 'overall_confidence': 0.0, 'processing_time_ms': 0, 'total_inferences': 0, 'agents_used': []}
+2025-09-11 12:49:42,349 - services.webrtc_manager - DEBUG - Sent data channel message: final_results for N/A
+2025-09-11 12:49:42,349 - api.websocket - INFO - Monitoring cycle 1 completed for session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_1
+2025-09-11 12:49:43,349 - api.websocket - INFO - Starting monitoring cycle 2 with session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_2
+2025-09-11 12:49:43,349 - api.websocket - INFO - [TO FRONTEND] Sending monitoring_cycle_started for N/A
+2025-09-11 12:49:43,349 - services.webrtc_manager - DEBUG - Sent data channel message: monitoring_cycle_started for N/A
+2025-09-11 12:49:43,349 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:49:43,349 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
+2025-09-11 12:49:43,349 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
+2025-09-11 12:49:43,349 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:49:43,349 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
+2025-09-11 12:49:43,349 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
+2025-09-11 12:49:43,349 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:49:43,349 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
+2025-09-11 12:49:43,349 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
+2025-09-11 12:49:43,349 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
+2025-09-11 12:49:43,349 - api.websocket - INFO - Running initial_classifier with 4s timer
+2025-09-11 12:49:43,349 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:49:43,349 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:49:43,349 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:49:43,349 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:49:43,350 - v2.services.frame_registry - DEBUG - Registered frame initial_classifier_1757620183349_2e9a69cc for agent initial_classifier
+2025-09-11 12:49:43,350 - v2.services.frame_registry - INFO - Shared frame initial_classifier_1757620183349_2e9a69cc with key 'initial_first'
+2025-09-11 12:49:43,350 - v2.services.frame_registry - INFO - Registered initial first frame: initial_classifier_1757620183349_2e9a69cc for damage detector sharing
+2025-09-11 12:49:43,350 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:49:43,350 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:49:43,350 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #1
+2025-09-11 12:49:44,150 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #1
+2025-09-11 12:49:44,150 - v2.services.multi_inference_engine - INFO - initial_classifier inference #1 completed in 800ms (1 frames, single_image)
+2025-09-11 12:49:44,150 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #1 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Analyze this garment image and identify: item_type...'}
+2025-09-11 12:49:44,150 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:49:44,150 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:49:44,151 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:49:44,151 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:49:44,151 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:49:44,151 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #2
+2025-09-11 12:49:45,671 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #2
+2025-09-11 12:49:45,671 - v2.services.multi_inference_engine - INFO - initial_classifier inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:49:45,672 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #2 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment from differen...'}
+2025-09-11 12:49:45,672 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:49:45,672 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:49:45,672 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:49:45,672 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:49:45,672 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:49:45,672 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #3
+2025-09-11 12:49:47,192 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #3
+2025-09-11 12:49:47,192 - v2.services.multi_inference_engine - INFO - initial_classifier inference #3 completed in 1519ms (2 frames, multi_image)
+2025-09-11 12:49:47,192 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #3 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment from differen...'}
+2025-09-11 12:49:47,192 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:49:47,192 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:49:47,192 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:49:47,192 - v2.services.frame_aggregator - INFO - Aggregated 3 inferences for initial_classifier using majority
+2025-09-11 12:49:47,192 - v2.services.stateful_orchestrator - INFO - Agent initial_classifier completed with 3 inferences
+2025-09-11 12:49:47,192 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:47,250 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for initial
+2025-09-11 12:49:47,250 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'color': 'blue', 'sleeve_type': 'short', 'neckline': 'crew', 'item_type': 'shirt', 'pattern': 'solid', 'closure_type': 'buttons'}
+2025-09-11 12:49:47,250 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for initial
+2025-09-11 12:49:47,250 - api.websocket - INFO - Running detail_extractor with 3s timer
+2025-09-11 12:49:47,250 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:49:47,250 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:49:47,250 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:49:47,250 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:49:47,250 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:49:47,250 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:49:47,250 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #1
+2025-09-11 12:49:48,051 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #1
+2025-09-11 12:49:48,051 - v2.services.multi_inference_engine - INFO - detail_extractor inference #1 completed in 800ms (1 frames, single_image)
+2025-09-11 12:49:48,051 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #1 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Extract details from this garment: brand, size, ma...'}
+2025-09-11 12:49:48,051 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:49:48,051 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:49:48,051 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:49:48,051 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:49:48,051 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:49:48,051 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #2
+2025-09-11 12:49:48,264 - services.webrtc_manager - INFO - Received data channel message for bffa4920-8987-48f8-9470-0799e2d14b91: pause_flow
+2025-09-11 12:49:48,264 - services.webrtc_manager - INFO - Forwarding control message pause_flow to websocket handler
+2025-09-11 12:49:48,264 - api.websocket - INFO - Handling control message from data channel: pause_flow for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:48,264 - api.websocket - INFO - Handling WebSocket message type: pause_flow
+2025-09-11 12:49:49,571 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #2
+2025-09-11 12:49:49,571 - v2.services.multi_inference_engine - INFO - detail_extractor inference #2 completed in 1519ms (3 frames, multi_image)
+2025-09-11 12:49:49,571 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #2 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. Extract: bra...'}
+2025-09-11 12:49:49,571 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:49:49,571 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:49:49,571 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:49:49,571 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for detail_extractor using last_with_fallback
+2025-09-11 12:49:49,571 - v2.services.stateful_orchestrator - INFO - Agent detail_extractor completed with 2 inferences
+2025-09-11 12:49:49,571 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:49,653 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for detail
+2025-09-11 12:49:49,653 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'size': 'M', 'brand': 'TestBrand', 'care_instructions': 'Machine wash cold', 'material': 'cotton'}
+2025-09-11 12:49:49,653 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for detail
+2025-09-11 12:49:49,653 - api.websocket - INFO - Running damage_detector with 4s timer
+2025-09-11 12:49:49,653 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:49:49,653 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:49:49,653 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:49:49,653 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:49:49,653 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:49:49,653 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:49:49,654 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #1
+2025-09-11 12:49:51,173 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #1
+2025-09-11 12:49:51,173 - v2.services.multi_inference_engine - INFO - damage_detector inference #1 completed in 1519ms (2 frames, multi_image)
+2025-09-11 12:49:51,173 - v2.services.stateful_orchestrator - INFO - damage_detector inference #1 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment. One is the i...'}
+2025-09-11 12:49:51,173 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:49:51,173 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:49:51,173 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:49:51,173 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:49:51,174 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:49:51,174 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #2
+2025-09-11 12:49:52,694 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #2
+2025-09-11 12:49:52,694 - v2.services.multi_inference_engine - INFO - damage_detector inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:49:52,694 - v2.services.stateful_orchestrator - INFO - damage_detector inference #2 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. One is the i...'}
+2025-09-11 12:49:52,694 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:49:52,694 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:49:52,694 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:49:52,694 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for damage_detector using last_with_fallback
+2025-09-11 12:49:52,694 - v2.services.stateful_orchestrator - INFO - Agent damage_detector completed with 2 inferences
+2025-09-11 12:49:52,695 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:52,757 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for damage
+2025-09-11 12:49:52,757 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'damage_type': None, 'is_damaged': False, 'damage_severity': None}
+2025-09-11 12:49:52,757 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for damage
+2025-09-11 12:49:52,757 - api.websocket - INFO - Running final_compiler to aggregate results
+2025-09-11 12:49:52,758 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for final
+2025-09-11 12:49:52,758 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for final
+2025-09-11 12:49:52,758 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 compiling results from all agents
+2025-09-11 12:49:52,758 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 completed: shirt - Total inferences: 7, Confidence: 0.90
+2025-09-11 12:49:52,758 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for final
+2025-09-11 12:49:52,758 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons', 'brand': 'TestBrand', 'size': 'M', 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'initial_classifier', 'inference_num': 3, 'reasoning_text': 'Identified shirt in blue color'}, {'sequence_num': 2, 'agent_name': 'detail_extractor', 'inference_num': 2, 'reasoning_text': 'Extracted brand: TestBrand, size: M'}, {'sequence_num': 3, 'agent_name': 'damage_detector', 'inference_num': 2, 'reasoning_text': 'Item is undamaged'}, {'sequence_num': 4, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification: shirt (blue) - Good condition'}], 'overall_confidence': 0.9, 'processing_time_ms': 0, 'total_inferences': 7, 'agents_used': ['initial_classifier', 'detail_extractor', 'damage_detector']}
+2025-09-11 12:49:52,758 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for final
+2025-09-11 12:49:52,758 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Sending complete classification
+2025-09-11 12:49:52,758 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Results: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons', 'brand': 'TestBrand', 'size': 'M', 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'initial_classifier', 'inference_num': 3, 'reasoning_text': 'Identified shirt in blue color'}, {'sequence_num': 2, 'agent_name': 'detail_extractor', 'inference_num': 2, 'reasoning_text': 'Extracted brand: TestBrand, size: M'}, {'sequence_num': 3, 'agent_name': 'damage_detector', 'inference_num': 2, 'reasoning_text': 'Item is undamaged'}, {'sequence_num': 4, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification: shirt (blue) - Good condition'}], 'overall_confidence': 0.9, 'processing_time_ms': 0, 'total_inferences': 7, 'agents_used': ['initial_classifier', 'detail_extractor', 'damage_detector']}
+2025-09-11 12:49:52,758 - services.webrtc_manager - DEBUG - Sent data channel message: final_results for N/A
+2025-09-11 12:49:52,758 - api.websocket - INFO - Monitoring cycle 2 completed for session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_2
+2025-09-11 12:49:53,759 - api.websocket - INFO - Starting monitoring cycle 3 with session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_3
+2025-09-11 12:49:53,759 - api.websocket - INFO - [TO FRONTEND] Sending monitoring_cycle_started for N/A
+2025-09-11 12:49:53,759 - services.webrtc_manager - DEBUG - Sent data channel message: monitoring_cycle_started for N/A
+2025-09-11 12:49:53,759 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:49:53,759 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
+2025-09-11 12:49:53,759 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
+2025-09-11 12:49:53,759 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:49:53,759 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
+2025-09-11 12:49:53,759 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
+2025-09-11 12:49:53,759 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:49:53,759 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
+2025-09-11 12:49:53,759 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
+2025-09-11 12:49:53,759 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
+2025-09-11 12:49:53,759 - api.websocket - INFO - Running initial_classifier with 4s timer
+2025-09-11 12:49:53,759 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:49:53,759 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:49:53,759 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:49:53,759 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:49:53,759 - v2.services.frame_registry - DEBUG - Registered frame initial_classifier_1757620193759_7fe305ef for agent initial_classifier
+2025-09-11 12:49:53,759 - v2.services.frame_registry - INFO - Shared frame initial_classifier_1757620193759_7fe305ef with key 'initial_first'
+2025-09-11 12:49:53,759 - v2.services.frame_registry - INFO - Registered initial first frame: initial_classifier_1757620193759_7fe305ef for damage detector sharing
+2025-09-11 12:49:53,759 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:49:53,760 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:49:53,760 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #1
+2025-09-11 12:49:54,561 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #1
+2025-09-11 12:49:54,561 - v2.services.multi_inference_engine - INFO - initial_classifier inference #1 completed in 801ms (1 frames, single_image)
+2025-09-11 12:49:54,561 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #1 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Analyze this garment image and identify: item_type...'}
+2025-09-11 12:49:54,561 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:49:54,561 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:49:54,561 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:49:54,561 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:49:54,561 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:49:54,561 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #2
+2025-09-11 12:49:56,081 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #2
+2025-09-11 12:49:56,081 - v2.services.multi_inference_engine - INFO - initial_classifier inference #2 completed in 1519ms (3 frames, multi_image)
+2025-09-11 12:49:56,081 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #2 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment from differen...'}
+2025-09-11 12:49:56,081 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:49:56,081 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:49:56,081 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:49:56,081 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:49:56,081 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:49:56,082 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #3
+2025-09-11 12:49:57,602 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #3
+2025-09-11 12:49:57,602 - v2.services.multi_inference_engine - INFO - initial_classifier inference #3 completed in 1520ms (2 frames, multi_image)
+2025-09-11 12:49:57,602 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #3 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment from differen...'}
+2025-09-11 12:49:57,602 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:49:57,602 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:49:57,602 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:49:57,602 - v2.services.frame_aggregator - INFO - Aggregated 3 inferences for initial_classifier using majority
+2025-09-11 12:49:57,602 - v2.services.stateful_orchestrator - INFO - Agent initial_classifier completed with 3 inferences
+2025-09-11 12:49:57,602 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:57,661 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for initial
+2025-09-11 12:49:57,661 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'color': 'blue', 'sleeve_type': 'short', 'neckline': 'crew', 'item_type': 'shirt', 'pattern': 'solid', 'closure_type': 'buttons'}
+2025-09-11 12:49:57,661 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for initial
+2025-09-11 12:49:57,661 - api.websocket - INFO - Running detail_extractor with 3s timer
+2025-09-11 12:49:57,661 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:49:57,661 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:49:57,661 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:49:57,661 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:49:57,661 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:49:57,661 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:49:57,661 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #1
+2025-09-11 12:49:58,461 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #1
+2025-09-11 12:49:58,461 - v2.services.multi_inference_engine - INFO - detail_extractor inference #1 completed in 799ms (1 frames, single_image)
+2025-09-11 12:49:58,461 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #1 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Extract details from this garment: brand, size, ma...'}
+2025-09-11 12:49:58,461 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:49:58,461 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:49:58,461 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:49:58,461 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:49:58,461 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:49:58,461 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #2
+2025-09-11 12:49:59,624 - services.webrtc_manager - INFO - Received data channel message for bffa4920-8987-48f8-9470-0799e2d14b91: resume_flow
+2025-09-11 12:49:59,624 - services.webrtc_manager - INFO - Forwarding control message resume_flow to websocket handler
+2025-09-11 12:49:59,624 - api.websocket - INFO - Handling control message from data channel: resume_flow for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:49:59,624 - api.websocket - INFO - Handling WebSocket message type: resume_flow
+2025-09-11 12:49:59,982 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #2
+2025-09-11 12:49:59,982 - v2.services.multi_inference_engine - INFO - detail_extractor inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:49:59,982 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #2 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. Extract: bra...'}
+2025-09-11 12:49:59,982 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:49:59,982 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:49:59,982 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:49:59,982 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for detail_extractor using last_with_fallback
+2025-09-11 12:49:59,982 - v2.services.stateful_orchestrator - INFO - Agent detail_extractor completed with 2 inferences
+2025-09-11 12:49:59,982 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:00,061 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for detail
+2025-09-11 12:50:00,062 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'size': 'M', 'brand': 'TestBrand', 'care_instructions': 'Machine wash cold', 'material': 'cotton'}
+2025-09-11 12:50:00,062 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for detail
+2025-09-11 12:50:00,062 - api.websocket - INFO - Running damage_detector with 4s timer
+2025-09-11 12:50:00,062 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:00,062 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:00,062 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:00,062 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:00,062 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:50:00,062 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:00,062 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #1
+2025-09-11 12:50:01,583 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #1
+2025-09-11 12:50:01,583 - v2.services.multi_inference_engine - INFO - damage_detector inference #1 completed in 1520ms (2 frames, multi_image)
+2025-09-11 12:50:01,583 - v2.services.stateful_orchestrator - INFO - damage_detector inference #1 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment. One is the i...'}
+2025-09-11 12:50:01,583 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:50:01,583 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:50:01,583 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:01,583 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:50:01,583 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:01,583 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #2
+2025-09-11 12:50:03,103 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #2
+2025-09-11 12:50:03,103 - v2.services.multi_inference_engine - INFO - damage_detector inference #2 completed in 1519ms (3 frames, multi_image)
+2025-09-11 12:50:03,103 - v2.services.stateful_orchestrator - INFO - damage_detector inference #2 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. One is the i...'}
+2025-09-11 12:50:03,103 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:50:03,103 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:50:03,103 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:03,103 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for damage_detector using last_with_fallback
+2025-09-11 12:50:03,103 - v2.services.stateful_orchestrator - INFO - Agent damage_detector completed with 2 inferences
+2025-09-11 12:50:03,104 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:03,165 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for damage
+2025-09-11 12:50:03,166 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'damage_type': None, 'is_damaged': False, 'damage_severity': None}
+2025-09-11 12:50:03,166 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for damage
+2025-09-11 12:50:03,166 - api.websocket - INFO - Running final_compiler to aggregate results
+2025-09-11 12:50:03,166 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for final
+2025-09-11 12:50:03,166 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for final
+2025-09-11 12:50:03,166 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 compiling results from all agents
+2025-09-11 12:50:03,166 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 completed: shirt - Total inferences: 7, Confidence: 0.90
+2025-09-11 12:50:03,166 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for final
+2025-09-11 12:50:03,166 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons', 'brand': 'TestBrand', 'size': 'M', 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'initial_classifier', 'inference_num': 3, 'reasoning_text': 'Identified shirt in blue color'}, {'sequence_num': 2, 'agent_name': 'detail_extractor', 'inference_num': 2, 'reasoning_text': 'Extracted brand: TestBrand, size: M'}, {'sequence_num': 3, 'agent_name': 'damage_detector', 'inference_num': 2, 'reasoning_text': 'Item is undamaged'}, {'sequence_num': 4, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification: shirt (blue) - Good condition'}], 'overall_confidence': 0.9, 'processing_time_ms': 0, 'total_inferences': 7, 'agents_used': ['initial_classifier', 'detail_extractor', 'damage_detector']}
+2025-09-11 12:50:03,166 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for final
+2025-09-11 12:50:03,166 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Sending complete classification
+2025-09-11 12:50:03,166 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Results: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons', 'brand': 'TestBrand', 'size': 'M', 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'initial_classifier', 'inference_num': 3, 'reasoning_text': 'Identified shirt in blue color'}, {'sequence_num': 2, 'agent_name': 'detail_extractor', 'inference_num': 2, 'reasoning_text': 'Extracted brand: TestBrand, size: M'}, {'sequence_num': 3, 'agent_name': 'damage_detector', 'inference_num': 2, 'reasoning_text': 'Item is undamaged'}, {'sequence_num': 4, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification: shirt (blue) - Good condition'}], 'overall_confidence': 0.9, 'processing_time_ms': 0, 'total_inferences': 7, 'agents_used': ['initial_classifier', 'detail_extractor', 'damage_detector']}
+2025-09-11 12:50:03,166 - services.webrtc_manager - DEBUG - Sent data channel message: final_results for N/A
+2025-09-11 12:50:03,166 - api.websocket - INFO - Monitoring cycle 3 completed for session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_3
+2025-09-11 12:50:04,166 - api.websocket - INFO - Starting monitoring cycle 4 with session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_4
+2025-09-11 12:50:04,166 - api.websocket - INFO - [TO FRONTEND] Sending monitoring_cycle_started for N/A
+2025-09-11 12:50:04,166 - services.webrtc_manager - DEBUG - Sent data channel message: monitoring_cycle_started for N/A
+2025-09-11 12:50:04,166 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:04,166 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
+2025-09-11 12:50:04,166 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
+2025-09-11 12:50:04,166 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:04,166 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
+2025-09-11 12:50:04,166 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
+2025-09-11 12:50:04,166 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:04,166 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
+2025-09-11 12:50:04,166 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
+2025-09-11 12:50:04,166 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
+2025-09-11 12:50:04,166 - api.websocket - INFO - Running initial_classifier with 4s timer
+2025-09-11 12:50:04,166 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:50:04,166 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:50:04,166 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:50:04,166 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:50:04,167 - v2.services.frame_registry - DEBUG - Registered frame initial_classifier_1757620204166_2a775258 for agent initial_classifier
+2025-09-11 12:50:04,167 - v2.services.frame_registry - INFO - Shared frame initial_classifier_1757620204166_2a775258 with key 'initial_first'
+2025-09-11 12:50:04,167 - v2.services.frame_registry - INFO - Registered initial first frame: initial_classifier_1757620204166_2a775258 for damage detector sharing
+2025-09-11 12:50:04,167 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:04,167 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:04,167 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #1
+2025-09-11 12:50:04,967 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #1
+2025-09-11 12:50:04,967 - v2.services.multi_inference_engine - INFO - initial_classifier inference #1 completed in 800ms (1 frames, single_image)
+2025-09-11 12:50:04,967 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #1 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Analyze this garment image and identify: item_type...'}
+2025-09-11 12:50:04,967 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:04,967 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:04,967 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:04,967 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:04,967 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:04,967 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #2
+2025-09-11 12:50:06,487 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #2
+2025-09-11 12:50:06,487 - v2.services.multi_inference_engine - INFO - initial_classifier inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:50:06,487 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #2 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment from differen...'}
+2025-09-11 12:50:06,487 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:06,487 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:06,487 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:06,488 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:06,488 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:06,488 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #3
+2025-09-11 12:50:08,009 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #3
+2025-09-11 12:50:08,009 - v2.services.multi_inference_engine - INFO - initial_classifier inference #3 completed in 1520ms (2 frames, multi_image)
+2025-09-11 12:50:08,009 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #3 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment from differen...'}
+2025-09-11 12:50:08,009 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:08,009 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:08,009 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:08,009 - v2.services.frame_aggregator - INFO - Aggregated 3 inferences for initial_classifier using majority
+2025-09-11 12:50:08,009 - v2.services.stateful_orchestrator - INFO - Agent initial_classifier completed with 3 inferences
+2025-09-11 12:50:08,009 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:08,070 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for initial
+2025-09-11 12:50:08,070 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'color': 'blue', 'sleeve_type': 'short', 'neckline': 'crew', 'item_type': 'shirt', 'pattern': 'solid', 'closure_type': 'buttons'}
+2025-09-11 12:50:08,070 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for initial
+2025-09-11 12:50:08,070 - api.websocket - INFO - Running detail_extractor with 3s timer
+2025-09-11 12:50:08,070 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:50:08,070 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:50:08,070 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:50:08,070 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:50:08,071 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:50:08,071 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:08,071 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #1
+2025-09-11 12:50:08,872 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #1
+2025-09-11 12:50:08,872 - v2.services.multi_inference_engine - INFO - detail_extractor inference #1 completed in 800ms (1 frames, single_image)
+2025-09-11 12:50:08,872 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #1 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Extract details from this garment: brand, size, ma...'}
+2025-09-11 12:50:08,872 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:50:08,872 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:50:08,872 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:08,872 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:50:08,872 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:08,872 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #2
+2025-09-11 12:50:10,393 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #2
+2025-09-11 12:50:10,393 - v2.services.multi_inference_engine - INFO - detail_extractor inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:50:10,393 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #2 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. Extract: bra...'}
+2025-09-11 12:50:10,393 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:50:10,393 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:50:10,393 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:10,393 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for detail_extractor using last_with_fallback
+2025-09-11 12:50:10,393 - v2.services.stateful_orchestrator - INFO - Agent detail_extractor completed with 2 inferences
+2025-09-11 12:50:10,393 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:10,473 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for detail
+2025-09-11 12:50:10,473 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'size': 'M', 'brand': 'TestBrand', 'care_instructions': 'Machine wash cold', 'material': 'cotton'}
+2025-09-11 12:50:10,473 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for detail
+2025-09-11 12:50:10,473 - api.websocket - INFO - Running damage_detector with 4s timer
+2025-09-11 12:50:10,473 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:10,473 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:10,473 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:10,473 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:10,473 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:50:10,473 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:10,473 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #1
+2025-09-11 12:50:10,922 - services.webrtc_manager - INFO - Received data channel message for bffa4920-8987-48f8-9470-0799e2d14b91: stop_session
+2025-09-11 12:50:10,922 - services.webrtc_manager - INFO - Forwarding control message stop_session to websocket handler
+2025-09-11 12:50:10,922 - api.websocket - INFO - Handling control message from data channel: stop_session for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:10,922 - api.websocket - INFO - Handling WebSocket message type: stop_session
+2025-09-11 12:50:10,922 - api.websocket - INFO - Stop session requested for bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:10,922 - api.websocket - INFO - Stopping monitoring for bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:10,922 - services.session_manager - INFO - Stopped session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:10,922 - api.websocket - INFO - Session bffa4920-8987-48f8-9470-0799e2d14b91 stop completed
+2025-09-11 12:50:11,993 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #1
+2025-09-11 12:50:11,994 - v2.services.multi_inference_engine - INFO - damage_detector inference #1 completed in 1520ms (2 frames, multi_image)
+2025-09-11 12:50:11,994 - v2.services.stateful_orchestrator - INFO - damage_detector inference #1 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment. One is the i...'}
+2025-09-11 12:50:11,994 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:50:11,994 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:50:11,994 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:11,994 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:50:11,994 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:11,994 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #2
+2025-09-11 12:50:13,514 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #2
+2025-09-11 12:50:13,514 - v2.services.multi_inference_engine - INFO - damage_detector inference #2 completed in 1519ms (3 frames, multi_image)
+2025-09-11 12:50:13,514 - v2.services.stateful_orchestrator - INFO - damage_detector inference #2 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. One is the i...'}
+2025-09-11 12:50:13,514 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:50:13,514 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:50:13,514 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:13,514 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for damage_detector using last_with_fallback
+2025-09-11 12:50:13,514 - v2.services.stateful_orchestrator - INFO - Agent damage_detector completed with 2 inferences
+2025-09-11 12:50:13,515 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:13,579 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for damage
+2025-09-11 12:50:13,579 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'damage_type': None, 'is_damaged': False, 'damage_severity': None}
+2025-09-11 12:50:13,579 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for damage
+2025-09-11 12:50:13,579 - api.websocket - INFO - Monitoring stopped before final_compiler
+2025-09-11 12:50:13,579 - api.websocket - INFO - Monitoring cycle 4 completed for session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_4
+2025-09-11 12:50:14,579 - api.websocket - INFO - V1-to-V2 monitoring flow stopped after 4 cycles
+2025-09-11 12:50:20,662 - api.websocket - INFO - Handling WebSocket message type: start_automatic
+2025-09-11 12:50:20,663 - v2.services.frame_registry - INFO - FrameRegistry initialized for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:20,663 - v2.services.frame_registry - INFO - FrameRegistry initialized for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:20,663 - v2.services.frame_manager - INFO - FrameManager initialized for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:20,663 - v2.services.state_persistence - INFO - StatePersistence initialized for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:20,663 - v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:20,663 - v2.services.stateful_orchestrator - INFO - StatefulOrchestrator initialized for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:20,663 - v2.services.stateful_orchestrator - INFO - Custom timers set: {'initial_classifier': 4, 'detail_extractor': 3, 'damage_detector': 4, 'final_compiler': 2}
+2025-09-11 12:50:20,663 - api.websocket - INFO - Starting continuous V1-to-V2 monitoring flow for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:20,663 - api.websocket - INFO - Starting monitoring cycle 1 with session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_1
+2025-09-11 12:50:20,663 - api.websocket - INFO - [TO FRONTEND] Sending monitoring_cycle_started for N/A
+2025-09-11 12:50:20,663 - services.webrtc_manager - DEBUG - Sent data channel message: monitoring_cycle_started for N/A
+2025-09-11 12:50:20,663 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:20,663 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
+2025-09-11 12:50:20,663 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
+2025-09-11 12:50:20,663 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:20,663 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
+2025-09-11 12:50:20,663 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
+2025-09-11 12:50:20,663 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:20,663 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
+2025-09-11 12:50:20,663 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
+2025-09-11 12:50:20,663 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
+2025-09-11 12:50:20,663 - api.websocket - INFO - Running initial_classifier with 4s timer
+2025-09-11 12:50:20,663 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:50:20,663 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:50:20,663 - api.websocket - ERROR - Error running agent initial_classifier: cannot access local variable 'asyncio' where it is not associated with a value
+2025-09-11 12:50:20,663 - api.websocket - INFO - Running detail_extractor with 3s timer
+2025-09-11 12:50:20,663 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:50:20,663 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:50:20,663 - api.websocket - ERROR - Error running agent detail_extractor: cannot access local variable 'asyncio' where it is not associated with a value
+2025-09-11 12:50:20,663 - api.websocket - INFO - Running damage_detector with 4s timer
+2025-09-11 12:50:20,663 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:20,663 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:20,663 - api.websocket - ERROR - Error running agent damage_detector: cannot access local variable 'asyncio' where it is not associated with a value
+2025-09-11 12:50:20,663 - api.websocket - INFO - Running final_compiler to aggregate results
+2025-09-11 12:50:20,663 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for final
+2025-09-11 12:50:20,664 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for final
+2025-09-11 12:50:20,664 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 compiling results from all agents
+2025-09-11 12:50:20,664 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 completed:  - Total inferences: 0, Confidence: 0.00
+2025-09-11 12:50:20,664 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for final
+2025-09-11 12:50:20,664 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'item_type': '', 'color': '', 'pattern': None, 'neckline': None, 'sleeve_type': None, 'closure_type': None, 'brand': None, 'size': None, 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification:  () - Good condition'}], 'overall_confidence': 0.0, 'processing_time_ms': 0, 'total_inferences': 0, 'agents_used': []}
+2025-09-11 12:50:20,664 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for final
+2025-09-11 12:50:20,664 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Sending complete classification
+2025-09-11 12:50:20,664 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Results: {'item_type': '', 'color': '', 'pattern': None, 'neckline': None, 'sleeve_type': None, 'closure_type': None, 'brand': None, 'size': None, 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification:  () - Good condition'}], 'overall_confidence': 0.0, 'processing_time_ms': 0, 'total_inferences': 0, 'agents_used': []}
+2025-09-11 12:50:20,664 - services.webrtc_manager - DEBUG - Sent data channel message: final_results for N/A
+2025-09-11 12:50:20,664 - api.websocket - INFO - Monitoring cycle 1 completed for session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_1
+2025-09-11 12:50:21,664 - api.websocket - INFO - Starting monitoring cycle 2 with session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_2
+2025-09-11 12:50:21,664 - api.websocket - INFO - [TO FRONTEND] Sending monitoring_cycle_started for N/A
+2025-09-11 12:50:21,664 - services.webrtc_manager - DEBUG - Sent data channel message: monitoring_cycle_started for N/A
+2025-09-11 12:50:21,664 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:21,664 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
+2025-09-11 12:50:21,664 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
+2025-09-11 12:50:21,664 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:21,664 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
+2025-09-11 12:50:21,664 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
+2025-09-11 12:50:21,664 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:21,664 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
+2025-09-11 12:50:21,665 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
+2025-09-11 12:50:21,665 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
+2025-09-11 12:50:21,665 - api.websocket - INFO - Running initial_classifier with 4s timer
+2025-09-11 12:50:21,665 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:50:21,665 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:50:21,665 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:50:21,665 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:50:21,665 - v2.services.frame_registry - DEBUG - Registered frame initial_classifier_1757620221665_a08fa13b for agent initial_classifier
+2025-09-11 12:50:21,665 - v2.services.frame_registry - INFO - Shared frame initial_classifier_1757620221665_a08fa13b with key 'initial_first'
+2025-09-11 12:50:21,665 - v2.services.frame_registry - INFO - Registered initial first frame: initial_classifier_1757620221665_a08fa13b for damage detector sharing
+2025-09-11 12:50:21,665 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:21,665 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:21,665 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #1
+2025-09-11 12:50:22,465 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #1
+2025-09-11 12:50:22,465 - v2.services.multi_inference_engine - INFO - initial_classifier inference #1 completed in 799ms (1 frames, single_image)
+2025-09-11 12:50:22,465 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #1 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Analyze this garment image and identify: item_type...'}
+2025-09-11 12:50:22,465 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:22,465 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:22,465 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:22,465 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:22,465 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:22,465 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #2
+2025-09-11 12:50:23,985 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #2
+2025-09-11 12:50:23,986 - v2.services.multi_inference_engine - INFO - initial_classifier inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:50:23,986 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #2 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment from differen...'}
+2025-09-11 12:50:23,986 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:23,986 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:23,986 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:23,986 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:23,986 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:23,986 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #3
+2025-09-11 12:50:25,506 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #3
+2025-09-11 12:50:25,506 - v2.services.multi_inference_engine - INFO - initial_classifier inference #3 completed in 1520ms (2 frames, multi_image)
+2025-09-11 12:50:25,506 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #3 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment from differen...'}
+2025-09-11 12:50:25,506 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:25,506 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:25,506 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:25,507 - v2.services.frame_aggregator - INFO - Aggregated 3 inferences for initial_classifier using majority
+2025-09-11 12:50:25,507 - v2.services.stateful_orchestrator - INFO - Agent initial_classifier completed with 3 inferences
+2025-09-11 12:50:25,507 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:25,570 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for initial
+2025-09-11 12:50:25,570 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'color': 'blue', 'sleeve_type': 'short', 'neckline': 'crew', 'item_type': 'shirt', 'pattern': 'solid', 'closure_type': 'buttons'}
+2025-09-11 12:50:25,570 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for initial
+2025-09-11 12:50:25,570 - api.websocket - INFO - Running detail_extractor with 3s timer
+2025-09-11 12:50:25,570 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:50:25,570 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:50:25,571 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:50:25,571 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:50:25,571 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:50:25,571 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:25,571 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #1
+2025-09-11 12:50:26,371 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #1
+2025-09-11 12:50:26,371 - v2.services.multi_inference_engine - INFO - detail_extractor inference #1 completed in 800ms (1 frames, single_image)
+2025-09-11 12:50:26,371 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #1 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Extract details from this garment: brand, size, ma...'}
+2025-09-11 12:50:26,371 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:50:26,371 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:50:26,371 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:26,372 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:50:26,372 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:26,372 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #2
+2025-09-11 12:50:27,892 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #2
+2025-09-11 12:50:27,892 - v2.services.multi_inference_engine - INFO - detail_extractor inference #2 completed in 1519ms (3 frames, multi_image)
+2025-09-11 12:50:27,892 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #2 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. Extract: bra...'}
+2025-09-11 12:50:27,892 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:50:27,892 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:50:27,892 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:27,892 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for detail_extractor using last_with_fallback
+2025-09-11 12:50:27,892 - v2.services.stateful_orchestrator - INFO - Agent detail_extractor completed with 2 inferences
+2025-09-11 12:50:27,892 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:27,973 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for detail
+2025-09-11 12:50:27,973 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'size': 'M', 'brand': 'TestBrand', 'care_instructions': 'Machine wash cold', 'material': 'cotton'}
+2025-09-11 12:50:27,973 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for detail
+2025-09-11 12:50:27,974 - api.websocket - INFO - Running damage_detector with 4s timer
+2025-09-11 12:50:27,974 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:27,974 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:27,974 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:27,974 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:27,974 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:50:27,974 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:27,974 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #1
+2025-09-11 12:50:29,495 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #1
+2025-09-11 12:50:29,495 - v2.services.multi_inference_engine - INFO - damage_detector inference #1 completed in 1520ms (2 frames, multi_image)
+2025-09-11 12:50:29,495 - v2.services.stateful_orchestrator - INFO - damage_detector inference #1 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment. One is the i...'}
+2025-09-11 12:50:29,495 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:50:29,495 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:50:29,495 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:29,495 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:50:29,495 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:29,495 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #2
+2025-09-11 12:50:31,015 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #2
+2025-09-11 12:50:31,015 - v2.services.multi_inference_engine - INFO - damage_detector inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:50:31,016 - v2.services.stateful_orchestrator - INFO - damage_detector inference #2 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. One is the i...'}
+2025-09-11 12:50:31,016 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:50:31,016 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:50:31,016 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:31,016 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for damage_detector using last_with_fallback
+2025-09-11 12:50:31,016 - v2.services.stateful_orchestrator - INFO - Agent damage_detector completed with 2 inferences
+2025-09-11 12:50:31,016 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:31,078 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for damage
+2025-09-11 12:50:31,078 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'damage_type': None, 'is_damaged': False, 'damage_severity': None}
+2025-09-11 12:50:31,078 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for damage
+2025-09-11 12:50:31,078 - api.websocket - INFO - Running final_compiler to aggregate results
+2025-09-11 12:50:31,078 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for final
+2025-09-11 12:50:31,078 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for final
+2025-09-11 12:50:31,078 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 compiling results from all agents
+2025-09-11 12:50:31,078 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 completed: shirt - Total inferences: 7, Confidence: 0.90
+2025-09-11 12:50:31,078 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for final
+2025-09-11 12:50:31,078 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons', 'brand': 'TestBrand', 'size': 'M', 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'initial_classifier', 'inference_num': 3, 'reasoning_text': 'Identified shirt in blue color'}, {'sequence_num': 2, 'agent_name': 'detail_extractor', 'inference_num': 2, 'reasoning_text': 'Extracted brand: TestBrand, size: M'}, {'sequence_num': 3, 'agent_name': 'damage_detector', 'inference_num': 2, 'reasoning_text': 'Item is undamaged'}, {'sequence_num': 4, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification: shirt (blue) - Good condition'}], 'overall_confidence': 0.9, 'processing_time_ms': 0, 'total_inferences': 7, 'agents_used': ['initial_classifier', 'detail_extractor', 'damage_detector']}
+2025-09-11 12:50:31,079 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for final
+2025-09-11 12:50:31,079 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Sending complete classification
+2025-09-11 12:50:31,079 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Results: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons', 'brand': 'TestBrand', 'size': 'M', 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'initial_classifier', 'inference_num': 3, 'reasoning_text': 'Identified shirt in blue color'}, {'sequence_num': 2, 'agent_name': 'detail_extractor', 'inference_num': 2, 'reasoning_text': 'Extracted brand: TestBrand, size: M'}, {'sequence_num': 3, 'agent_name': 'damage_detector', 'inference_num': 2, 'reasoning_text': 'Item is undamaged'}, {'sequence_num': 4, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification: shirt (blue) - Good condition'}], 'overall_confidence': 0.9, 'processing_time_ms': 0, 'total_inferences': 7, 'agents_used': ['initial_classifier', 'detail_extractor', 'damage_detector']}
+2025-09-11 12:50:31,079 - services.webrtc_manager - DEBUG - Sent data channel message: final_results for N/A
+2025-09-11 12:50:31,079 - api.websocket - INFO - Monitoring cycle 2 completed for session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_2
+2025-09-11 12:50:32,079 - api.websocket - INFO - Starting monitoring cycle 3 with session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_3
+2025-09-11 12:50:32,080 - api.websocket - INFO - [TO FRONTEND] Sending monitoring_cycle_started for N/A
+2025-09-11 12:50:32,080 - services.webrtc_manager - DEBUG - Sent data channel message: monitoring_cycle_started for N/A
+2025-09-11 12:50:32,080 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:32,080 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
+2025-09-11 12:50:32,080 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
+2025-09-11 12:50:32,080 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:32,080 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
+2025-09-11 12:50:32,080 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
+2025-09-11 12:50:32,080 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:32,080 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
+2025-09-11 12:50:32,080 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
+2025-09-11 12:50:32,080 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
+2025-09-11 12:50:32,080 - api.websocket - INFO - Running initial_classifier with 4s timer
+2025-09-11 12:50:32,080 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:50:32,080 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:50:32,080 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:50:32,080 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:50:32,080 - v2.services.frame_registry - DEBUG - Registered frame initial_classifier_1757620232080_6a533c01 for agent initial_classifier
+2025-09-11 12:50:32,080 - v2.services.frame_registry - INFO - Shared frame initial_classifier_1757620232080_6a533c01 with key 'initial_first'
+2025-09-11 12:50:32,080 - v2.services.frame_registry - INFO - Registered initial first frame: initial_classifier_1757620232080_6a533c01 for damage detector sharing
+2025-09-11 12:50:32,080 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:32,080 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:32,081 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #1
+2025-09-11 12:50:32,881 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #1
+2025-09-11 12:50:32,881 - v2.services.multi_inference_engine - INFO - initial_classifier inference #1 completed in 800ms (1 frames, single_image)
+2025-09-11 12:50:32,883 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #1 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Analyze this garment image and identify: item_type...'}
+2025-09-11 12:50:32,883 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:32,883 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:32,883 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:32,883 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:32,883 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:32,883 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #2
+2025-09-11 12:50:34,403 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #2
+2025-09-11 12:50:34,403 - v2.services.multi_inference_engine - INFO - initial_classifier inference #2 completed in 1519ms (3 frames, multi_image)
+2025-09-11 12:50:34,403 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #2 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment from differen...'}
+2025-09-11 12:50:34,403 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:34,403 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:34,403 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:34,404 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:34,404 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:34,404 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #3
+2025-09-11 12:50:35,925 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #3
+2025-09-11 12:50:35,925 - v2.services.multi_inference_engine - INFO - initial_classifier inference #3 completed in 1520ms (2 frames, multi_image)
+2025-09-11 12:50:35,925 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #3 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment from differen...'}
+2025-09-11 12:50:35,925 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:35,925 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:35,925 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:35,925 - v2.services.frame_aggregator - INFO - Aggregated 3 inferences for initial_classifier using majority
+2025-09-11 12:50:35,925 - v2.services.stateful_orchestrator - INFO - Agent initial_classifier completed with 3 inferences
+2025-09-11 12:50:35,925 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:35,984 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for initial
+2025-09-11 12:50:35,984 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'color': 'blue', 'sleeve_type': 'short', 'neckline': 'crew', 'item_type': 'shirt', 'pattern': 'solid', 'closure_type': 'buttons'}
+2025-09-11 12:50:35,984 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for initial
+2025-09-11 12:50:35,984 - api.websocket - INFO - Running detail_extractor with 3s timer
+2025-09-11 12:50:35,984 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:50:35,984 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:50:35,984 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:50:35,984 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:50:35,984 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:50:35,984 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:35,984 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #1
+2025-09-11 12:50:36,784 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #1
+2025-09-11 12:50:36,784 - v2.services.multi_inference_engine - INFO - detail_extractor inference #1 completed in 800ms (1 frames, single_image)
+2025-09-11 12:50:36,784 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #1 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Extract details from this garment: brand, size, ma...'}
+2025-09-11 12:50:36,784 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:50:36,784 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:50:36,784 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:36,785 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:50:36,785 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:36,785 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #2
+2025-09-11 12:50:38,305 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #2
+2025-09-11 12:50:38,305 - v2.services.multi_inference_engine - INFO - detail_extractor inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:50:38,305 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #2 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. Extract: bra...'}
+2025-09-11 12:50:38,305 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:50:38,305 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:50:38,306 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:38,306 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for detail_extractor using last_with_fallback
+2025-09-11 12:50:38,306 - v2.services.stateful_orchestrator - INFO - Agent detail_extractor completed with 2 inferences
+2025-09-11 12:50:38,306 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:38,389 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for detail
+2025-09-11 12:50:38,389 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'size': 'M', 'brand': 'TestBrand', 'care_instructions': 'Machine wash cold', 'material': 'cotton'}
+2025-09-11 12:50:38,389 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for detail
+2025-09-11 12:50:38,389 - api.websocket - INFO - Running damage_detector with 4s timer
+2025-09-11 12:50:38,389 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:38,389 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:38,389 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:38,389 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:38,389 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:50:38,389 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:38,389 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #1
+2025-09-11 12:50:39,909 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #1
+2025-09-11 12:50:39,909 - v2.services.multi_inference_engine - INFO - damage_detector inference #1 completed in 1519ms (2 frames, multi_image)
+2025-09-11 12:50:39,909 - v2.services.stateful_orchestrator - INFO - damage_detector inference #1 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment. One is the i...'}
+2025-09-11 12:50:39,909 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:50:39,909 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:50:39,909 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:39,909 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:50:39,909 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:39,909 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #2
+2025-09-11 12:50:41,430 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #2
+2025-09-11 12:50:41,430 - v2.services.multi_inference_engine - INFO - damage_detector inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:50:41,430 - v2.services.stateful_orchestrator - INFO - damage_detector inference #2 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. One is the i...'}
+2025-09-11 12:50:41,430 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:50:41,430 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:50:41,430 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:41,430 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for damage_detector using last_with_fallback
+2025-09-11 12:50:41,430 - v2.services.stateful_orchestrator - INFO - Agent damage_detector completed with 2 inferences
+2025-09-11 12:50:41,430 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:41,496 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for damage
+2025-09-11 12:50:41,496 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'damage_type': None, 'is_damaged': False, 'damage_severity': None}
+2025-09-11 12:50:41,496 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for damage
+2025-09-11 12:50:41,496 - api.websocket - INFO - Running final_compiler to aggregate results
+2025-09-11 12:50:41,496 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for final
+2025-09-11 12:50:41,496 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for final
+2025-09-11 12:50:41,496 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 compiling results from all agents
+2025-09-11 12:50:41,496 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 completed: shirt - Total inferences: 7, Confidence: 0.90
+2025-09-11 12:50:41,496 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for final
+2025-09-11 12:50:41,496 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons', 'brand': 'TestBrand', 'size': 'M', 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'initial_classifier', 'inference_num': 3, 'reasoning_text': 'Identified shirt in blue color'}, {'sequence_num': 2, 'agent_name': 'detail_extractor', 'inference_num': 2, 'reasoning_text': 'Extracted brand: TestBrand, size: M'}, {'sequence_num': 3, 'agent_name': 'damage_detector', 'inference_num': 2, 'reasoning_text': 'Item is undamaged'}, {'sequence_num': 4, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification: shirt (blue) - Good condition'}], 'overall_confidence': 0.9, 'processing_time_ms': 0, 'total_inferences': 7, 'agents_used': ['initial_classifier', 'detail_extractor', 'damage_detector']}
+2025-09-11 12:50:41,496 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for final
+2025-09-11 12:50:41,496 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Sending complete classification
+2025-09-11 12:50:41,496 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Results: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons', 'brand': 'TestBrand', 'size': 'M', 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'initial_classifier', 'inference_num': 3, 'reasoning_text': 'Identified shirt in blue color'}, {'sequence_num': 2, 'agent_name': 'detail_extractor', 'inference_num': 2, 'reasoning_text': 'Extracted brand: TestBrand, size: M'}, {'sequence_num': 3, 'agent_name': 'damage_detector', 'inference_num': 2, 'reasoning_text': 'Item is undamaged'}, {'sequence_num': 4, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification: shirt (blue) - Good condition'}], 'overall_confidence': 0.9, 'processing_time_ms': 0, 'total_inferences': 7, 'agents_used': ['initial_classifier', 'detail_extractor', 'damage_detector']}
+2025-09-11 12:50:41,496 - services.webrtc_manager - DEBUG - Sent data channel message: final_results for N/A
+2025-09-11 12:50:41,496 - api.websocket - INFO - Monitoring cycle 3 completed for session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_3
+2025-09-11 12:50:42,496 - api.websocket - INFO - Starting monitoring cycle 4 with session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_4
+2025-09-11 12:50:42,496 - api.websocket - INFO - [TO FRONTEND] Sending monitoring_cycle_started for N/A
+2025-09-11 12:50:42,496 - services.webrtc_manager - DEBUG - Sent data channel message: monitoring_cycle_started for N/A
+2025-09-11 12:50:42,497 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:42,497 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
+2025-09-11 12:50:42,497 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
+2025-09-11 12:50:42,497 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:42,497 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
+2025-09-11 12:50:42,497 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
+2025-09-11 12:50:42,497 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:42,497 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
+2025-09-11 12:50:42,497 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
+2025-09-11 12:50:42,497 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
+2025-09-11 12:50:42,497 - api.websocket - INFO - Running initial_classifier with 4s timer
+2025-09-11 12:50:42,497 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:50:42,497 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:50:42,497 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:50:42,497 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:50:42,497 - v2.services.frame_registry - DEBUG - Registered frame initial_classifier_1757620242497_1b78044d for agent initial_classifier
+2025-09-11 12:50:42,497 - v2.services.frame_registry - INFO - Shared frame initial_classifier_1757620242497_1b78044d with key 'initial_first'
+2025-09-11 12:50:42,497 - v2.services.frame_registry - INFO - Registered initial first frame: initial_classifier_1757620242497_1b78044d for damage detector sharing
+2025-09-11 12:50:42,497 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:42,497 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:42,497 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #1
+2025-09-11 12:50:42,766 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-32' coro=<StatePersistence._start_checkpoint_writer.<locals>.writer_loop() running at /home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/state_persistence.py:40> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2025-09-11 12:50:43,297 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #1
+2025-09-11 12:50:43,297 - v2.services.multi_inference_engine - INFO - initial_classifier inference #1 completed in 800ms (1 frames, single_image)
+2025-09-11 12:50:43,297 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #1 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Analyze this garment image and identify: item_type...'}
+2025-09-11 12:50:43,297 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:43,297 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:43,297 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:43,298 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:43,298 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:43,298 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #2
+2025-09-11 12:50:44,818 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #2
+2025-09-11 12:50:44,818 - v2.services.multi_inference_engine - INFO - initial_classifier inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:50:44,818 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #2 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment from differen...'}
+2025-09-11 12:50:44,818 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:44,818 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:44,818 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:44,818 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:44,818 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:44,818 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #3
+2025-09-11 12:50:46,339 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #3
+2025-09-11 12:50:46,339 - v2.services.multi_inference_engine - INFO - initial_classifier inference #3 completed in 1520ms (2 frames, multi_image)
+2025-09-11 12:50:46,339 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #3 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment from differen...'}
+2025-09-11 12:50:46,339 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:46,339 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:46,339 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:46,339 - v2.services.frame_aggregator - INFO - Aggregated 3 inferences for initial_classifier using majority
+2025-09-11 12:50:46,339 - v2.services.stateful_orchestrator - INFO - Agent initial_classifier completed with 3 inferences
+2025-09-11 12:50:46,339 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:46,403 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for initial
+2025-09-11 12:50:46,403 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'color': 'blue', 'sleeve_type': 'short', 'neckline': 'crew', 'item_type': 'shirt', 'pattern': 'solid', 'closure_type': 'buttons'}
+2025-09-11 12:50:46,403 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for initial
+2025-09-11 12:50:46,403 - api.websocket - INFO - Running detail_extractor with 3s timer
+2025-09-11 12:50:46,403 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:50:46,403 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:50:46,403 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:50:46,404 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:50:46,404 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:50:46,404 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:46,404 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #1
+2025-09-11 12:50:47,204 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #1
+2025-09-11 12:50:47,205 - v2.services.multi_inference_engine - INFO - detail_extractor inference #1 completed in 800ms (1 frames, single_image)
+2025-09-11 12:50:47,205 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #1 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Extract details from this garment: brand, size, ma...'}
+2025-09-11 12:50:47,205 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:50:47,205 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:50:47,205 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:47,205 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:50:47,205 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:47,205 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #2
+2025-09-11 12:50:48,725 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #2
+2025-09-11 12:50:48,725 - v2.services.multi_inference_engine - INFO - detail_extractor inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:50:48,725 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #2 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. Extract: bra...'}
+2025-09-11 12:50:48,726 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:50:48,726 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:50:48,726 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:48,726 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for detail_extractor using last_with_fallback
+2025-09-11 12:50:48,726 - v2.services.stateful_orchestrator - INFO - Agent detail_extractor completed with 2 inferences
+2025-09-11 12:50:48,726 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:48,805 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for detail
+2025-09-11 12:50:48,805 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'size': 'M', 'brand': 'TestBrand', 'care_instructions': 'Machine wash cold', 'material': 'cotton'}
+2025-09-11 12:50:48,805 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for detail
+2025-09-11 12:50:48,805 - api.websocket - INFO - Running damage_detector with 4s timer
+2025-09-11 12:50:48,805 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:48,805 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:48,805 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:48,805 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:48,806 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:50:48,806 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:48,806 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #1
+2025-09-11 12:50:50,326 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #1
+2025-09-11 12:50:50,326 - v2.services.multi_inference_engine - INFO - damage_detector inference #1 completed in 1520ms (2 frames, multi_image)
+2025-09-11 12:50:50,326 - v2.services.stateful_orchestrator - INFO - damage_detector inference #1 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment. One is the i...'}
+2025-09-11 12:50:50,326 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:50:50,326 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:50:50,326 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:50,326 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:50:50,326 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:50,327 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #2
+2025-09-11 12:50:51,847 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #2
+2025-09-11 12:50:51,847 - v2.services.multi_inference_engine - INFO - damage_detector inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:50:51,847 - v2.services.stateful_orchestrator - INFO - damage_detector inference #2 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. One is the i...'}
+2025-09-11 12:50:51,847 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:50:51,847 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:50:51,847 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:51,847 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for damage_detector using last_with_fallback
+2025-09-11 12:50:51,847 - v2.services.stateful_orchestrator - INFO - Agent damage_detector completed with 2 inferences
+2025-09-11 12:50:51,848 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:51,908 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for damage
+2025-09-11 12:50:51,908 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'damage_type': None, 'is_damaged': False, 'damage_severity': None}
+2025-09-11 12:50:51,908 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for damage
+2025-09-11 12:50:51,908 - api.websocket - INFO - Running final_compiler to aggregate results
+2025-09-11 12:50:51,908 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for final
+2025-09-11 12:50:51,908 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for final
+2025-09-11 12:50:51,908 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 compiling results from all agents
+2025-09-11 12:50:51,908 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 completed: shirt - Total inferences: 7, Confidence: 0.90
+2025-09-11 12:50:51,908 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for final
+2025-09-11 12:50:51,908 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons', 'brand': 'TestBrand', 'size': 'M', 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'initial_classifier', 'inference_num': 3, 'reasoning_text': 'Identified shirt in blue color'}, {'sequence_num': 2, 'agent_name': 'detail_extractor', 'inference_num': 2, 'reasoning_text': 'Extracted brand: TestBrand, size: M'}, {'sequence_num': 3, 'agent_name': 'damage_detector', 'inference_num': 2, 'reasoning_text': 'Item is undamaged'}, {'sequence_num': 4, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification: shirt (blue) - Good condition'}], 'overall_confidence': 0.9, 'processing_time_ms': 0, 'total_inferences': 7, 'agents_used': ['initial_classifier', 'detail_extractor', 'damage_detector']}
+2025-09-11 12:50:51,908 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for final
+2025-09-11 12:50:51,908 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Sending complete classification
+2025-09-11 12:50:51,908 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Results: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons', 'brand': 'TestBrand', 'size': 'M', 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'initial_classifier', 'inference_num': 3, 'reasoning_text': 'Identified shirt in blue color'}, {'sequence_num': 2, 'agent_name': 'detail_extractor', 'inference_num': 2, 'reasoning_text': 'Extracted brand: TestBrand, size: M'}, {'sequence_num': 3, 'agent_name': 'damage_detector', 'inference_num': 2, 'reasoning_text': 'Item is undamaged'}, {'sequence_num': 4, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification: shirt (blue) - Good condition'}], 'overall_confidence': 0.9, 'processing_time_ms': 0, 'total_inferences': 7, 'agents_used': ['initial_classifier', 'detail_extractor', 'damage_detector']}
+2025-09-11 12:50:51,908 - services.webrtc_manager - DEBUG - Sent data channel message: final_results for N/A
+2025-09-11 12:50:51,908 - api.websocket - INFO - Monitoring cycle 4 completed for session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_4
+2025-09-11 12:50:52,908 - api.websocket - INFO - Starting monitoring cycle 5 with session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_5
+2025-09-11 12:50:52,909 - api.websocket - INFO - [TO FRONTEND] Sending monitoring_cycle_started for N/A
+2025-09-11 12:50:52,909 - services.webrtc_manager - DEBUG - Sent data channel message: monitoring_cycle_started for N/A
+2025-09-11 12:50:52,909 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:52,909 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
+2025-09-11 12:50:52,909 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
+2025-09-11 12:50:52,909 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:52,909 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
+2025-09-11 12:50:52,909 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
+2025-09-11 12:50:52,909 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 12:50:52,909 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
+2025-09-11 12:50:52,909 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
+2025-09-11 12:50:52,909 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
+2025-09-11 12:50:52,909 - api.websocket - INFO - Running initial_classifier with 4s timer
+2025-09-11 12:50:52,909 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:50:52,909 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:50:52,909 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for initial
+2025-09-11 12:50:52,909 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for initial
+2025-09-11 12:50:52,910 - v2.services.frame_registry - DEBUG - Registered frame initial_classifier_1757620252909_b2dfed47 for agent initial_classifier
+2025-09-11 12:50:52,910 - v2.services.frame_registry - INFO - Shared frame initial_classifier_1757620252909_b2dfed47 with key 'initial_first'
+2025-09-11 12:50:52,910 - v2.services.frame_registry - INFO - Registered initial first frame: initial_classifier_1757620252909_b2dfed47 for damage detector sharing
+2025-09-11 12:50:52,910 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:52,910 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:52,910 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #1
+2025-09-11 12:50:53,711 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #1
+2025-09-11 12:50:53,711 - v2.services.multi_inference_engine - INFO - initial_classifier inference #1 completed in 800ms (1 frames, single_image)
+2025-09-11 12:50:53,711 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #1 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Analyze this garment image and identify: item_type...'}
+2025-09-11 12:50:53,711 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:53,711 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:53,711 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:53,711 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:53,711 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:53,711 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #2
+2025-09-11 12:50:55,232 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #2
+2025-09-11 12:50:55,232 - v2.services.multi_inference_engine - INFO - initial_classifier inference #2 completed in 1520ms (3 frames, multi_image)
+2025-09-11 12:50:55,232 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #2 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment from differen...'}
+2025-09-11 12:50:55,232 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:55,232 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:55,232 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:55,232 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for initial
+2025-09-11 12:50:55,232 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:55,232 - v2.services.multi_inference_engine - DEBUG - GPU acquired for initial_classifier inference #3
+2025-09-11 12:50:56,752 - v2.services.multi_inference_engine - DEBUG - GPU released for initial_classifier inference #3
+2025-09-11 12:50:56,752 - v2.services.multi_inference_engine - INFO - initial_classifier inference #3 completed in 1519ms (2 frames, multi_image)
+2025-09-11 12:50:56,752 - v2.services.stateful_orchestrator - INFO - initial_classifier inference #3 raw result: {'attributes': {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment from differen...'}
+2025-09-11 12:50:56,752 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for initial
+2025-09-11 12:50:56,752 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons'}
+2025-09-11 12:50:56,753 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for initial
+2025-09-11 12:50:56,753 - v2.services.frame_aggregator - INFO - Aggregated 3 inferences for initial_classifier using majority
+2025-09-11 12:50:56,753 - v2.services.stateful_orchestrator - INFO - Agent initial_classifier completed with 3 inferences
+2025-09-11 12:50:56,753 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:56,812 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for initial
+2025-09-11 12:50:56,812 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'color': 'blue', 'sleeve_type': 'short', 'neckline': 'crew', 'item_type': 'shirt', 'pattern': 'solid', 'closure_type': 'buttons'}
+2025-09-11 12:50:56,812 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for initial
+2025-09-11 12:50:56,812 - api.websocket - INFO - Running detail_extractor with 3s timer
+2025-09-11 12:50:56,812 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:50:56,812 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:50:56,812 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for detail
+2025-09-11 12:50:56,812 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for detail
+2025-09-11 12:50:56,812 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:50:56,812 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:56,812 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #1
+2025-09-11 12:50:57,612 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #1
+2025-09-11 12:50:57,612 - v2.services.multi_inference_engine - INFO - detail_extractor inference #1 completed in 799ms (1 frames, single_image)
+2025-09-11 12:50:57,612 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #1 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 0.9, 'reasoning': 'Analyzed 1 frame(s) with prompt: Extract details from this garment: brand, size, ma...'}
+2025-09-11 12:50:57,612 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:50:57,612 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:50:57,612 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:57,612 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for detail
+2025-09-11 12:50:57,612 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:57,612 - v2.services.multi_inference_engine - DEBUG - GPU acquired for detail_extractor inference #2
+2025-09-11 12:50:59,132 - v2.services.multi_inference_engine - DEBUG - GPU released for detail_extractor inference #2
+2025-09-11 12:50:59,132 - v2.services.multi_inference_engine - INFO - detail_extractor inference #2 completed in 1519ms (3 frames, multi_image)
+2025-09-11 12:50:59,132 - v2.services.stateful_orchestrator - INFO - detail_extractor inference #2 raw result: {'attributes': {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. Extract: bra...'}
+2025-09-11 12:50:59,132 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for detail
+2025-09-11 12:50:59,132 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'brand': 'TestBrand', 'size': 'M', 'material': 'cotton', 'care_instructions': 'Machine wash cold'}
+2025-09-11 12:50:59,132 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for detail
+2025-09-11 12:50:59,132 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for detail_extractor using last_with_fallback
+2025-09-11 12:50:59,132 - v2.services.stateful_orchestrator - INFO - Agent detail_extractor completed with 2 inferences
+2025-09-11 12:50:59,133 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:50:59,214 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for detail
+2025-09-11 12:50:59,214 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'size': 'M', 'brand': 'TestBrand', 'care_instructions': 'Machine wash cold', 'material': 'cotton'}
+2025-09-11 12:50:59,214 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for detail
+2025-09-11 12:50:59,214 - api.websocket - INFO - Running damage_detector with 4s timer
+2025-09-11 12:50:59,214 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:59,214 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:59,215 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for damage
+2025-09-11 12:50:59,215 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for damage
+2025-09-11 12:50:59,215 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:50:59,215 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:50:59,215 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #1
+2025-09-11 12:51:00,735 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #1
+2025-09-11 12:51:00,735 - v2.services.multi_inference_engine - INFO - damage_detector inference #1 completed in 1519ms (2 frames, multi_image)
+2025-09-11 12:51:00,735 - v2.services.stateful_orchestrator - INFO - damage_detector inference #1 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 0.95, 'reasoning': 'Analyzed 2 frame(s) with prompt: These 2 images show the same garment. One is the i...'}
+2025-09-11 12:51:00,735 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:51:00,735 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:51:00,735 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:51:00,735 - api.websocket - INFO - [TO FRONTEND] Sending progress_update for damage
+2025-09-11 12:51:00,735 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:51:00,735 - v2.services.multi_inference_engine - DEBUG - GPU acquired for damage_detector inference #2
+2025-09-11 12:51:02,255 - v2.services.multi_inference_engine - DEBUG - GPU released for damage_detector inference #2
+2025-09-11 12:51:02,255 - v2.services.multi_inference_engine - INFO - damage_detector inference #2 completed in 1519ms (3 frames, multi_image)
+2025-09-11 12:51:02,255 - v2.services.stateful_orchestrator - INFO - damage_detector inference #2 raw result: {'attributes': {'is_damaged': False, 'damage_type': None, 'damage_severity': None}, 'confidence': 1.0, 'reasoning': 'Analyzed 3 frame(s) with prompt: These 3 images show the same garment. One is the i...'}
+2025-09-11 12:51:02,255 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Sending progressive results for damage
+2025-09-11 12:51:02,255 - api.websocket - INFO - [TO FRONTEND - PROGRESSIVE] Attributes: {'is_damaged': False, 'damage_type': None, 'damage_severity': None}
+2025-09-11 12:51:02,255 - services.webrtc_manager - DEBUG - Sent data channel message: progress_update for damage
+2025-09-11 12:51:02,255 - v2.services.frame_aggregator - INFO - Aggregated 2 inferences for damage_detector using last_with_fallback
+2025-09-11 12:51:02,255 - v2.services.stateful_orchestrator - INFO - Agent damage_detector completed with 2 inferences
+2025-09-11 12:51:02,256 - v2.services.state_persistence - DEBUG - Checkpoint saved for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:51:02,317 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for damage
+2025-09-11 12:51:02,317 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'damage_type': None, 'is_damaged': False, 'damage_severity': None}
+2025-09-11 12:51:02,317 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for damage
+2025-09-11 12:51:02,317 - api.websocket - INFO - Running final_compiler to aggregate results
+2025-09-11 12:51:02,317 - api.websocket - INFO - [TO FRONTEND] Sending agent_started for final
+2025-09-11 12:51:02,317 - services.webrtc_manager - DEBUG - Sent data channel message: agent_started for final
+2025-09-11 12:51:02,317 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 compiling results from all agents
+2025-09-11 12:51:02,317 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 completed: shirt - Total inferences: 7, Confidence: 0.90
+2025-09-11 12:51:02,317 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Sending finalized results for final
+2025-09-11 12:51:02,317 - api.websocket - INFO - [TO FRONTEND - AGENT FINAL] Attributes: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons', 'brand': 'TestBrand', 'size': 'M', 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'initial_classifier', 'inference_num': 3, 'reasoning_text': 'Identified shirt in blue color'}, {'sequence_num': 2, 'agent_name': 'detail_extractor', 'inference_num': 2, 'reasoning_text': 'Extracted brand: TestBrand, size: M'}, {'sequence_num': 3, 'agent_name': 'damage_detector', 'inference_num': 2, 'reasoning_text': 'Item is undamaged'}, {'sequence_num': 4, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification: shirt (blue) - Good condition'}], 'overall_confidence': 0.9, 'processing_time_ms': 0, 'total_inferences': 7, 'agents_used': ['initial_classifier', 'detail_extractor', 'damage_detector']}
+2025-09-11 12:51:02,317 - services.webrtc_manager - DEBUG - Sent data channel message: agent_completed for final
+2025-09-11 12:51:02,317 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Sending complete classification
+2025-09-11 12:51:02,317 - api.websocket - INFO - [TO FRONTEND - FINAL CLASSIFICATION] Results: {'item_type': 'shirt', 'color': 'blue', 'pattern': 'solid', 'neckline': 'crew', 'sleeve_type': 'short', 'closure_type': 'buttons', 'brand': 'TestBrand', 'size': 'M', 'is_damaged': False, 'damage_type': None, 'damage_severity': None, 'reasoning_sequence': [{'sequence_num': 1, 'agent_name': 'initial_classifier', 'inference_num': 3, 'reasoning_text': 'Identified shirt in blue color'}, {'sequence_num': 2, 'agent_name': 'detail_extractor', 'inference_num': 2, 'reasoning_text': 'Extracted brand: TestBrand, size: M'}, {'sequence_num': 3, 'agent_name': 'damage_detector', 'inference_num': 2, 'reasoning_text': 'Item is undamaged'}, {'sequence_num': 4, 'agent_name': 'final_compiler', 'inference_num': 1, 'reasoning_text': 'Compiled classification: shirt (blue) - Good condition'}], 'overall_confidence': 0.9, 'processing_time_ms': 0, 'total_inferences': 7, 'agents_used': ['initial_classifier', 'detail_extractor', 'damage_detector']}
+2025-09-11 12:51:02,317 - services.webrtc_manager - DEBUG - Sent data channel message: final_results for N/A
+2025-09-11 12:51:02,317 - api.websocket - INFO - Monitoring cycle 5 completed for session bffa4920-8987-48f8-9470-0799e2d14b91_cycle_5
+2025-09-11 12:51:03,163 - services.webrtc_manager - INFO - Received data channel message for bffa4920-8987-48f8-9470-0799e2d14b91: stop_session
+2025-09-11 12:51:03,163 - services.webrtc_manager - INFO - Forwarding control message stop_session to websocket handler
+2025-09-11 12:51:03,163 - api.websocket - INFO - Handling control message from data channel: stop_session for session bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:51:03,163 - api.websocket - INFO - Handling WebSocket message type: stop_session
+2025-09-11 12:51:03,163 - api.websocket - INFO - Stop session requested for bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:51:03,163 - api.websocket - INFO - Stopping monitoring for bffa4920-8987-48f8-9470-0799e2d14b91
+2025-09-11 12:51:03,163 - api.websocket - WARNING - Session stop error (may already be stopped): Session bffa4920-8987-48f8-9470-0799e2d14b91 not found
+2025-09-11 12:51:03,163 - api.websocket - INFO - Session bffa4920-8987-48f8-9470-0799e2d14b91 stop completed
+2025-09-11 12:51:03,317 - api.websocket - INFO - V1-to-V2 monitoring flow stopped after 5 cycles

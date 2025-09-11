@@ -115,6 +115,12 @@ class StatefulOrchestrator:
             # Add result
             agent_state.add_inference_result(result)
             
+            # Log the raw inference result
+            logger.info(f"{agent_name} inference #{inference_num} raw result: {result.raw_response}")
+            
+            # Send inference result to frontend
+            await self._send_inference_result(agent_name, inference_num, result)
+            
             # Update timer
             agent_state.update_timer()
         
@@ -265,6 +271,22 @@ class StatefulOrchestrator:
                 "timer_remaining": round(timer_remaining, 1),
                 "inference_type": "single_image" if frames_used == 1 else "multi_image",
                 "status": "processing"
+            })
+    
+    async def _send_inference_result(self, agent: str, inference_num: int, result: Any) -> None:
+        """Send inference result message with raw response"""
+        if self.send_message:
+            await self.send_message({
+                "type": "inference_result",
+                "session_id": self.session_id,
+                "agent": agent,
+                "inference_num": inference_num,
+                "attributes": result.attributes,
+                "confidence": result.confidence,
+                "reasoning": result.reasoning,
+                "raw_response": result.raw_response,
+                "inference_type": result.inference_type,
+                "duration_ms": result.duration_ms
             })
     
     def get_agent_state(self, agent_name: str) -> Optional[AgentState]:

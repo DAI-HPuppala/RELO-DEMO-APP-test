@@ -466,6 +466,26 @@ body {
     background: #e8e8e8;
 }
 
+.btn-warning {
+    background: var(--warning-color);
+    color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+    background: #d48806;
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+    background: #389e0d;
+    transform: translateY(-2px);
+}
+
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;

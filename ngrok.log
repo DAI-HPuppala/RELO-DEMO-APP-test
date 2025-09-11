@@ -1,19 +1,26 @@
-t=2025-09-11T10:28:16-0700 lvl=info msg="no configuration paths supplied"
-t=2025-09-11T10:28:16-0700 lvl=info msg="using configuration at default config path" path=/home/automation-dev/.config/ngrok/ngrok.yml
-t=2025-09-11T10:28:16-0700 lvl=info msg="open config file" path=/home/automation-dev/.config/ngrok/ngrok.yml err=nil
-t=2025-09-11T10:28:16-0700 lvl=warn msg="can't bind default web address, trying alternatives" obj=web addr=127.0.0.1:4040
-t=2025-09-11T10:28:16-0700 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4041 allow_hosts=[]
-t=2025-09-11T10:28:16-0700 lvl=eror msg="failed to reconnect session" obj=tunnels.session err="authentication failed: Your account is limited to 1 simultaneous ngrok agent sessions.\nYou can run multiple simultaneous tunnels from a single agent session by defining the tunnels in your agent configuration file and starting them with the command `ngrok start --all`.\nRead more about the agent configuration file: https://ngrok.com/docs/secure-tunnels/ngrok-agent/reference/config\nYou can view your current agent sessions in the dashboard:\nhttps://dashboard.ngrok.com/agents\r\n\r\nERR_NGROK_108\r\n"
-t=2025-09-11T10:28:16-0700 lvl=eror msg="session closing" obj=tunnels.session err="authentication failed: Your account is limited to 1 simultaneous ngrok agent sessions.\nYou can run multiple simultaneous tunnels from a single agent session by defining the tunnels in your agent configuration file and starting them with the command `ngrok start --all`.\nRead more about the agent configuration file: https://ngrok.com/docs/secure-tunnels/ngrok-agent/reference/config\nYou can view your current agent sessions in the dashboard:\nhttps://dashboard.ngrok.com/agents\r\n\r\nERR_NGROK_108\r\n"
-t=2025-09-11T10:28:16-0700 lvl=info msg="received stop request" obj=app stopReq="{err:{Remote:true Inner:{Inner:0xc000467ae0}} restart:false}"
-t=2025-09-11T10:28:16-0700 lvl=eror msg="terminating with error" obj=app err="authentication failed: Your account is limited to 1 simultaneous ngrok agent sessions.\nYou can run multiple simultaneous tunnels from a single agent session by defining the tunnels in your agent configuration file and starting them with the command `ngrok start --all`.\nRead more about the agent configuration file: https://ngrok.com/docs/secure-tunnels/ngrok-agent/reference/config\nYou can view your current agent sessions in the dashboard:\nhttps://dashboard.ngrok.com/agents\r\n\r\nERR_NGROK_108\r\n"
-t=2025-09-11T10:28:16-0700 lvl=crit msg="command failed" err="authentication failed: Your account is limited to 1 simultaneous ngrok agent sessions.\nYou can run multiple simultaneous tunnels from a single agent session by defining the tunnels in your agent configuration file and starting them with the command `ngrok start --all`.\nRead more about the agent configuration file: https://ngrok.com/docs/secure-tunnels/ngrok-agent/reference/config\nYou can view your current agent sessions in the dashboard:\nhttps://dashboard.ngrok.com/agents\r\n\r\nERR_NGROK_108\r\n"
-ERROR:  authentication failed: Your account is limited to 1 simultaneous ngrok agent sessions.
-ERROR:  You can run multiple simultaneous tunnels from a single agent session by defining the tunnels in your agent configuration file and starting them with the command `ngrok start --all`.
-ERROR:  Read more about the agent configuration file: https://ngrok.com/docs/secure-tunnels/ngrok-agent/reference/config
-ERROR:  You can view your current agent sessions in the dashboard:
-ERROR:  https://dashboard.ngrok.com/agents
-ERROR:  
-ERROR:  ERR_NGROK_108
-ERROR:  https://ngrok.com/docs/errors/err_ngrok_108
-ERROR:  
+t=2025-09-11T12:49:15-0700 lvl=info msg="no configuration paths supplied"
+t=2025-09-11T12:49:15-0700 lvl=info msg="using configuration at default config path" path=/home/automation-dev/.config/ngrok/ngrok.yml
+t=2025-09-11T12:49:15-0700 lvl=info msg="open config file" path=/home/automation-dev/.config/ngrok/ngrok.yml err=nil
+t=2025-09-11T12:49:15-0700 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4040 allow_hosts=[]
+t=2025-09-11T12:49:15-0700 lvl=info msg="client session established" obj=tunnels.session
+t=2025-09-11T12:49:15-0700 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2025-09-11T12:49:16-0700 lvl=info msg="started tunnel" obj=tunnels name=command_line addr=http://localhost:8080 url=https://d1377a77f6fc.ngrok-free.app
+t=2025-09-11T12:49:16-0700 lvl=info msg="update available" obj=updater
+t=2025-09-11T12:49:18-0700 lvl=info msg=start pg=/api/tunnels id=3f45d3f019f232b4
+t=2025-09-11T12:49:18-0700 lvl=info msg=end pg=/api/tunnels id=3f45d3f019f232b4 status=200 dur=134.914µs
+t=2025-09-11T12:49:24-0700 lvl=info msg="join connections" obj=join id=202a1fb3b8ad l=127.0.0.1:8080 r=155.190.3.7:39646
+t=2025-09-11T12:49:25-0700 lvl=info msg="join connections" obj=join id=1244f24d7b81 l=127.0.0.1:8080 r=155.190.3.7:39646
+t=2025-09-11T12:49:25-0700 lvl=info msg="join connections" obj=join id=a7ca76edf34f l=127.0.0.1:8080 r=155.190.3.7:39646
+t=2025-09-11T12:49:25-0700 lvl=info msg="join connections" obj=join id=63ea9fac2f02 l=127.0.0.1:8080 r=155.190.3.7:39646
+t=2025-09-11T12:49:25-0700 lvl=info msg="join connections" obj=join id=3aaa0f1561ff l=127.0.0.1:8080 r=155.190.3.7:39646
+t=2025-09-11T12:49:25-0700 lvl=info msg="join connections" obj=join id=ae6033aedcf4 l=127.0.0.1:8080 r=155.190.3.7:39646
+t=2025-09-11T12:49:25-0700 lvl=info msg="join connections" obj=join id=e959ca010047 l=127.0.0.1:8080 r=155.190.3.7:39646
+t=2025-09-11T12:49:25-0700 lvl=info msg="join connections" obj=join id=5c9bda0f466a l=127.0.0.1:8080 r=155.190.3.7:39646
+t=2025-09-11T12:49:25-0700 lvl=info msg="join connections" obj=join id=0b53a6f5308d l=127.0.0.1:8080 r=155.190.3.7:39646
+t=2025-09-11T12:49:25-0700 lvl=info msg="join connections" obj=join id=8fa22073782f l=127.0.0.1:8080 r=155.190.3.7:39646
+t=2025-09-11T12:49:25-0700 lvl=info msg="join connections" obj=join id=adf479f45a2a l=127.0.0.1:8080 r=155.190.3.7:39646
+t=2025-09-11T12:49:25-0700 lvl=info msg="join connections" obj=join id=38d692eaae48 l=127.0.0.1:8080 r=155.190.3.7:39646
+t=2025-09-11T12:58:13-0700 lvl=eror msg="session closed, starting reconnect loop" obj=tunnels.session obj=csess id=59f713e688c8 err="read EOF from remote peer"
+t=2025-09-11T12:58:13-0700 lvl=info msg="client session established" obj=tunnels.session
+t=2025-09-11T12:58:13-0700 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2025-09-11T12:58:30-0700 lvl=eror msg="heartbeat timeout, terminating session" obj=tunnels.session obj=csess id=6a891648df7d clientid=0e9d6bf42ded53a646cf0cda781c18db
