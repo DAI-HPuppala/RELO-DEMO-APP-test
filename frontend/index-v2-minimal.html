@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RELO Classifier V2 - Stateful Orchestration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .version-selector {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .version-btn {
+            padding: 10px 20px;
+            margin: 0 10px;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .version-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .version-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .video-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        #localVideo {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .results-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .control-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .control-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-start {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .btn-pause {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .btn-resume {
+            background: #2196f3;
+            color: white;
+        }
+        
+        .btn-stop {
+            background: #f44336;
+            color: white;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .agent-monitor {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .agent-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .agent-card {
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            border-left: 4px solid #ccc;
+        }
+        
+        .agent-card.running {
+            border-left-color: #4caf50;
+            background: #e8f5e9;
+        }
+        
+        .agent-card.completed {
+            border-left-color: #2196f3;
+            background: #e3f2fd;
+        }
+        
+        .agent-card.paused {
+            border-left-color: #ff9800;
+            background: #fff3e0;
+        }
+        
+        .agent-name {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .agent-info {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .status-message {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 RELO Classifier</h1>
+            <p>Intelligent Returns Classification System</p>
+        </div>
+        
+        <!-- Version 2 is now the default and only version -->
+        
+        <div class="control-panel">
+            <div class="control-buttons">
+                <button id="startBtn" class="control-btn btn-start" onclick="startClassification()">
+                    Start Classification
+                </button>
+                <button id="pauseBtn" class="control-btn btn-pause" onclick="pauseClassification()" disabled>
+                    Pause
+                </button>
+                <button id="resumeBtn" class="control-btn btn-resume" onclick="resumeClassification()" disabled>
+                    Resume
+                </button>
+                <button id="stopBtn" class="control-btn btn-stop" onclick="stopClassification()" disabled>
+                    Stop
+                </button>
+            </div>
+        </div>
+        
+        <div class="agent-monitor">
+            <h3 style="margin-bottom: 15px;">Agent Status</h3>
+            <div class="agent-cards">
+                <div class="agent-card" id="agent-initial">
+                    <div class="agent-name">Initial Classifier</div>
+                    <div class="agent-info">
+                        <div>Status: <span id="initial-status">Idle</span></div>
+                        <div>Timer: <span id="initial-timer">4.0s</span></div>
+                        <div>Inferences: <span id="initial-inferences">0</span></div>
+                    </div>
+                </div>
+                <div class="agent-card" id="agent-detail">
+                    <div class="agent-name">Detail Extractor</div>
+                    <div class="agent-info">
+                        <div>Status: <span id="detail-status">Idle</span></div>
+                        <div>Timer: <span id="detail-timer">3.0s</span></div>
+                        <div>Inferences: <span id="detail-inferences">0</span></div>
+                    </div>
+                </div>
+                <div class="agent-card" id="agent-damage">
+                    <div class="agent-name">Damage Detector</div>
+                    <div class="agent-info">
+                        <div>Status: <span id="damage-status">Idle</span></div>
+                        <div>Timer: <span id="damage-timer">4.0s</span></div>
+                        <div>Inferences: <span id="damage-inferences">0</span></div>
+                    </div>
+                </div>
+                <div class="agent-card" id="agent-final">
+                    <div class="agent-name">Final Compiler</div>
+                    <div class="agent-info">
+                        <div>Status: <span id="final-status">Idle</span></div>
+                        <div>Timer: <span id="final-timer">1.0s</span></div>
+                        <div>Inferences: <span id="final-inferences">0</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-grid">
+            <div class="video-section">
+                <video id="localVideo" autoplay muted></video>
+            </div>
+            
+            <div class="results-section">
+                <h3 style="margin-bottom: 15px;">Classification Results</h3>
+                <div id="results">
+                    <p class="status-message">Ready to start classification</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let ws = null;
+        let pc = null;
+        let localStream = null;
+        let sessionId = null;
+        
+        // V2 is the only version - removed version switching functions
+        
+        async function startClassification() {
+            try {
+                // Start camera
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true, 
+                    audio: false 
+                });
+                document.getElementById('localVideo').srcObject = localStream;
+                
+                // Connect to V2 WebSocket
+                sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
+                
+                // Detect if running via ngrok and build appropriate WebSocket URL
+                const isNgrok = window.location.hostname.includes('ngrok');
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsHost = isNgrok ? window.location.hostname : 'localhost:8000';
+                const wsUrl = `${wsProtocol}//${wsHost}/ws/v2/stream`;
+                
+                console.log('Connecting to WebSocket:', wsUrl);
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = async () => {
+                    console.log('Connected to V2 WebSocket');
+                    
+                    // Create peer connection
+                    pc = new RTCPeerConnection({
+                        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                    });
+                    
+                    // Add local stream
+                    localStream.getTracks().forEach(track => {
+                        pc.addTrack(track, localStream);
+                    });
+                    
+                    // Create offer
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    
+                    // Send offer
+                    ws.send(JSON.stringify({
+                        type: 'offer',
+                        session_id: sessionId,
+                        sdp: offer.sdp
+                    }));
+                    
+                    // Start monitoring
+                    ws.send(JSON.stringify({
+                        type: 'start_monitoring',
+                        session_id: sessionId
+                    }));
+                };
+                
+                ws.onmessage = async (event) => {
+                    const message = JSON.parse(event.data);
+                    handleMessage(message);
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    updateStatus('Connection error');
+                };
+                
+                // Update UI
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('pauseBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = false;
+                updateStatus('Starting classification...');
+                
+            } catch (error) {
+                console.error('Error starting classification:', error);
+                updateStatus('Failed to start: ' + error.message);
+            }
+        }
+        
+        function pauseClassification() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'pause_flow',
+                    session_id: sessionId
+                }));
+                
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('resumeBtn').disabled = false;
+            }
+        }
+        
+        function resumeClassification() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'resume_flow',
+                    session_id: sessionId,
+                    restart_agent: false
+                }));
+                
+                document.getElementById('pauseBtn').disabled = false;
+                document.getElementById('resumeBtn').disabled = true;
+            }
+        }
+        
+        function stopClassification() {
+            // Stop WebSocket
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            
+            // Stop peer connection
+            if (pc) {
+                pc.close();
+                pc = null;
+            }
+            
+            // Stop camera
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+                document.getElementById('localVideo').srcObject = null;
+            }
+            
+            // Reset UI
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('resumeBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = true;
+            
+            // Reset agent cards
+            document.querySelectorAll('.agent-card').forEach(card => {
+                card.className = 'agent-card';
+            });
+            
+            updateStatus('Classification stopped');
+        }
+        
+        function handleMessage(message) {
+            console.log('Received message:', message);
+            
+            switch(message.type) {
+                case 'answer':
+                    if (pc && message.sdp) {
+                        pc.setRemoteDescription(new RTCSessionDescription({
+                            type: 'answer',
+                            sdp: message.sdp
+                        }));
+                    }
+                    break;
+                    
+                case 'agent_started':
+                    updateAgentStatus(message.agent, 'running', message);
+                    break;
+                    
+                case 'agent_completed':
+                    updateAgentStatus(message.agent, 'completed', message);
+                    if (message.result) {
+                        displayResult(message.agent, message.result);
+                    }
+                    break;
+                    
+                case 'inference_update':
+                    updateInferenceCount(message.agent, message.inference_num);
+                    break;
+                    
+                case 'flow_paused':
+                    updateStatus('Flow paused at ' + message.paused_agent);
+                    break;
+                    
+                case 'flow_resumed':
+                    updateStatus('Flow resumed');
+                    break;
+                    
+                case 'state_change':
+                    if (message.state === 'COMPLETED' && message.result) {
+                        displayFinalResult(message.result);
+                        updateStatus('Classification complete!');
+                    }
+                    break;
+                    
+                case 'error':
+                    console.error('Error:', message);
+                    updateStatus('Error: ' + message.message);
+                    break;
+            }
+        }
+        
+        function updateAgentStatus(agentName, status, data) {
+            const agentMap = {
+                'initial_classifier': 'initial',
+                'detail_extractor': 'detail',
+                'damage_detector': 'damage',
+                'final_compiler': 'final'
+            };
+            
+            const agentId = agentMap[agentName];
+            if (!agentId) return;
+            
+            // Update card style
+            const card = document.getElementById('agent-' + agentId);
+            card.className = 'agent-card ' + status;
+            
+            // Update status text
+            document.getElementById(agentId + '-status').textContent = 
+                status.charAt(0).toUpperCase() + status.slice(1);
+            
+            // Update timer if provided
+            if (data && data.timer_seconds) {
+                document.getElementById(agentId + '-timer').textContent = 
+                    data.timer_seconds + 's';
+            }
+        }
+        
+        function updateInferenceCount(agentName, count) {
+            const agentMap = {
+                'initial_classifier': 'initial',
+                'detail_extractor': 'detail',
+                'damage_detector': 'damage',
+                'final_compiler': 'final'
+            };
+            
+            const agentId = agentMap[agentName];
+            if (agentId) {
+                document.getElementById(agentId + '-inferences').textContent = count;
+            }
+        }
+        
+        function displayResult(agent, result) {
+            const resultsDiv = document.getElementById('results');
+            
+            // Clear initial message if present
+            if (resultsDiv.querySelector('.status-message')) {
+                resultsDiv.innerHTML = '';
+            }
+            
+            // Add agent result
+            const resultCard = document.createElement('div');
+            resultCard.style.cssText = 'padding: 10px; margin: 10px 0; background: #f8f9fa; border-radius: 8px;';
+            resultCard.innerHTML = `
+                <h4 style="margin-bottom: 8px; color: #333;">${agent.replace(/_/g, ' ').toUpperCase()}</h4>
+                <pre style="font-size: 12px; color: #666;">${JSON.stringify(result, null, 2)}</pre>
+            `;
+            resultsDiv.appendChild(resultCard);
+        }
+        
+        function displayFinalResult(result) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            
+            const finalCard = document.createElement('div');
+            finalCard.style.cssText = 'padding: 15px; background: #e8f5e9; border-radius: 8px; border: 2px solid #4caf50;';
+            finalCard.innerHTML = `
+                <h3 style="margin-bottom: 10px; color: #2e7d32;">Final Classification</h3>
+                <pre style="font-size: 14px; color: #1b5e20;">${JSON.stringify(result, null, 2)}</pre>
+            `;
+            resultsDiv.appendChild(finalCard);
+        }
+        
+        function updateStatus(message) {
+            console.log('Status:', message);
+        }
+    </script>
+</body>
+</html>

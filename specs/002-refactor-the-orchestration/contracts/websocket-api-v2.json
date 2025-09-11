@@ -1,0 +1,574 @@
+{
+  "asyncapi": "2.6.0",
+  "info": {
+    "title": "Stateful Agent Orchestration WebSocket API",
+    "version": "2.0.0",
+    "description": "WebSocket protocol for stateful agent orchestration with multi-image inference"
+  },
+  "servers": {
+    "production": {
+      "url": "ws://localhost:8080/ws",
+      "protocol": "ws",
+      "description": "WebSocket endpoint for real-time communication"
+    }
+  },
+  "channels": {
+    "agent-control": {
+      "publish": {
+        "summary": "Messages sent from client to server",
+        "message": {
+          "oneOf": [
+            {"$ref": "#/components/messages/StartSession"},
+            {"$ref": "#/components/messages/PauseFlow"},
+            {"$ref": "#/components/messages/ResumeFlow"},
+            {"$ref": "#/components/messages/StopSession"},
+            {"$ref": "#/components/messages/WebRTCOffer"},
+            {"$ref": "#/components/messages/ICECandidate"}
+          ]
+        }
+      },
+      "subscribe": {
+        "summary": "Messages sent from server to client",
+        "message": {
+          "oneOf": [
+            {"$ref": "#/components/messages/SessionCreated"},
+            {"$ref": "#/components/messages/FlowPaused"},
+            {"$ref": "#/components/messages/FlowResumed"},
+            {"$ref": "#/components/messages/AgentStarted"},
+            {"$ref": "#/components/messages/InferenceUpdate"},
+            {"$ref": "#/components/messages/AgentCompleted"},
+            {"$ref": "#/components/messages/FinalResults"},
+            {"$ref": "#/components/messages/WebRTCAnswer"},
+            {"$ref": "#/components/messages/Error"}
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "messages": {
+      "StartSession": {
+        "name": "start_session",
+        "title": "Start Classification Session",
+        "summary": "Initialize a new classification session",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/StartSessionPayload"
+        }
+      },
+      "PauseFlow": {
+        "name": "pause_flow",
+        "title": "Pause Agent Flow",
+        "summary": "Pause the current agent processing",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/PauseFlowPayload"
+        }
+      },
+      "ResumeFlow": {
+        "name": "resume_flow",
+        "title": "Resume Agent Flow",
+        "summary": "Resume paused agent processing",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/ResumeFlowPayload"
+        }
+      },
+      "StopSession": {
+        "name": "stop_session",
+        "title": "Stop Session",
+        "summary": "Terminate the current session",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/StopSessionPayload"
+        }
+      },
+      "SessionCreated": {
+        "name": "session_created",
+        "title": "Session Created",
+        "summary": "Confirmation of session creation",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/SessionCreatedPayload"
+        }
+      },
+      "FlowPaused": {
+        "name": "flow_paused",
+        "title": "Flow Paused",
+        "summary": "Confirmation that agent flow is paused",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/FlowPausedPayload"
+        }
+      },
+      "FlowResumed": {
+        "name": "flow_resumed",
+        "title": "Flow Resumed",
+        "summary": "Confirmation that agent flow has resumed",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/FlowResumedPayload"
+        }
+      },
+      "AgentStarted": {
+        "name": "agent_started",
+        "title": "Agent Started",
+        "summary": "Notification that an agent has started processing",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/AgentStartedPayload"
+        }
+      },
+      "InferenceUpdate": {
+        "name": "inference_update",
+        "title": "Inference Update",
+        "summary": "Progress update during agent inference",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/InferenceUpdatePayload"
+        }
+      },
+      "AgentCompleted": {
+        "name": "agent_completed",
+        "title": "Agent Completed",
+        "summary": "Notification that an agent has completed all inferences",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/AgentCompletedPayload"
+        }
+      },
+      "FinalResults": {
+        "name": "final_results",
+        "title": "Final Classification Results",
+        "summary": "Complete classification results from all agents",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/FinalResultsPayload"
+        }
+      },
+      "WebRTCOffer": {
+        "name": "offer",
+        "title": "WebRTC Offer",
+        "summary": "WebRTC offer for video streaming",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/WebRTCOfferPayload"
+        }
+      },
+      "WebRTCAnswer": {
+        "name": "answer",
+        "title": "WebRTC Answer",
+        "summary": "WebRTC answer for video streaming",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/WebRTCAnswerPayload"
+        }
+      },
+      "ICECandidate": {
+        "name": "ice_candidate",
+        "title": "ICE Candidate",
+        "summary": "ICE candidate for WebRTC connection",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/ICECandidatePayload"
+        }
+      },
+      "Error": {
+        "name": "error",
+        "title": "Error Message",
+        "summary": "Error notification",
+        "contentType": "application/json",
+        "payload": {
+          "$ref": "#/components/schemas/ErrorPayload"
+        }
+      }
+    },
+    "schemas": {
+      "StartSessionPayload": {
+        "type": "object",
+        "required": ["type", "mode"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "start_session"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["automatic", "manual"],
+            "description": "Operating mode for the session"
+          },
+          "agent_timers": {
+            "type": "object",
+            "properties": {
+              "initial_classifier": {"type": "number"},
+              "detail_extractor": {"type": "number"},
+              "damage_detector": {"type": "number"}
+            },
+            "description": "Optional custom timer values in seconds"
+          },
+          "camera_config": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": ["webcam", "realsense"],
+                "default": "realsense"
+              }
+            }
+          }
+        }
+      },
+      "PauseFlowPayload": {
+        "type": "object",
+        "required": ["type", "session_id"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "pause_flow"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ResumeFlowPayload": {
+        "type": "object",
+        "required": ["type", "session_id"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "resume_flow"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "restart_agent": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to restart the paused agent from beginning"
+          }
+        }
+      },
+      "StopSessionPayload": {
+        "type": "object",
+        "required": ["type", "session_id"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "stop_session"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SessionCreatedPayload": {
+        "type": "object",
+        "required": ["type", "session_id", "mode", "status"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "session_created"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["automatic", "manual"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "ready"]
+          },
+          "agent_timers": {
+            "type": "object",
+            "description": "Configured timer values"
+          }
+        }
+      },
+      "FlowPausedPayload": {
+        "type": "object",
+        "required": ["type", "session_id", "paused_agent"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "flow_paused"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paused_agent": {
+            "type": "string",
+            "description": "Agent that was active when paused"
+          },
+          "agents_completed": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of completed agents"
+          }
+        }
+      },
+      "FlowResumedPayload": {
+        "type": "object",
+        "required": ["type", "session_id", "resuming_agent"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "flow_resumed"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resuming_agent": {
+            "type": "string",
+            "description": "Agent being resumed"
+          }
+        }
+      },
+      "AgentStartedPayload": {
+        "type": "object",
+        "required": ["type", "session_id", "agent", "timer_seconds"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "agent_started"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "agent": {
+            "type": "string",
+            "enum": ["initial_classifier", "detail_extractor", "damage_detector", "final_compiler"]
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["automatic", "manual"]
+          },
+          "timer_seconds": {
+            "type": "number",
+            "description": "Timer duration for this agent"
+          },
+          "sequence_position": {
+            "type": "integer",
+            "description": "Position in agent sequence (1-based)"
+          },
+          "total_agents": {
+            "type": "integer",
+            "description": "Total number of agents"
+          }
+        }
+      },
+      "InferenceUpdatePayload": {
+        "type": "object",
+        "required": ["type", "session_id", "agent", "inference_num"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "inference_update"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "agent": {
+            "type": "string"
+          },
+          "inference_num": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Current inference number"
+          },
+          "inference_type": {
+            "type": "string",
+            "enum": ["single_image", "multi_image"]
+          },
+          "frames_used": {
+            "type": "integer",
+            "description": "Number of frames in this inference"
+          },
+          "timer_remaining": {
+            "type": "number",
+            "description": "Seconds remaining on timer"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["capturing", "processing", "aggregating"]
+          }
+        }
+      },
+      "AgentCompletedPayload": {
+        "type": "object",
+        "required": ["type", "session_id", "agent", "results"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "agent_completed"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "agent": {
+            "type": "string"
+          },
+          "results": {
+            "type": "object",
+            "properties": {
+              "total_inferences": {"type": "integer"},
+              "aggregation_method": {"type": "string"},
+              "attributes": {"type": "object"},
+              "confidence": {"type": "number"},
+              "processing_time_ms": {"type": "integer"}
+            }
+          }
+        }
+      },
+      "FinalResultsPayload": {
+        "type": "object",
+        "required": ["type", "session_id", "classification"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "final_results"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classification": {
+            "type": "object",
+            "properties": {
+              "item_type": {"type": "string"},
+              "color": {"type": "string"},
+              "pattern": {"type": ["string", "null"]},
+              "neckline": {"type": ["string", "null"]},
+              "sleeve_type": {"type": ["string", "null"]},
+              "closure_type": {"type": ["string", "null"]},
+              "brand": {"type": ["string", "null"]},
+              "size": {"type": ["string", "null"]},
+              "is_damaged": {"type": "boolean"},
+              "damage_type": {"type": ["string", "null"]},
+              "damage_severity": {"type": ["string", "null"]},
+              "overall_confidence": {"type": "number"},
+              "reasoning_sequence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sequence_num": {"type": "integer"},
+                    "agent_name": {"type": "string"},
+                    "inference_num": {"type": "integer"},
+                    "reasoning_text": {"type": "string"}
+                  }
+                }
+              }
+            }
+          },
+          "processing_time": {
+            "type": "number",
+            "description": "Total processing time in seconds"
+          },
+          "agents_completed": {
+            "type": "integer",
+            "description": "Number of agents that completed"
+          }
+        }
+      },
+      "WebRTCOfferPayload": {
+        "type": "object",
+        "required": ["type", "session_id", "sdp"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "offer"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sdp": {
+            "type": "string",
+            "description": "SDP offer"
+          }
+        }
+      },
+      "WebRTCAnswerPayload": {
+        "type": "object",
+        "required": ["type", "session_id", "sdp"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "answer"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sdp": {
+            "type": "string",
+            "description": "SDP answer"
+          }
+        }
+      },
+      "ICECandidatePayload": {
+        "type": "object",
+        "required": ["type", "session_id", "candidate"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "ice_candidate"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "candidate": {
+            "type": "object",
+            "description": "ICE candidate data"
+          }
+        }
+      },
+      "ErrorPayload": {
+        "type": "object",
+        "required": ["type", "error_code", "message"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "error"
+          },
+          "error_code": {
+            "type": "string",
+            "enum": [
+              "SESSION_NOT_FOUND",
+              "INVALID_STATE",
+              "AGENT_ERROR",
+              "INFERENCE_TIMEOUT",
+              "PAUSE_NOT_ALLOWED",
+              "SYSTEM_ERROR"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "recoverable": {
+            "type": "boolean",
+            "default": false
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    }
+  }
+}

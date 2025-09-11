@@ -1,0 +1,148 @@
+/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:318: UserWarning: Valid config keys have changed in V2:
+* 'fields' has been removed
+  warnings.warn(message, UserWarning)
+INFO:     Started server process [2094660]
+INFO:     Waiting for application startup.
+2025-09-11 10:28:15,981 - api.main - INFO - Starting Returns Classifier API
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+[ WARN:0@0.530] global cap_v4l.cpp:982 open VIDEOIO(V4L2:/dev/video0): can't open camera by index
+[ERROR:0@0.530] global obsensor_uvc_stream_channel.cpp:156 getStreamChannelGroup Camera index out of range
+Starting backend server...
+Working directory: /home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend
+INFO:     127.0.0.1:37984 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     155.190.3.7:0 - "GET / HTTP/1.1" 200 OK
+[ WARN:0@226.998] global cap_v4l.cpp:982 open VIDEOIO(V4L2:/dev/video0): can't open camera by index
+[ERROR:0@226.998] global obsensor_uvc_stream_channel.cpp:156 getStreamChannelGroup Camera index out of range
+INFO:     127.0.0.1:49734 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49734 - "GET /api/camera/status HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 49746) - "WebSocket /ws/stream" [accepted]
+INFO:     connection open
+2025-09-11 10:32:04,945 - api.websocket - INFO - Handling WebSocket message type: start_session
+2025-09-11 10:32:04,945 - services.session_manager - INFO - Created session 67a362f4-0951-4ed3-b4da-d1ead6874598 in SessionMode.AUTOMATIC mode
+2025-09-11 10:32:04,996 - api.websocket - INFO - Handling WebSocket message type: offer
+2025-09-11 10:32:04,999 - services.webrtc_manager - INFO - Created peer connection for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:32:04,999 - services.realsense_camera - INFO - RealSenseCameraService initialized
+2025-09-11 10:32:04,999 - services.realsense_camera - INFO - Camera initialized: realsense
+2025-09-11 10:32:04,999 - services.webrtc_manager - INFO - RealSenseCameraService initialized
+2025-09-11 10:32:05,006 - services.realsense_camera - INFO - Found RealSense device: Intel RealSense D415 (Serial: 104122063513)
+2025-09-11 10:32:05,021 - services.realsense_camera - INFO - Disabled auto-exposure
+2025-09-11 10:32:05,024 - services.realsense_camera - INFO - Set manual exposure to 200
+2025-09-11 10:32:05,028 - services.realsense_camera - INFO - Set gain to 16
+2025-09-11 10:32:05,031 - services.realsense_camera - INFO - Enabled auto white balance
+2025-09-11 10:32:05,031 - services.realsense_camera - INFO - Camera warmup...
+2025-09-11 10:32:05,614 - services.realsense_camera - INFO - RealSense camera initialized successfully
+2025-09-11 10:32:05,614 - services.realsense_camera - INFO - Frame capture thread started
+2025-09-11 10:32:05,614 - services.webrtc_manager - INFO - Video track created for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:32:05,616 - services.webrtc_manager - INFO - Added video track to peer connection
+2025-09-11 10:32:05,618 - services.webrtc_manager - INFO - ICE gathering state for 67a362f4-0951-4ed3-b4da-d1ead6874598: gathering
+2025-09-11 10:32:10,619 - services.webrtc_manager - INFO - ICE gathering state for 67a362f4-0951-4ed3-b4da-d1ead6874598: complete
+2025-09-11 10:32:10,619 - services.webrtc_manager - INFO - ICE gathering complete for 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:32:10,619 - services.webrtc_manager - INFO - ICE connection state for 67a362f4-0951-4ed3-b4da-d1ead6874598: checking
+2025-09-11 10:32:10,619 - services.webrtc_manager - INFO - Connection state for 67a362f4-0951-4ed3-b4da-d1ead6874598: connecting
+2025-09-11 10:32:12,620 - services.webrtc_manager - WARNING - ICE gathering timeout, proceeding with current candidates
+2025-09-11 10:32:12,620 - services.webrtc_manager - INFO - Created answer for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:32:12,620 - services.webrtc_manager - INFO - Answer SDP (first 500 chars): v=0
+o=- 3966600725 3966600725 IN IP4 0.0.0.0
+s=-
+t=0 0
+a=group:BUNDLE 0 1
+a=msid-semantic:WMS *
+m=video 56076 UDP/TLS/RTP/SAVPF 96 97 103 104 109 114
+c=IN IP4 10.202.8.43
+a=sendonly
+a=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time
+a=extmap:9 urn:ietf:params:rtp-hdrext:sdes:mid
+a=mid:0
+a=msid:d862bc3e-c28e-4bc2-93d3-95b5fc08ac54 67037e39-d206-4779-870b-4f930e9b68c0
+a=rtcp:9 IN IP4 0.0.0.0
+a=rtcp-mux
+a=ssrc-group:FID 4137036039 3093239415
+a=ssrc:4137036039 cnam
+2025-09-11 10:32:12,620 - api.websocket - INFO - WebRTC signaling complete for 67a362f4-0951-4ed3-b4da-d1ead6874598, keeping connection alive
+2025-09-11 10:32:12,620 - api.websocket - INFO - Handling WebSocket message type: ice_candidate
+2025-09-11 10:32:12,620 - services.webrtc_manager - INFO - Received ICE candidate for session 67a362f4-0951-4ed3-b4da-d1ead6874598 (handled automatically by aiortc)
+2025-09-11 10:32:12,620 - api.websocket - INFO - WebRTC signaling complete for 67a362f4-0951-4ed3-b4da-d1ead6874598, keeping connection alive
+2025-09-11 10:32:12,620 - api.websocket - INFO - Handling WebSocket message type: ice_candidate
+2025-09-11 10:32:12,620 - services.webrtc_manager - INFO - Received ICE candidate for session 67a362f4-0951-4ed3-b4da-d1ead6874598 (handled automatically by aiortc)
+2025-09-11 10:32:12,620 - api.websocket - INFO - WebRTC signaling complete for 67a362f4-0951-4ed3-b4da-d1ead6874598, keeping connection alive
+2025-09-11 10:32:12,620 - api.websocket - INFO - Handling WebSocket message type: ice_candidate
+2025-09-11 10:32:12,620 - services.webrtc_manager - INFO - Received ICE candidate for session 67a362f4-0951-4ed3-b4da-d1ead6874598 (handled automatically by aiortc)
+2025-09-11 10:32:12,620 - api.websocket - INFO - WebRTC signaling complete for 67a362f4-0951-4ed3-b4da-d1ead6874598, keeping connection alive
+2025-09-11 10:32:12,620 - api.websocket - INFO - Handling WebSocket message type: ice_candidate
+2025-09-11 10:32:12,620 - services.webrtc_manager - INFO - Received ICE candidate for session 67a362f4-0951-4ed3-b4da-d1ead6874598 (handled automatically by aiortc)
+2025-09-11 10:32:12,620 - api.websocket - INFO - WebRTC signaling complete for 67a362f4-0951-4ed3-b4da-d1ead6874598, keeping connection alive
+2025-09-11 10:32:12,648 - services.webrtc_manager - INFO - ICE connection state for 67a362f4-0951-4ed3-b4da-d1ead6874598: completed
+2025-09-11 10:32:12,654 - services.webrtc_manager - INFO - Connection state for 67a362f4-0951-4ed3-b4da-d1ead6874598: connected
+2025-09-11 10:32:12,654 - services.webrtc_manager - INFO - WebRTC connection established for 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:32:12,663 - services.webrtc_manager - INFO - Data channel created for 67a362f4-0951-4ed3-b4da-d1ead6874598: results
+2025-09-11 10:32:55,577 - api.websocket - INFO - Handling WebSocket message type: start_automatic
+2025-09-11 10:32:55,577 - v2.services.frame_registry - INFO - FrameRegistry initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:32:55,577 - v2.services.frame_registry - INFO - FrameRegistry initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:32:55,577 - v2.services.frame_manager - INFO - FrameManager initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:32:55,577 - v2.services.state_persistence - INFO - StatePersistence initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:32:55,577 - v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 10:32:55,578 - v2.services.stateful_orchestrator - INFO - StatefulOrchestrator initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:32:55,578 - v2.services.stateful_orchestrator - INFO - Custom timers set: {'initial_classifier': 4, 'detail_extractor': 3, 'damage_detector': 4, 'final_compiler': 2}
+2025-09-11 10:32:55,578 - api.websocket - INFO - Starting V1-to-V2 monitoring flow for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:32:55,584 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 10:32:55,584 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
+2025-09-11 10:32:55,584 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
+2025-09-11 10:32:55,584 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 10:32:55,584 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
+2025-09-11 10:32:55,584 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
+2025-09-11 10:32:55,584 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 10:32:55,584 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
+2025-09-11 10:32:55,584 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
+2025-09-11 10:32:55,584 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
+2025-09-11 10:32:55,584 - api.websocket - INFO - Running initial_classifier with 4s timer
+2025-09-11 10:32:55,584 - api.websocket - ERROR - Error in V1-to-V2 monitoring flow: object numpy.ndarray can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/api/websocket.py", line 416, in run_v1_to_v2_monitoring_flow
+    agent_state = await orchestrator.run_agent_with_timer(agent_name, timer_seconds)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/stateful_orchestrator.py", line 97, in run_agent_with_timer
+    frames = await self._collect_frames(agent_name, batch_size, inference_num)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/stateful_orchestrator.py", line 152, in _collect_frames
+    frame = await self.frame_provider()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object numpy.ndarray can't be used in 'await' expression
+2025-09-11 10:33:03,082 - services.webrtc_manager - INFO - Received data channel message for 67a362f4-0951-4ed3-b4da-d1ead6874598: stop_session
+2025-09-11 10:33:04,779 - api.websocket - INFO - Handling WebSocket message type: start_automatic
+2025-09-11 10:33:04,779 - v2.services.frame_registry - INFO - FrameRegistry initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:33:04,779 - v2.services.frame_registry - INFO - FrameRegistry initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:33:04,779 - v2.services.frame_manager - INFO - FrameManager initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:33:04,779 - v2.services.state_persistence - INFO - StatePersistence initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:33:04,779 - v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 10:33:04,779 - v2.services.stateful_orchestrator - INFO - StatefulOrchestrator initialized for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:33:04,779 - v2.services.stateful_orchestrator - INFO - Custom timers set: {'initial_classifier': 4, 'detail_extractor': 3, 'damage_detector': 4, 'final_compiler': 2}
+2025-09-11 10:33:04,779 - api.websocket - INFO - Starting V1-to-V2 monitoring flow for session 67a362f4-0951-4ed3-b4da-d1ead6874598
+2025-09-11 10:33:04,779 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 10:33:04,779 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent initial_classifier initialized with 4.0s timer
+2025-09-11 10:33:04,779 - src.v2.agents.initial_classifier_v2 - INFO - InitialClassifierV2 initialized with 4s timer
+2025-09-11 10:33:04,780 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 10:33:04,780 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent detail_extractor initialized with 3.0s timer
+2025-09-11 10:33:04,780 - src.v2.agents.detail_extractor_v2 - INFO - DetailExtractorV2 initialized with 3s timer
+2025-09-11 10:33:04,780 - src.v2.services.multi_inference_engine - INFO - MultiInferenceEngine initialized with GPU serialization
+2025-09-11 10:33:04,780 - src.v2.agents.stateful_base_agent - INFO - StatefulBaseAgent damage_detector initialized with 4.0s timer
+2025-09-11 10:33:04,780 - src.v2.agents.damage_detector_v2 - INFO - DamageDetectorV2 initialized with 4s timer and frame sharing
+2025-09-11 10:33:04,780 - src.v2.agents.final_compiler_v2 - INFO - FinalCompilerV2 initialized for aggregation
+2025-09-11 10:33:04,780 - api.websocket - INFO - Running initial_classifier with 4s timer
+2025-09-11 10:33:04,780 - api.websocket - ERROR - Error in V1-to-V2 monitoring flow: object numpy.ndarray can't be used in 'await' expression
+Traceback (most recent call last):
+  File "/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/api/websocket.py", line 416, in run_v1_to_v2_monitoring_flow
+    agent_state = await orchestrator.run_agent_with_timer(agent_name, timer_seconds)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/stateful_orchestrator.py", line 97, in run_agent_with_timer
+    frames = await self._collect_frames(agent_name, batch_size, inference_num)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/stateful_orchestrator.py", line 152, in _collect_frames
+    frame = await self.frame_provider()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object numpy.ndarray can't be used in 'await' expression
+2025-09-11 10:33:07,038 - services.webrtc_manager - INFO - Received data channel message for 67a362f4-0951-4ed3-b4da-d1ead6874598: stop_session
+2025-09-11 10:33:07,792 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-34' coro=<StatePersistence._start_checkpoint_writer.<locals>.writer_loop() running at /home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/state_persistence.py:40> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2025-09-11 10:33:07,792 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-41' coro=<StatePersistence._start_checkpoint_writer.<locals>.writer_loop() running at /home/automation-dev/RELO-CLASSIFIER-specify-DEV/RELO-CLASSIFIER-DEV/backend/src/v2/services/state_persistence.py:40> wait_for=<Future pending cb=[Task.task_wakeup()]>>
