@@ -286,8 +286,9 @@ class CV60VideoTrack(VideoStreamTrack):
                         frame_data = np.zeros((h, w, 3), dtype=np.uint8)
 
                     # Resize to standard resolution if needed
-                    if frame_data.shape[:2] != (480, 640):
-                        frame_data = cv2.resize(frame_data, (640, 480))
+                    # Commenting out resize to allow native CV60 resolution (1760x1696) for frontend
+                    # if frame_data.shape[:2] != (480, 640):
+                    #     frame_data = cv2.resize(frame_data, (640, 480))
 
                     frame_timestamp = current_time
 

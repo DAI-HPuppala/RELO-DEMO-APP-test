@@ -71,6 +71,23 @@
             gap: 20px;
             margin-bottom: 20px;
         }
+
+        /* Responsive design for high-resolution video */
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            .video-container {
+                max-width: 500px;
+                margin: 0 auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .video-container {
+                max-width: 350px;
+            }
+        }
         
         .video-section {
             background: white;
@@ -82,10 +99,11 @@
         .video-container {
             position: relative;
             width: 100%;
-            padding-bottom: 56.25%;
+            padding-bottom: 103.76%; /* CV60 aspect ratio: 1760/1696 = 1.0377 (height/width) */
             background: #000;
             border-radius: 8px;
             overflow: hidden;
+            max-width: 600px; /* Reduced max-width since height is now larger */
         }
         
         #localVideo {
@@ -94,7 +112,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain; /* Changed from cover to contain for full CV60 frame visibility */
         }
         
         .results-section {

@@ -549,7 +549,10 @@ body {
 .video-container {
     position: relative;
     background: #000;
-    height: 480px;
+    height: 600px; /* Increased from 480px to accommodate CV60's taller 1760x1696 aspect ratio */
+    max-width: 580px; /* Maintain aspect ratio: 600px * (1696/1760) = 578px */
+    width: 100%;
+    margin: 0 auto; /* Center the container */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1024,7 +1027,7 @@ body {
 
 .camera-panel,
 .updates-panel {
-    height: 500px;
+    height: 720px; /* Increased from 500px to accommodate 600px video + stats + header */
     display: flex;
     flex-direction: column;
 }
@@ -2058,5 +2061,29 @@ body {
     .classification-table th,
     .classification-table td {
         padding: var(--spacing-sm);
+    }
+
+    /* Responsive video container for smaller screens */
+    .video-container {
+        height: 480px;
+        max-width: 464px; /* 480px * (1696/1760) = 463px */
+    }
+
+    .camera-panel,
+    .updates-panel {
+        height: 600px; /* Reduced for small screens */
+    }
+}
+
+/* Medium screens - adjust video container */
+@media (max-width: 768px) {
+    .video-container {
+        height: 400px !important;
+        max-width: 386px !important; /* 400px * (1696/1760) = 385px */
+    }
+
+    .camera-panel,
+    .updates-panel {
+        height: 520px !important; /* Adjusted for medium screens */
     }
 }

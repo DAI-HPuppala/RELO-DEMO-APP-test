@@ -259,6 +259,17 @@ class VLMGPULoader:
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     image = Image.fromarray(frame_rgb)
 
+                    # Agent-specific resolution optimization
+                    if agent_name in ["initial_classifier", "damage_detector"]:
+                        # Resize to 448x448 for faster inference (type detection and damage assessment)
+                        image.thumbnail((448, 448), Image.Resampling.LANCZOS)
+                    elif agent_name == "detail_extractor":
+                        # Keep full resolution for reading fine details (brand names, size labels)
+                        image.thumbnail((896, 896), Image.Resampling.LANCZOS)  # No resize needed
+                    else:
+                        # Default: resize to 448x448 for unknown agents
+                        image.thumbnail((448, 448), Image.Resampling.LANCZOS)
+
                     # Convert to base64
                     buffer = io.BytesIO()
                     image.save(buffer, format='JPEG', quality=95)
