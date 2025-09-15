@@ -255,7 +255,9 @@ class VLMGPULoader:
                     # Convert numpy array to PIL Image
                     if frame.dtype != np.uint8:
                         frame = (frame * 255).astype(np.uint8)
-                    image = Image.fromarray(frame)
+                    # Convert BGR to RGB for correct VLM color interpretation
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    image = Image.fromarray(frame_rgb)
 
                     # Convert to base64
                     buffer = io.BytesIO()

@@ -11,6 +11,8 @@ import json
 import logging
 import time
 import os
+from datetime import datetime
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from io import BytesIO
 from PIL import Image
@@ -605,43 +607,73 @@ class UltraVLMService:
     async def _preprocess_frames_aggressive(self, frames: List[np.ndarray]) -> List[np.ndarray]:
         """Ultra-aggressive frame preprocessing for maximum speed"""
         processed_frames = []
-        
+
+        # Create directory for saving VLM preprocessed frames
+        base_dir = Path("/home/denaliai/RELO-CLASSIFIER-DEV/RELO-DEMO-APP-test-RELO-DEV-APP-test/captured_frames")
+        vlm_dir = base_dir / "vlm_preprocessed" / "ultra_vlm"
+        vlm_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate timestamp for this batch
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+
         logger.debug(f"🚀 AGGRESSIVE preprocessing {len(frames)} frames for <{self.target_inference_time}ms target")
-        
+
         for i, frame in enumerate(frames, 1):
             try:
                 # Ultra-fast frame processing
                 if isinstance(frame, np.ndarray):
-                    # Fast array handling
+                    # Fast array handling - no color conversion
                     if frame.ndim == 3 and frame.shape[2] == 3:
-                        # Convert BGR to RGB for PIL/VLM processing
-                        frame_rgb = frame[:, :, ::-1]
-                        image = Image.fromarray(frame_rgb.astype('uint8'), 'RGB')
+                        # Use BGR directly - same as frontend
+                        image = Image.fromarray(frame.astype('uint8'))
                     elif frame.ndim == 2:
-                        # Grayscale - convert to RGB
-                        image = Image.fromarray(frame.astype('uint8'), 'L').convert('RGB')
+                        # Grayscale - keep as grayscale
+                        image = Image.fromarray(frame.astype('uint8'), 'L')
                     else:
                         logger.warning(f"Skipping frame {i} - invalid shape: {frame.shape}")
                         continue
                 else:
                     logger.warning(f"Skipping frame {i} - invalid type: {type(frame)}")
                     continue
-                
+
                 # Aggressive resize with fastest resampling
                 if image.size != self.max_image_size:
                     image = image.resize(self.max_image_size, Image.Resampling.NEAREST)  # Fastest resampling
-                
+
+                # SAVE THE EXACT PREPROCESSED IMAGE THAT ULTRA VLM WILL SEE
+                try:
+                    filename = f"vlm_ultra_{timestamp}_frame{i}_preprocessed.jpg"
+                    filepath = vlm_dir / filename
+
+                    # Save with ultra quality settings
+                    image.save(str(filepath), format='JPEG', quality=self.image_quality, optimize=True)
+
+                    logger.info("="*80)
+                    logger.info(f"⚡ ULTRA VLM PREPROCESSED FRAME SAVED")
+                    logger.info(f"  📷 Frame {i}/{len(frames)} saved to:")
+                    logger.info(f"     {filepath}")
+                    logger.info(f"  🔧 Ultra processing applied:")
+                    logger.info(f"     - Format: BGR (same as frontend)")
+                    logger.info(f"     - Resolution: {image.size[0]}x{image.size[1]} (from 640x480)")
+                    logger.info(f"     - Quality: JPEG {self.image_quality} (ultra speed)")
+                    logger.info(f"     - Resampling: NEAREST (fastest)")
+                    logger.info(f"  ⚡ This EXACT image is sent to ULTRA VLM for inference")
+                    logger.info("="*80)
+
+                except Exception as save_e:
+                    logger.error(f"❌ Failed to save ultra VLM preprocessed frame {i}: {save_e}")
+
                 processed_frames.append(np.array(image))
-                
+
             except Exception as e:
                 logger.error(f"Frame {i} preprocessing failed: {e}")
                 continue
-        
+
         if processed_frames:
             logger.debug(f"✅ {len(processed_frames)}/{len(frames)} frames preprocessed for ultra-fast inference")
         else:
             logger.error("❌ No frames successfully preprocessed")
-        
+
         return processed_frames
 
     def _frame_to_base64_ultra_fast(self, frame: np.ndarray) -> str:

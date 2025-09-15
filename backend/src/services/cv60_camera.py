@@ -244,7 +244,6 @@ class CV60VideoTrack(VideoStreamTrack):
 
                     # Log the pixel type for debugging
                     pixel_type = img.GetPixelType()
-                    logger.debug(f"CV60 Pixel Type: {pixel_type}, Data size: {len(raw)}, h={h}, w={w}")
 
                     # Check pixel format and convert accordingly
                     if len(raw) == h * w * 3:
@@ -266,21 +265,17 @@ class CV60VideoTrack(VideoStreamTrack):
                             try:
                                 # Try BayerBG pattern first
                                 frame_data = cv2.cvtColor(temp, cv2.COLOR_BayerBG2BGR)
-                                logger.debug(f"Converted Bayer (BG) to BGR")
                             except:
                                 try:
                                     # Fallback to BayerRG
                                     frame_data = cv2.cvtColor(temp, cv2.COLOR_BayerRG2BGR)
-                                    logger.debug(f"Converted Bayer (RG) to BGR")
                                 except:
                                     try:
                                         # Try other Bayer patterns
                                         frame_data = cv2.cvtColor(temp, cv2.COLOR_BayerGB2BGR)
-                                        logger.debug(f"Converted Bayer (GB) to BGR")
                                     except:
                                         try:
                                             frame_data = cv2.cvtColor(temp, cv2.COLOR_BayerGR2BGR)
-                                            logger.debug(f"Converted Bayer (GR) to BGR")
                                         except:
                                             # Final fallback - duplicate channels
                                             logger.warning(f"All Bayer conversions failed, using grayscale")

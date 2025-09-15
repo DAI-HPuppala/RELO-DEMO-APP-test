@@ -9,6 +9,8 @@ import time
 import os
 import subprocess
 import re
+from datetime import datetime
+from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from io import BytesIO
 from PIL import Image
@@ -572,37 +574,64 @@ class VLMService:
     async def _preprocess_frames(self, frames: List[np.ndarray]) -> List[str]:
         """Convert numpy frames to base64 encoded images"""
         processed = []
-        
+
+        # Create directory for saving VLM preprocessed frames
+        base_dir = Path("/home/denaliai/RELO-CLASSIFIER-DEV/RELO-DEMO-APP-test-RELO-DEV-APP-test/captured_frames")
+        vlm_dir = base_dir / "vlm_preprocessed" / "standard_vlm"
+        vlm_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate timestamp for this batch
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+
         for i, frame in enumerate(frames):
             try:
-                # Convert BGR to RGB if needed (OpenCV uses BGR)
-                if len(frame.shape) == 3 and frame.shape[2] == 3:
-                    # Assume it's BGR, convert to RGB
-                    frame_rgb = frame[:, :, ::-1]
-                else:
-                    frame_rgb = frame
+                # No color conversion - VLM sees same as frontend (BGR)
+                frame_rgb = frame
 
-                # Create PIL image
+                # Create PIL image directly from BGR
                 img = Image.fromarray(frame_rgb)
-                
+
                 # Resize if too large
                 if img.size[0] > self.max_image_size[0] or img.size[1] > self.max_image_size[1]:
                     img.thumbnail(self.max_image_size, Image.Resampling.LANCZOS)
-                
-                # Convert to JPEG bytes
+
+                # SAVE THE EXACT PREPROCESSED IMAGE THAT VLM WILL SEE
+                try:
+                    filename = f"vlm_standard_{timestamp}_frame{i+1}_preprocessed.jpg"
+                    filepath = vlm_dir / filename
+
+                    # Save with same quality as VLM processing
+                    img.save(str(filepath), format='JPEG', quality=self.image_quality, optimize=True)
+
+                    logger.info("="*80)
+                    logger.info(f"🎯 VLM PREPROCESSED FRAME SAVED")
+                    logger.info(f"  📷 Frame {i+1}/{len(frames)} saved to:")
+                    logger.info(f"     {filepath}")
+                    logger.info(f"  🔧 Processing applied:")
+                    logger.info(f"     - Format: BGR (same as frontend)")
+                    logger.info(f"     - Resolution: {img.size[0]}x{img.size[1]} (from 640x480)")
+                    logger.info(f"     - Quality: JPEG {self.image_quality}")
+                    logger.info(f"     - Resampling: LANCZOS")
+                    logger.info(f"  ➡️  This EXACT image is sent to VLM for inference")
+                    logger.info("="*80)
+
+                except Exception as save_e:
+                    logger.error(f"❌ Failed to save VLM preprocessed frame {i+1}: {save_e}")
+
+                # Convert to JPEG bytes (same as what VLM receives)
                 buffer = BytesIO()
                 img.save(buffer, format='JPEG', quality=self.image_quality)
-                
+
                 # Encode to base64
                 base64_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
                 processed.append(base64_str)
-                
+
                 logger.debug(f"Preprocessed frame {i+1}/{len(frames)}: {img.size}")
-                
+
             except Exception as e:
                 logger.error(f"Error preprocessing frame {i}: {e}")
                 continue
-        
+
         logger.info(f"Preprocessed {len(processed)}/{len(frames)} frames successfully")
         return processed
     
@@ -939,8 +968,7 @@ class VLMService:
             
             if os.path.exists(warmup_image_path):
                 with Image.open(warmup_image_path) as img:
-                    # Optimize for faster processing
-                    img = img.convert('RGB')
+                    # Optimize for faster processing - no RGB conversion
                     img = img.resize(self.max_image_size, Image.Resampling.LANCZOS)
                     
                     # High quality encoding for better inference

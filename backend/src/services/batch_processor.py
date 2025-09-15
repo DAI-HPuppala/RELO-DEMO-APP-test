@@ -56,9 +56,8 @@ class BatchProcessor:
                 Image.Resampling.LANCZOS
             )
         
-        # Convert to RGB if needed
-        if pil_image.mode != 'RGB':
-            pil_image = pil_image.convert('RGB')
+        # No RGB conversion - keep original format (BGR)
+        # VLM will process same format as frontend sees
         
         # Convert back to numpy
         processed = np.array(pil_image, dtype=np.uint8)
