@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RELO Classifier - Denali Advanced Integration</title>
+    <link rel="stylesheet" href="professional-styles.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Initialization Screen -->
+    <div id="initScreen" class="init-screen">
+        <div class="init-container">
+            <div class="brand-section" style="justify-content: center; margin-bottom: 30px;">
+                <img src="assets/denali_logo.svg" alt="Denali" class="company-logo" style="height: 60px;">
+                <div class="brand-text">
+                    <h1 class="init-title">RELO Classifier</h1>
+                    <div class="init-subtitle">Denali Advanced Integration</div>
+                </div>
+            </div>
+            
+            <div class="init-steps">
+                <div class="init-step" id="step-backend">
+                    <div class="step-icon">
+                        <svg class="spinner" viewBox="0 0 50 50">
+                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                        </svg>
+                        <svg class="checkmark" style="display:none" viewBox="0 0 52 52">
+                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    </div>
+                    <div class="step-text">
+                        <div class="step-title">Backend Server</div>
+                        <div class="step-status">Connecting...</div>
+                    </div>
+                </div>
+
+                <div class="init-step" id="step-camera">
+                    <div class="step-icon">
+                        <svg class="spinner" viewBox="0 0 50 50">
+                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                        </svg>
+                        <svg class="checkmark" style="display:none" viewBox="0 0 52 52">
+                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    </div>
+                    <div class="step-text">
+                        <div class="step-title">RealSense Camera</div>
+                        <div class="step-status">Waiting...</div>
+                    </div>
+                </div>
+
+                <div class="init-step" id="step-websocket">
+                    <div class="step-icon">
+                        <svg class="spinner" viewBox="0 0 50 50">
+                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                        </svg>
+                        <svg class="checkmark" style="display:none" viewBox="0 0 52 52">
+                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    </div>
+                    <div class="step-text">
+                        <div class="step-title">WebSocket Connection</div>
+                        <div class="step-status">Waiting...</div>
+                    </div>
+                </div>
+
+                <div class="init-step" id="step-webrtc">
+                    <div class="step-icon">
+                        <svg class="spinner" viewBox="0 0 50 50">
+                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                        </svg>
+                        <svg class="checkmark" style="display:none" viewBox="0 0 52 52">
+                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    </div>
+                    <div class="step-text">
+                        <div class="step-title">WebRTC Stream</div>
+                        <div class="step-status">Waiting...</div>
+                    </div>
+                </div>
+
+                <div class="init-step" id="step-gpu">
+                    <div class="step-icon">
+                        <svg class="spinner" viewBox="0 0 50 50">
+                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                        </svg>
+                        <svg class="checkmark" style="display:none" viewBox="0 0 52 52">
+                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    </div>
+                    <div class="step-text">
+                        <div class="step-title">GPU Initialization</div>
+                        <div class="step-status">Waiting...</div>
+                    </div>
+                </div>
+
+                <div class="init-step" id="step-vlm">
+                    <div class="step-icon">
+                        <svg class="spinner" viewBox="0 0 50 50">
+                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                        </svg>
+                        <svg class="checkmark" style="display:none" viewBox="0 0 52 52">
+                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    </div>
+                    <div class="step-text">
+                        <div class="step-title">VLM Engine</div>
+                        <div class="step-status">Waiting...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="init-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="initProgress"></div>
+                </div>
+                <div class="progress-text" id="initProgressText">0% Complete</div>
+            </div>
+
+            <div class="init-error" id="initError" style="display:none">
+                <div class="error-message"></div>
+                <button class="retry-btn" onclick="retryInitialization()">Retry</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application (hidden initially) -->
+    <div id="mainApp" class="main-app" style="display:none">
+    <!-- Professional Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-section">
+                <div class="company-branding">
+                    <img src="assets/denali_logo.svg" alt="Denali" class="company-logo">
+                    <span class="company-name">Denali Advanced Integration</span>
+                </div>
+            </div>
+            <h1 class="app-title">RELO Classifier</h1>
+            <div class="header-status">
+                <div class="status-indicator" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Disconnected</span>
+                </div>
+                <div class="session-info">
+                    <span class="session-label">Session:</span>
+                    <span class="session-id" id="sessionId">-</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Application Container -->
+    <main class="app-container">
+        <!-- Control Panel (Persistent) -->
+        <section class="control-panel persistent-control">
+            <div class="control-section">
+                <div class="control-layout">
+                    <div class="control-left">
+                        <div class="control-header">
+                            <h2 class="section-title">Classification Control</h2>
+                            <div class="mode-toggle">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="modeToggle" checked>
+                                    <span class="toggle-slider">
+                                        <span class="toggle-label auto">Auto</span>
+                                        <span class="toggle-label manual">Manual</span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="control-buttons">
+                            <button id="startBtn" class="btn btn-primary" data-tooltip="Start classification process">
+                                <span class="btn-icon">▶</span>
+                                Start
+                            </button>
+                            <button id="pauseResumeBtn" class="btn btn-warning auto-only" disabled data-tooltip="Pause agent processing">
+                                <span class="btn-icon">⏸</span>
+                                <span class="btn-text">Pause</span>
+                            </button>
+                            <button id="stopBtn" class="btn btn-danger" disabled data-tooltip="Stop classification process">
+                                <span class="btn-icon">⏹</span>
+                                Stop
+                            </button>
+                            <!-- Manual mode buttons -->
+                            <button id="prevBtn" class="btn btn-secondary manual-only" style="display:none" disabled data-tooltip="Go to previous agent">
+                                <span class="btn-icon">◀</span>
+                                Prev
+                            </button>
+                            <button id="nextBtn" class="btn btn-secondary manual-only" style="display:none" disabled data-tooltip="Go to next agent">
+                                <span class="btn-icon">▶</span>
+                                Next
+                            </button>
+                            <button id="redoBtn" class="btn btn-secondary manual-only" style="display:none" disabled data-tooltip="Redo current agent">
+                                <span class="btn-icon">↻</span>
+                                Redo
+                            </button>
+                        </div>
+                    </div>
+                    <div class="control-right">
+                        <!-- Pipeline Nodes -->
+                        <div class="pipeline-nodes">
+                            <div class="pipeline-node idle" id="node-initial" data-agent="initial_classifier">
+                                <div class="node-circle">
+                                    <div class="node-dot"></div>
+                                </div>
+                                <div class="node-info">
+                                    <div class="node-label">Initial</div>
+                                    <div class="node-timer" id="initial-timer">0s/4s</div>
+                                </div>
+                            </div>
+                            <div class="pipeline-connector"></div>
+                            <div class="pipeline-node idle" id="node-detail" data-agent="detail_extractor">
+                                <div class="node-circle">
+                                    <div class="node-dot"></div>
+                                </div>
+                                <div class="node-info">
+                                    <div class="node-label">Details</div>
+                                    <div class="node-timer" id="detail-timer">0s/3s</div>
+                                </div>
+                            </div>
+                            <div class="pipeline-connector"></div>
+                            <div class="pipeline-node idle" id="node-damage" data-agent="damage_detector">
+                                <div class="node-circle">
+                                    <div class="node-dot"></div>
+                                </div>
+                                <div class="node-info">
+                                    <div class="node-label">Damage</div>
+                                    <div class="node-timer" id="damage-timer">0s/4s</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="node-descriptions" id="nodeDescriptions">
+                            <div class="description-current" id="currentDescription"></div>
+                            <div class="description-next" id="nextDescription"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Top Section: Camera and Progressive Updates -->
+        <div class="top-panels">
+            <!-- Left Panel: Camera Feed -->
+            <section class="camera-panel">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">📷 Live Camera Feed</h3>
+                        <div class="camera-status" id="cameraStatus">
+                            <span class="status-dot active"></span>
+                            <span>Ready</span>
+                        </div>
+                    </div>
+                    <div class="video-container">
+                        <video id="videoPreview" autoplay playsinline muted></video>
+                        <div class="video-overlay" id="videoOverlay">
+                            <div class="overlay-content">
+                                <span class="overlay-icon">📹</span>
+                                <p>Camera feed will appear here</p>
+                                <p class="overlay-hint">Click "Start Classification" to begin</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="video-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Status:</span>
+                            <span class="stat-value" id="streamStatus">Active</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Quality:</span>
+                            <span class="stat-value">HD 1080p</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Stream FPS:</span>
+                            <span class="stat-value" id="streamingFPS">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Processing FPS:</span>
+                            <span class="stat-value" id="processingFPS">0</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Progressive Updates -->
+            <section class="updates-panel">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">🔄 Real-time Analysis Progress</h3>
+                        <span class="update-counter" id="updateCounter">0 inferences</span>
+                    </div>
+                    <!-- Progressive Attributes Display - Expanded to fill panel -->
+                    <div class="progressive-attributes-expanded">
+                        <div class="attribute-row">
+                            <span class="attribute-label">Type:</span>
+                            <span class="attribute-value" id="prog-type">-</span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-label">Color:</span>
+                            <span class="attribute-value" id="prog-color">-</span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-label">Pattern:</span>
+                            <span class="attribute-value" id="prog-pattern">-</span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-label">Brand:</span>
+                            <span class="attribute-value" id="prog-brand">-</span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-label">Size:</span>
+                            <span class="attribute-value" id="prog-size">-</span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-label">Neckline:</span>
+                            <span class="attribute-value" id="prog-neckline">-</span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-label">Sleeve:</span>
+                            <span class="attribute-value" id="prog-sleeve">-</span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-label">Closure:</span>
+                            <span class="attribute-value" id="prog-closure">-</span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-label">Has Damage:</span>
+                            <span class="attribute-value" id="prog-damage">-</span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-label">Damage Type:</span>
+                            <span class="attribute-value" id="prog-damage-type">-</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Results Section: Fixed Table -->
+        <section class="results-section">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">📊 Final Classification Results</h3>
+                    <div class="export-controls">
+                        <button class="btn-small btn-export" id="exportCsvBtn" disabled>
+                            📥 Export CSV
+                        </button>
+                        <button class="btn-small btn-export" id="exportJsonBtn" disabled>
+                            📄 Export JSON
+                        </button>
+                    </div>
+                </div>
+                <div class="results-table-container-scrollable">
+                    <div class="table-wrapper">
+                        <table class="classification-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%">#</th>
+                                    <th style="width: 10%">Type</th>
+                                    <th style="width: 8%">Color</th>
+                                    <th style="width: 8%">Pattern</th>
+                                    <th style="width: 10%">Brand</th>
+                                    <th style="width: 7%">Size</th>
+                                    <th style="width: 9%">Neckline</th>
+                                    <th style="width: 9%">Sleeve</th>
+                                    <th style="width: 9%">Closure</th>
+                                    <th style="width: 8%">Damage</th>
+                                    <th style="width: 10%">Damage Type</th>
+                                    <th style="width: 7%">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTableBody">
+                                <tr class="empty-row">
+                                    <td colspan="12">No classification results available</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bottom Section: Combined System Info and Activity Log -->
+        <section class="bottom-combined-panel">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">📊 System Monitoring</h3>
+                </div>
+                <div class="monitoring-container">
+                    <!-- System Information Section -->
+                    <div class="system-info-section">
+                        <h4 class="section-subtitle">System Information</h4>
+                        <div class="system-info-grid">
+                            <div class="info-card">
+                                <div class="info-icon">🤖</div>
+                                <div class="info-content">
+                                    <span class="info-label">Model</span>
+                                    <span class="info-value">Qwen2.5-VL 3B</span>
+                                </div>
+                            </div>
+                            <div class="info-card">
+                                <div class="info-icon">🟢</div>
+                                <div class="info-content">
+                                    <span class="info-label">Status</span>
+                                    <span class="info-value" id="systemStatus">Ready</span>
+                                </div>
+                            </div>
+                            <div class="info-card">
+                                <div class="info-icon">🔑</div>
+                                <div class="info-content">
+                                    <span class="info-label">Session</span>
+                                    <span class="info-value" id="sessionInfo">-</span>
+                                </div>
+                            </div>
+                            <div class="info-card">
+                                <div class="info-icon">⏱️</div>
+                                <div class="info-content">
+                                    <span class="info-label">Avg Processing</span>
+                                    <span class="info-value" id="processingTime">0.0s</span>
+                                </div>
+                            </div>
+                            <div class="info-card">
+                                <div class="info-icon">📈</div>
+                                <div class="info-content">
+                                    <span class="info-label">Sessions</span>
+                                    <span class="info-value" id="totalSessions">0</span>
+                                </div>
+                            </div>
+                            <div class="info-card">
+                                <div class="info-icon">⚡</div>
+                                <div class="info-content">
+                                    <span class="info-label">GPU</span>
+                                    <span class="info-value" id="gpuStatus">Available</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Activity Log Section -->
+                    <div class="activity-log-section">
+                        <div class="log-header">
+                            <h4 class="section-subtitle">Activity Log</h4>
+                            <button class="btn-small" id="clearLogsBtn">Clear</button>
+                        </div>
+                        <div class="activity-log-scroll" id="activityLog">
+                            <div class="log-entry">
+                                <span class="log-timestamp">-</span>
+                                <span class="log-message">System ready</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    </div> <!-- End of mainApp -->
+
+    <!-- Scripts -->
+    <!-- Load configuration -->
+    <script src="src/config/agents.js"></script>
+    
+    <!-- Load services first -->
+    <script src="src/services/webrtc-client.js"></script>
+    <script src="src/services/session-manager.js"></script>
+    
+    <!-- Load original components for compatibility -->
+    <script src="src/components/stream-viewer.js"></script>
+    <script src="src/components/status-monitor.js"></script>
+    <script src="src/components/agent-monitor.js"></script>
+    
+    <!-- Load professional components -->
+    <script src="src/components/csv-exporter.js"></script>
+    <script src="src/components/progress-monitor.js"></script>
+    <script src="src/components/results-display-professional.js"></script>
+    
+    <!-- Load main app controller -->
+    <script src="src/app-professional.js"></script>
+    
+    <!-- Load initialization manager last (it starts the process) -->
+    <script src="src/services/initialization-manager.js"></script>
+</body>
+</html>

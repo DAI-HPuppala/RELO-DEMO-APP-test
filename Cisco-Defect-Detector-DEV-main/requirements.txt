@@ -1,0 +1,14 @@
+transformers
+huggingface_hub
+torch>=2.0.0
+pillow
+einops
+accelerate
+pyvips-binary
+pyvips
+fastapi
+uvicorn[standard]
+opencv-python-headless
+python-multipart
+numpy
+# eBUS SDK via local wheel (install in Dockerfile)

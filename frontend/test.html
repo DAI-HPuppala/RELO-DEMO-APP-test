@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebRTC Test</title>
+</head>
+<body>
+    <h1>WebRTC Connection Test</h1>
+    <button onclick="testConnection()">Test WebRTC</button>
+    <div id="status"></div>
+    <video id="video" autoplay style="width: 640px; height: 480px; background: black;"></video>
+    
+    <script src="src/services/webrtc-client.js"></script>
+    <script>
+        let client = null;
+        
+        async function testConnection() {
+            const status = document.getElementById('status');
+            const video = document.getElementById('video');
+            
+            try {
+                status.innerHTML = 'Creating WebRTC client...<br>';
+                client = new WebRTCClient();
+                
+                // Set callbacks
+                client.on('connected', () => {
+                    status.innerHTML += 'WebSocket connected<br>';
+                });
+                
+                client.on('stream', (stream) => {
+                    status.innerHTML += 'Video stream received!<br>';
+                    video.srcObject = stream;
+                });
+                
+                client.on('error', (error) => {
+                    status.innerHTML += `Error: ${JSON.stringify(error)}<br>`;
+                    console.error('WebRTC error:', error);
+                });
+                
+                // Connect
+                status.innerHTML += 'Connecting to WebSocket...<br>';
+                await client.connect();
+                
+                // Start session
+                status.innerHTML += 'Starting session...<br>';
+                await client.startSession('automatic', 'realsense');
+                
+                // Monitor peer connection state
+                setTimeout(() => {
+                    if (client.pc) {
+                        status.innerHTML += `Connection state: ${client.pc.connectionState}<br>`;
+                        status.innerHTML += `ICE connection state: ${client.pc.iceConnectionState}<br>`;
+                        status.innerHTML += `ICE gathering state: ${client.pc.iceGatheringState}<br>`;
+                    }
+                }, 3000);
+                
+            } catch (error) {
+                status.innerHTML += `Failed: ${error.message}<br>`;
+                console.error('Test failed:', error);
+            }
+        }
+    </script>
+</body>
+</html>

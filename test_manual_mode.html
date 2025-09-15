@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Mode Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .mode-selector {
+            margin: 20px 0;
+        }
+        .status {
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .log {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 2px 0;
+        }
+        .error { color: red; }
+        .success { color: green; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Manual Mode Test</h1>
+    
+    <div class="mode-selector">
+        <label>
+            <input type="radio" name="mode" value="automatic" checked> Automatic Mode
+        </label>
+        <label>
+            <input type="radio" name="mode" value="manual"> Manual Mode
+        </label>
+    </div>
+    
+    <div class="controls">
+        <h3>Session Controls</h3>
+        <button id="startBtn">Start Monitoring</button>
+        <button id="stopBtn" disabled>Stop Monitoring</button>
+        <div class="status" id="status">Ready</div>
+    </div>
+    
+    <div class="controls">
+        <h3>Manual Mode Controls</h3>
+        <button id="prevBtn" disabled>Previous Agent</button>
+        <button id="nextBtn" disabled>Next Agent</button>
+        <button id="redoBtn" disabled>Redo Current</button>
+        <div class="status" id="manualStatus">Manual controls disabled</div>
+    </div>
+    
+    <div class="controls">
+        <h3>Log</h3>
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        class ManualModeTest {
+            constructor() {
+                this.mode = 'automatic';
+                this.sessionId = null;
+                this.isMonitoring = false;
+                this.ws = null;
+                
+                this.initUI();
+                this.connectWebSocket();
+            }
+            
+            initUI() {
+                // Mode selector
+                document.querySelectorAll('input[name="mode"]').forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        this.mode = e.target.value;
+                        this.log(`Mode changed to: ${this.mode}`, 'info');
+                        this.updateUI();
+                    });
+                });
+                
+                // Start/Stop buttons
+                document.getElementById('startBtn').addEventListener('click', () => this.startMonitoring());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stopMonitoring());
+                
+                // Manual controls
+                document.getElementById('prevBtn').addEventListener('click', () => this.sendManualCommand('manual_previous'));
+                document.getElementById('nextBtn').addEventListener('click', () => this.sendManualCommand('manual_next'));
+                document.getElementById('redoBtn').addEventListener('click', () => this.sendManualCommand('manual_redo'));
+            }
+            
+            connectWebSocket() {
+                this.ws = new WebSocket('ws://localhost:8000/ws');
+                
+                this.ws.onopen = () => {
+                    this.log('WebSocket connected', 'success');
+                    document.getElementById('status').textContent = 'Connected';
+                };
+                
+                this.ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    this.handleMessage(message);
+                };
+                
+                this.ws.onerror = (error) => {
+                    this.log(`WebSocket error: ${error}`, 'error');
+                };
+                
+                this.ws.onclose = () => {
+                    this.log('WebSocket disconnected', 'error');
+                    document.getElementById('status').textContent = 'Disconnected';
+                };
+            }
+            
+            handleMessage(message) {
+                this.log(`Received: ${message.type}`, 'info');
+                
+                switch(message.type) {
+                    case 'session_created':
+                        this.sessionId = message.session_id;
+                        this.log(`Session created: ${this.sessionId}`, 'success');
+                        break;
+                    
+                    case 'manual_mode_started':
+                        this.log('Manual mode started successfully', 'success');
+                        document.getElementById('manualStatus').textContent = 'Manual mode active - waiting for command';
+                        this.enableManualButtons();
+                        break;
+                    
+                    case 'automatic_started':
+                        this.log('Automatic mode started successfully', 'success');
+                        break;
+                    
+                    case 'agent_started':
+                        this.log(`Agent started: ${message.agent} (${message.timer_seconds}s)`, 'info');
+                        document.getElementById('manualStatus').textContent = `Running: ${message.agent}`;
+                        break;
+                    
+                    case 'agent_completed':
+                        this.log(`Agent completed: ${message.agent}`, 'success');
+                        if (message.waiting_for_command) {
+                            document.getElementById('manualStatus').textContent = `Completed: ${message.agent} - Waiting for command`;
+                            this.enableManualButtons();
+                        }
+                        break;
+                    
+                    case 'manual_mode_status':
+                        this.updateManualStatus(message);
+                        break;
+                    
+                    case 'error':
+                        this.log(`Error: ${message.message}`, 'error');
+                        if (message.error_code === 'SESSION_NOT_FOUND') {
+                            this.sessionId = null;
+                            this.isMonitoring = false;
+                            this.updateUI();
+                        }
+                        break;
+                    
+                    case 'session_stopped':
+                        this.log('Session stopped', 'info');
+                        this.sessionId = null;
+                        this.isMonitoring = false;
+                        this.updateUI();
+                        break;
+                }
+            }
+            
+            async startMonitoring() {
+                if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                    this.log('WebSocket not connected', 'error');
+                    return;
+                }
+                
+                this.log(`Starting monitoring in ${this.mode} mode...`, 'info');
+                
+                // Create session
+                this.ws.send(JSON.stringify({
+                    type: 'start_session',
+                    mode: this.mode
+                }));
+                
+                // Wait a bit for session creation
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                if (this.sessionId) {
+                    // Start monitoring with mode flag
+                    this.ws.send(JSON.stringify({
+                        type: 'start_automatic',
+                        session_id: this.sessionId,
+                        manual_mode: this.mode === 'manual',
+                        agent_timers: {
+                            initial_classifier: 3.0,
+                            detail_extractor: 3.0,
+                            damage_detector: 3.0
+                        }
+                    }));
+                    
+                    this.isMonitoring = true;
+                    this.updateUI();
+                }
+            }
+            
+            stopMonitoring() {
+                if (this.sessionId && this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.log('Stopping monitoring...', 'info');
+                    
+                    this.ws.send(JSON.stringify({
+                        type: 'stop_session',
+                        session_id: this.sessionId
+                    }));
+                    
+                    this.sessionId = null;
+                    this.isMonitoring = false;
+                    this.updateUI();
+                }
+            }
+            
+            sendManualCommand(commandType) {
+                if (!this.sessionId) {
+                    this.log('No active session', 'error');
+                    return;
+                }
+                
+                this.log(`Sending command: ${commandType}`, 'info');
+                
+                // In a real app, this would go through data channel
+                // For testing, we'll send via WebSocket
+                this.ws.send(JSON.stringify({
+                    type: commandType,
+                    session_id: this.sessionId,
+                    timestamp: Date.now()
+                }));
+                
+                // Disable buttons temporarily
+                this.disableManualButtons();
+            }
+            
+            updateManualStatus(status) {
+                const text = `Agent: ${status.current_agent} | Status: ${status.agent_status} | Waiting: ${status.waiting_for_command}`;
+                document.getElementById('manualStatus').textContent = text;
+                
+                if (status.waiting_for_command) {
+                    this.enableManualButtons();
+                }
+            }
+            
+            updateUI() {
+                // Update start/stop buttons
+                document.getElementById('startBtn').disabled = this.isMonitoring;
+                document.getElementById('stopBtn').disabled = !this.isMonitoring;
+                
+                // Update mode selector
+                document.querySelectorAll('input[name="mode"]').forEach(radio => {
+                    radio.disabled = this.isMonitoring;
+                });
+                
+                // Update manual controls
+                if (!this.isMonitoring || this.mode !== 'manual') {
+                    this.disableManualButtons();
+                    document.getElementById('manualStatus').textContent = 
+                        this.mode === 'manual' ? 'Start monitoring to enable' : 'Manual controls disabled';
+                }
+                
+                // Update status
+                if (this.isMonitoring) {
+                    document.getElementById('status').textContent = `Monitoring (${this.mode} mode)`;
+                } else {
+                    document.getElementById('status').textContent = 'Ready';
+                }
+            }
+            
+            enableManualButtons() {
+                if (this.mode === 'manual' && this.isMonitoring) {
+                    document.getElementById('prevBtn').disabled = false;
+                    document.getElementById('nextBtn').disabled = false;
+                    document.getElementById('redoBtn').disabled = false;
+                }
+            }
+            
+            disableManualButtons() {
+                document.getElementById('prevBtn').disabled = true;
+                document.getElementById('nextBtn').disabled = true;
+                document.getElementById('redoBtn').disabled = true;
+            }
+            
+            log(message, type = 'info') {
+                const logDiv = document.getElementById('log');
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                logDiv.appendChild(entry);
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+        }
+        
+        // Initialize test app
+        const app = new ManualModeTest();
+    </script>
+</body>
+</html>
