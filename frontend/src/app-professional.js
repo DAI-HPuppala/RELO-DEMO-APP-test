@@ -51,12 +51,6 @@ class ProfessionalApplicationController {
         this.sessionProcessingTimes = [];
         this.totalSessions = 0;
         
-        // Processing FPS tracking
-        this.processingFpsTracker = {
-            inferences: [],
-            currentFps: 0,
-            updateInterval: null
-        };
         
         // Manual mode node clicking restriction (controlled by backend)
         this.nodeClickingEnabled = false; // Disabled until all 3 agents complete in current cycle
@@ -115,7 +109,7 @@ class ProfessionalApplicationController {
         if (stopBtn) {
             stopBtn.addEventListener('click', () => this.stopMonitoring());
         }
-        
+
         if (pauseResumeBtn) {
             pauseResumeBtn.addEventListener('click', () => this.togglePauseResume());
         }
@@ -174,11 +168,6 @@ class ProfessionalApplicationController {
             exportJsonBtn.addEventListener('click', () => this.exportResultsAsJSON());
         }
         
-        // Clear logs button
-        const clearLogsBtn = document.getElementById('clearLogsBtn');
-        if (clearLogsBtn) {
-            clearLogsBtn.addEventListener('click', () => this.clearActivityLog());
-        }
     }
 
     /**
@@ -264,9 +253,6 @@ class ProfessionalApplicationController {
             this.resultsDisplay.reset();
             this.progressMonitor.reset();
             
-            // Initialize results table with placeholders
-            this.initializeResultsTable();
-            
             // Ensure table header stays sticky
             this.ensureTableHeaderSticky();
             
@@ -294,7 +280,10 @@ class ProfessionalApplicationController {
             
             // Clear all progressive attributes for new session
             this.resetProgressiveAttributes();
-            
+
+            // Create initial row for this monitoring session
+            this.initializeResultsTable();
+
             // Reset node clicking for manual mode (backend will control this)
             if (this.mode === 'manual') {
                 this.nodeClickingEnabled = false;
@@ -313,11 +302,6 @@ class ProfessionalApplicationController {
             this.startTime = Date.now();
             this.startProcessingTimer();
             
-            // Start processing FPS monitoring
-            this.startProcessingFpsMonitoring();
-            
-            // Add log entry
-            this.addActivityLog(`Classification started in ${this.mode} mode`);
             
             // Update UI state
             const startBtn = document.getElementById('startBtn');
@@ -327,14 +311,14 @@ class ProfessionalApplicationController {
             const nextBtn = document.getElementById('nextBtn');
             const redoBtn = document.getElementById('redoBtn');
             const modeToggle = document.getElementById('modeToggle');
-            
+
             if (startBtn) startBtn.disabled = true;
             if (stopBtn) stopBtn.disabled = false;
             if (modeToggle) modeToggle.disabled = true;  // Disable mode toggle during monitoring
-            
+
             this.monitoringActive = true;
             this.isPaused = false;
-            
+
             // Update buttons based on mode
             if (this.mode === 'auto') {
                 // Show and enable pause/resume button for auto mode
@@ -364,10 +348,9 @@ class ProfessionalApplicationController {
                     redoBtn.style.display = 'inline-flex';
                     redoBtn.disabled = false;
                 }
-                
+
                 this.updateNodeDescriptions();
             }
-            
             this.streamViewer.hideOverlay();
             this.updatePauseResumeButtons();
             
@@ -482,7 +465,7 @@ class ProfessionalApplicationController {
         const nextBtn = document.getElementById('nextBtn');
         const redoBtn = document.getElementById('redoBtn');
         const modeToggle = document.getElementById('modeToggle');
-        
+
         if (startBtn) startBtn.disabled = false;
         if (stopBtn) stopBtn.disabled = true;
         if (pauseResumeBtn) {
@@ -514,13 +497,12 @@ class ProfessionalApplicationController {
         console.log('[Professional App] Clearing session ID after stop');
         this.sessionId = null;
         this.webrtcClient.sessionId = null;
-        
+
         this.streamViewer.showOverlay('Classification stopped');
         this.isPaused = false;
         this.updatePauseResumeButtons();
         
         // Stop processing FPS monitoring
-        this.stopProcessingFpsMonitoring();
         
         this.updateSystemStatus('Stopped');
     }
@@ -567,7 +549,7 @@ class ProfessionalApplicationController {
                 restart_agent: false
             }));
         }
-        
+
         this.updatePauseResumeButtons();
         this.updateSystemStatus('Processing - Automatic Mode');
     }
@@ -579,65 +561,7 @@ class ProfessionalApplicationController {
         console.log('[Professional App] Agent started:', data.agent, 'Session:', data.session_id);
         this.progressMonitor.onAgentStarted(data);
         this.updateSystemStatus(`Processing: ${data.agent}`);
-        
-        // Check for session ID change which indicates a new cycle
-        const sessionChanged = data.session_id && this.lastSessionId && (data.session_id !== this.lastSessionId);
-        const isInitial = data.agent === 'initial_classifier' || data.agent === 'initial';
-        
-        // Detect new cycle: either session ID changed OR initial agent starting with completed previous agents
-        const isNewCycle = sessionChanged || (isInitial && 
-            (this.previousAgentStates['damage'] === 'completed' || 
-             this.previousAgentStates['damage_detector'] === 'completed'));
-        
-        // Add more detailed logging to debug cycle detection
-        console.log('[Professional App] Cycle detection:', {
-            isInitial,
-            sessionChanged,
-            isNewCycle,
-            previousStates: this.previousAgentStates,
-            completedInCycle: Array.from(this.completedAgentsInCycle)
-        });
-        
-        if (isNewCycle) {
-            console.log('[Professional App] NEW CYCLE DETECTED - Resetting for new cycle');
-            console.log('  - Session changed:', sessionChanged);
-            console.log('  - Previous session:', this.lastSessionId);
-            console.log('  - New session:', data.session_id);
-            
-            // Clear completedAgentsInCycle FIRST for new cycle
-            this.completedAgentsInCycle.clear();
-            
-            // NOW reset detail and damage to gray (idle)
-            this.setPipelineNodeState('detail', 'idle');
-            this.setPipelineNodeState('damage', 'idle');
-            
-            // Reset all agent states for new cycle
-            this.agentStates = {
-                'initial_classifier': 'inactive',
-                'detail_extractor': 'inactive',
-                'damage_detector': 'inactive',
-                'initial': 'inactive',
-                'detail': 'inactive',
-                'damage': 'inactive'
-            };
-            this.previousAgentStates = {};
-            
-            // Clear progressive attributes for new cycle
-            this.resetProgressiveAttributes();
-            
-            // Initialize new results table row
-            this.initializeResultsTable();
-            
-            // Reset update counter
-            const counterEl = document.getElementById('updateCounter');
-            if (counterEl) counterEl.textContent = '0 inferences';
-            
-            // Reset all agent timers
-            ['initial', 'detail', 'damage'].forEach(agent => {
-                this.resetAgentTimer(agent);
-            });
-        }
-        
+
         // Update session ID tracking
         if (data.session_id) {
             this.lastSessionId = data.session_id;
@@ -652,15 +576,10 @@ class ProfessionalApplicationController {
         
         // Update inference count and progress for the agent
         this.updateAgentProgress(data.agent, 0);
+
+        // Update step descriptions
+        this.updateNodeDescriptions(data.agent);
         
-        // Add log entry
-        const agentNames = {
-            'initial_classifier': 'Initial Classifier',
-            'detail_extractor': 'Detail Extractor',
-            'damage_detector': 'Damage Detector',
-            'final_compiler': 'Final Compiler'
-        };
-        this.addActivityLog(`${agentNames[data.agent] || data.agent} started`);
     }
 
     /**
@@ -695,7 +614,6 @@ class ProfessionalApplicationController {
         }
         
         // Track processing FPS
-        this.trackProcessingFps();
     }
 
     /**
@@ -728,7 +646,6 @@ class ProfessionalApplicationController {
         }
         
         // Track processing FPS
-        this.trackProcessingFps();
     }
 
     /**
@@ -760,7 +677,6 @@ class ProfessionalApplicationController {
         // If state changed from disabled to enabled
         if (!wasEnabled && this.nodeClickingEnabled) {
             console.log('[Professional App] All 3 agents completed in current cycle - node clicking now enabled');
-            this.addActivityLog('All 3 agents completed - node clicking enabled for this cycle');
             
             // Update visual feedback for nodes
             const pipelineNodes = document.querySelectorAll('.pipeline-node');
@@ -812,14 +728,6 @@ class ProfessionalApplicationController {
             this.updateResultsTablePartial(data.agent, data.results);
         }
         
-        // Add log entry
-        const agentNames = {
-            'initial_classifier': 'Initial Classifier',
-            'detail_extractor': 'Detail Extractor',
-            'damage_detector': 'Damage Detector',
-            'final_compiler': 'Final Compiler'
-        };
-        this.addActivityLog(`${agentNames[data.agent] || data.agent} completed`);
         
         // IMPORTANT: Don't reset any nodes here - they should stay green until final_compiler triggers
         // The nodes will be reset in handleFinalResults when the cycle truly completes
@@ -903,8 +811,15 @@ class ProfessionalApplicationController {
             }
         }
         
-        // Add completion log
-        this.addActivityLog(`Classification completed in ${duration.toFixed(1)}s`);
+
+        // In auto mode, prepare a new row for the next cycle
+        if (this.mode === 'auto' && this.monitoringActive) {
+            console.log('[Professional App] Auto mode - creating new row for next cycle');
+            // Reset progressive attributes for next cycle
+            this.resetProgressiveAttributes();
+            // Create new row for next cycle
+            this.initializeResultsTable();
+        }
     }
 
     /**
@@ -954,7 +869,7 @@ class ProfessionalApplicationController {
             this.setPauseResumeButton(this.isPaused);
         }
     }
-    
+
     /**
      * Toggle between pause and resume
      */
@@ -965,17 +880,17 @@ class ProfessionalApplicationController {
             this.pauseMonitoring();
         }
     }
-    
+
     /**
      * Set pause/resume button state
      */
     setPauseResumeButton(isPaused) {
         const btn = document.getElementById('pauseResumeBtn');
         if (!btn) return;
-        
+
         const icon = btn.querySelector('.btn-icon');
         const text = btn.querySelector('.btn-text');
-        
+
         if (isPaused) {
             // Change to Resume button
             btn.className = 'btn btn-info auto-only';
@@ -1504,52 +1419,7 @@ class ProfessionalApplicationController {
         }
     }
     
-    /**
-     * Add entry to activity log
-     */
-    addActivityLog(message) {
-        const logContainer = document.getElementById('activityLog');
-        if (!logContainer) return;
-        
-        const timestamp = new Date().toLocaleTimeString('en-US', {
-            hour12: false,
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-        
-        const logEntry = document.createElement('div');
-        logEntry.className = 'log-entry';
-        logEntry.innerHTML = `
-            <span class="log-timestamp">${timestamp}</span>
-            <span class="log-message">${message}</span>
-        `;
-        
-        logContainer.appendChild(logEntry);
-        
-        // Auto-scroll to bottom
-        logContainer.scrollTop = logContainer.scrollHeight;
-        
-        // Limit to 50 entries
-        while (logContainer.children.length > 50) {
-            logContainer.removeChild(logContainer.firstChild);
-        }
-    }
     
-    /**
-     * Clear activity log
-     */
-    clearActivityLog() {
-        const logContainer = document.getElementById('activityLog');
-        if (logContainer) {
-            logContainer.innerHTML = `
-                <div class="log-entry">
-                    <span class="log-timestamp">-</span>
-                    <span class="log-message">Log cleared</span>
-                </div>
-            `;
-        }
-    }
     
     /**
      * Update agent progress in pipeline node
@@ -1774,79 +1644,9 @@ class ProfessionalApplicationController {
         URL.revokeObjectURL(url);
     }
     
-    /**
-     * Track processing FPS based on inference updates
-     */
-    trackProcessingFps() {
-        const now = Date.now();
-        this.processingFpsTracker.inferences.push(now);
-        
-        // Keep only last 10 seconds of data
-        const cutoff = now - 10000;
-        this.processingFpsTracker.inferences = this.processingFpsTracker.inferences.filter(time => time > cutoff);
-        
-        // Calculate FPS based on inferences in last 10 seconds
-        if (this.processingFpsTracker.inferences.length > 1) {
-            const timeSpan = (now - this.processingFpsTracker.inferences[0]) / 1000;
-            this.processingFpsTracker.currentFps = Math.round(this.processingFpsTracker.inferences.length / timeSpan);
-        } else {
-            this.processingFpsTracker.currentFps = 0;
-        }
-        
-        this.updateProcessingFpsDisplay();
-    }
     
-    /**
-     * Update processing FPS display
-     */
-    updateProcessingFpsDisplay() {
-        const processingFpsElement = document.getElementById('processingFPS');
-        if (processingFpsElement) {
-            const fps = this.processingFpsTracker.currentFps;
-            processingFpsElement.textContent = fps;
-            
-            // Apply color coding based on processing performance
-            processingFpsElement.className = 'stat-value';
-            if (fps >= 5) {
-                processingFpsElement.classList.add('fps-good');
-            } else if (fps >= 2) {
-                processingFpsElement.classList.add('fps-medium');
-            } else if (fps > 0) {
-                processingFpsElement.classList.add('fps-poor');
-            }
-        }
-    }
     
-    /**
-     * Start processing FPS monitoring
-     */
-    startProcessingFpsMonitoring() {
-        // Reset tracker
-        this.processingFpsTracker.inferences = [];
-        this.processingFpsTracker.currentFps = 0;
-        
-        // Update display immediately
-        this.updateProcessingFpsDisplay();
-        
-        // Start periodic updates to clear old data and update display
-        this.processingFpsTracker.updateInterval = setInterval(() => {
-            this.trackProcessingFps();
-        }, 1000);
-    }
     
-    /**
-     * Stop processing FPS monitoring
-     */
-    stopProcessingFpsMonitoring() {
-        if (this.processingFpsTracker.updateInterval) {
-            clearInterval(this.processingFpsTracker.updateInterval);
-            this.processingFpsTracker.updateInterval = null;
-        }
-        
-        this.processingFpsTracker.inferences = [];
-        this.processingFpsTracker.currentFps = 0;
-        this.updateProcessingFpsDisplay();
-    }
     
     /**
      * Handle mode toggle between auto and manual
@@ -1857,7 +1657,6 @@ class ProfessionalApplicationController {
         // Only allow mode change when monitoring is stopped
         if (this.monitoringActive) {
             event.target.checked = !isManual;
-            this.addActivityLog('Mode cannot be changed during monitoring. Stop monitoring to switch modes.');
             return;
         }
         
@@ -1865,7 +1664,6 @@ class ProfessionalApplicationController {
         this.manualModeEnabled = isManual;
         
         console.log('[Professional App] Mode changed to:', this.mode);
-        this.addActivityLog(`Switched to ${this.mode} mode`);
         
         // Update UI based on mode
         this.updateModeUI(isManual);
@@ -1911,7 +1709,6 @@ class ProfessionalApplicationController {
         if (!this.nodeClickingEnabled) {
             // Provide feedback that node clicking is disabled
             console.log('[Professional App] Node clicking disabled until all agents complete once');
-            this.addActivityLog('Node clicking disabled - complete all agents first');
             
             // Visual feedback - brief highlight animation
             const node = event.currentTarget;
@@ -1947,7 +1744,6 @@ class ProfessionalApplicationController {
         
         console.log('[Professional App] Sending manual previous command with session:', this.sessionId);
         this.sendDataChannelMessage(command);
-        this.addActivityLog('Manual: Previous agent');
     }
     
     /**
@@ -1967,7 +1763,6 @@ class ProfessionalApplicationController {
         
         console.log('[Professional App] Sending manual next command with session:', this.sessionId);
         this.sendDataChannelMessage(command);
-        this.addActivityLog('Manual: Next agent');
     }
     
     /**
@@ -1988,7 +1783,6 @@ class ProfessionalApplicationController {
         
         console.log('[Professional App] Sending manual redo command for:', this.currentAgent, 'with session:', this.sessionId);
         this.sendDataChannelMessage(command);
-        this.addActivityLog(`Manual: Redo ${this.currentAgent}`);
     }
     
     /**
@@ -2009,7 +1803,6 @@ class ProfessionalApplicationController {
         
         console.log('[Professional App] Sending manual select agent command:', agentName, 'with session:', this.sessionId);
         this.sendDataChannelMessage(command);
-        this.addActivityLog(`Manual: Jump to ${agentName}`);
         
         // Update current agent (visual feedback will come from backend status update)
         this.currentAgent = agentName;
@@ -2043,26 +1836,73 @@ class ProfessionalApplicationController {
     /**
      * Update node descriptions based on current mode and state
      */
-    updateNodeDescriptions() {
-        const descriptionsContainer = document.getElementById('nodeDescriptions');
+    updateNodeDescriptions(currentAgent = null) {
         const currentDesc = document.getElementById('currentDescription');
         const nextDesc = document.getElementById('nextDescription');
-        
-        if (!descriptionsContainer) return;
-        
-        if (this.mode === 'manual' && this.monitoringActive) {
-            currentDesc.innerHTML = '<strong>Manual Mode:</strong> Click on nodes to select agent';
-            nextDesc.innerHTML = 'Use Previous/Next buttons or click nodes to navigate';
-        } else if (this.mode === 'auto' && this.monitoringActive) {
-            // Will be updated by agent status messages
-            currentDesc.innerHTML = '<strong>Auto Mode:</strong> Processing automatically';
-            nextDesc.innerHTML = 'Agents will process in sequence: Initial → Details → Damage';
-        } else if (!this.monitoringActive) {
-            currentDesc.innerHTML = '<strong>Ready:</strong> Click Start to begin classification';
-            nextDesc.innerHTML = this.mode === 'manual' ? 'Manual mode - control agent progression' : 'Auto mode - automatic agent progression';
-        } else {
-            currentDesc.innerHTML = '';
-            nextDesc.innerHTML = '';
+
+        if (!currentDesc || !nextDesc) return;
+
+        // Default display when empty
+        if (!this.monitoringActive) {
+            currentDesc.textContent = 'Initial Classification: Lay the garment flat on a surface, ensuring the entire piece is clearly visible in the frame.';
+            nextDesc.textContent = 'Next: Capture a clear image of the garment\'s brand and size tag for verification.';
+            return;
+        }
+
+        // Dynamic format when process is running
+        if (this.monitoringActive) {
+            const agentDescriptions = {
+                'initial_classifier': {
+                    current: 'Initial Classification: Analyzing garment type, color, pattern, neckline, sleeve, and closure features.',
+                    next: 'Next: Extract brand information and size details from tags.'
+                },
+                'detail_extractor': {
+                    current: 'Detail Extraction: Reading brand labels and size tags for verification.',
+                    next: 'Next: Inspect garment for damage or defects.'
+                },
+                'damage_detector': {
+                    current: 'Damage Detection: Examining garment for stains, tears, or other damage.',
+                    next: 'Next: Compile final classification results.'
+                },
+                'final_compiler': {
+                    current: 'Final Compilation: Processing complete classification results.',
+                    next: 'Next: Ready for next garment classification.'
+                }
+            };
+
+            // Use provided currentAgent or try to determine from pipeline state
+            let activeAgent = currentAgent;
+            if (!activeAgent) {
+                // Find the currently active/processing agent
+                const processingNodes = document.querySelectorAll('.pipeline-node.processing');
+                if (processingNodes.length > 0) {
+                    const nodeId = processingNodes[0].id.replace('node-', '');
+                    const nodeToAgentMap = {
+                        'initial': 'initial_classifier',
+                        'detail': 'detail_extractor',
+                        'damage': 'damage_detector'
+                    };
+                    activeAgent = nodeToAgentMap[nodeId];
+                }
+            }
+
+            // Map short form to full agent names
+            const agentMap = {
+                'initial': 'initial_classifier',
+                'detail': 'detail_extractor',
+                'damage': 'damage_detector'
+            };
+            activeAgent = agentMap[activeAgent] || activeAgent;
+
+            // Set descriptions based on active agent
+            if (activeAgent && agentDescriptions[activeAgent]) {
+                currentDesc.textContent = agentDescriptions[activeAgent].current;
+                nextDesc.textContent = agentDescriptions[activeAgent].next;
+            } else {
+                // Default processing state
+                currentDesc.textContent = 'Processing: Analyzing garment characteristics and attributes.';
+                nextDesc.textContent = 'Next: Continue through classification pipeline.';
+            }
         }
     }
 }
