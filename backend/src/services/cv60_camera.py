@@ -68,6 +68,7 @@ class CV60VideoTrack(VideoStreamTrack):
         self.current_session_id = session_id  # Store session ID for frame buffer
         self._last_valid_frame = None  # Cache for brief gaps only
         self._last_frame_use_count = 0  # Track how many times we reused last frame
+        self._test_mode_logged = False  # Track if test mode fallback has been logged
         self._initialize_cv60()
 
     def _initialize_cv60(self):
@@ -193,7 +194,8 @@ class CV60VideoTrack(VideoStreamTrack):
 
                 # If not initialized or eBUS not available, generate test frames
                 if not self.is_initialized or not eb:
-                    frame_data = self._generate_test_pattern()
+                    reason = "eBUS SDK not available" if not eb else "CV60 camera failed to initialize"
+                    frame_data = self._generate_test_pattern(reason)
                     frame_timestamp = current_time
 
                     # Add to queue
@@ -428,10 +430,10 @@ class CV60VideoTrack(VideoStreamTrack):
                             logger.debug(f"Using cached frame (reuse #{self._last_frame_use_count})")
                         else:
                             # Only use test pattern if truly no frames available
-                            frame = self._generate_test_pattern()
+                            frame = self._generate_test_pattern("No camera frames available after waiting - camera may be disconnected")
                             logger.debug("No frames available, using test pattern")
                 else:
-                    frame = self._generate_test_pattern()
+                    frame = self._generate_test_pattern("Camera not initialized during frame retrieval")
                     logger.debug("Camera not initialized, using test pattern")
         else:
             # No frames available - wait for new frame if camera is initialized
@@ -454,9 +456,9 @@ class CV60VideoTrack(VideoStreamTrack):
                         frame = self._last_valid_frame
                         self._last_frame_use_count += 1
                     else:
-                        frame = self._generate_test_pattern()
+                        frame = self._generate_test_pattern("Frame queue empty and no cached frames available")
             else:
-                frame = self._generate_test_pattern()
+                frame = self._generate_test_pattern("Camera not initialized and frame queue is empty")
 
         # Convert to VideoFrame with proper timing
         # Using BGR format for WebRTC compatibility
@@ -469,8 +471,18 @@ class CV60VideoTrack(VideoStreamTrack):
 
         return av_frame
 
-    def _generate_test_pattern(self):
+    def _generate_test_pattern(self, fallback_reason="Unknown reason"):
         """Generate a test pattern when camera is not available."""
+        # Log test mode fallback only once per instance
+        if not self._test_mode_logged:
+            logger.error("🔴 CV60 CAMERA FALLBACK TO TEST MODE")
+            logger.error(f"   📍 Camera IP: {self.connection_id}")
+            logger.error(f"   🔧 eBUS SDK Available: {eb is not None}")
+            logger.error(f"   🎯 Camera Initialized: {self.is_initialized}")
+            logger.error(f"   ❗ Fallback Reason: {fallback_reason}")
+            logger.error("   📊 This indicates camera hardware/network issues or extended runtime degradation")
+            self._test_mode_logged = True
+
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
 
         # Add gradient background

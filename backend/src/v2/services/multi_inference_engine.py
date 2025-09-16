@@ -235,10 +235,10 @@ class MultiInferenceEngine:
     def _get_agent_prompt(self, agent_name: str, inference_num: int, previous_context: Dict[str, Any] = None) -> str:
         """Generate appropriate prompt based on agent name and context"""
         prompts = {
-            "initial_classifier": "Analyze this garment and identify: type (sweater/t-shirt/shirt/pants/dress/etc), color, pattern (solid/striped/floral/etc), neckline style, sleeve length, and closure type (buttons/zipper/etc). Return null for unrecognizable attributes.",
+            "initial_classifier": "Analyze this garment and identify: type (e.g., T-shirt, Dress, Pants, Shoes, Shirt, Shorts, Jacket, Sweatshirt, Sweater, Hoodie), color, pattern, neckline style, sleeve length, and closure type. Neckline, closure type, and sleeve length are optional or could be null for Shoes. Return null for unrecognizable attributes.",
             "detail_extractor": "Look for brand name and size label on this garment. Return brand and size, or null if not visible.",
-            "damage_detector": "Check this garment for damage. Identify if damaged (yes/no), Damage-type (stain/tear/fade/etc), and provide reasoning. Return null if no damage found.",
-            "final_compiler": "Compile final classification based on all attributes"
+            "damage_detector": "Check this garment for damage. Identify if damaged (yes/no), Damage-type with location, and provide reasoning. Return null if no damage found.",
+            "final_compiler": "Compile final classification based on all attributes."
         }
 
         base_prompt = prompts.get(agent_name, "Analyze this clothing item")

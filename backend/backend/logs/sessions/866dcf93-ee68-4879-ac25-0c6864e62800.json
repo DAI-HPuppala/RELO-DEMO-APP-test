@@ -1,0 +1,17 @@
+{
+  "session_id": "866dcf93-ee68-4879-ac25-0c6864e62800",
+  "mode": "manual",
+  "started_at": "2025-09-15T18:00:21.870509",
+  "completed_at": null,
+  "status": "interrupted",
+  "final_classification": null,
+  "agent_results": [],
+  "total_frames_analyzed": 0,
+  "is_resumable": true,
+  "last_checkpoint": {
+    "agents_completed": [],
+    "frames_analyzed": 0,
+    "current_agent": null,
+    "timestamp": "2025-09-15T18:00:37.785888"
+  }
+}

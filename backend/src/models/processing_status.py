@@ -30,7 +30,6 @@ class ProcessingStatus(BaseModel):
     # Frame Processing
     current_frame_id: Optional[str] = None
     frames_in_queue: int = 0
-    processing_fps: float = 0.0  # Actual processing rate
     
     # System Resources
     gpu_usage_percent: float = 0.0
@@ -101,7 +100,6 @@ class ProcessingStatus(BaseModel):
             "current_agent": self.current_agent,
             "progress": self.overall_progress,
             "timer_remaining": self.agent_timer_remaining,
-            "fps": self.processing_fps,
             "gpu_usage": self.gpu_usage_percent,
             "connection_quality": "excellent"  # Will be updated from CameraFeed
         }
