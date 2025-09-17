@@ -59,8 +59,62 @@ class ProfessionalApplicationController {
         if (window.initVideoStream) {
             this.streamViewer.setStream(window.initVideoStream);
         }
-        
+
+        // Initialize resize observer for instructions container
+        this.setupInstructionsResizing();
+
         this.init();
+    }
+
+    /**
+     * Setup instructions container dynamic sizing
+     */
+    setupInstructionsResizing() {
+        const instructionsContainer = document.getElementById('instructionsContainer');
+        const resultsTableContainer = document.querySelector('.results-table-container-scrollable');
+
+        if (!instructionsContainer || !resultsTableContainer) {
+            console.warn('[Professional App] Instructions container or table container not found for resizing');
+            return;
+        }
+
+        // Function to sync container widths
+        const syncContainerWidth = () => {
+            try {
+                const tableContainerRect = resultsTableContainer.getBoundingClientRect();
+                const tableContainerWidth = tableContainerRect.width;
+
+                if (tableContainerWidth > 0) {
+                    instructionsContainer.style.maxWidth = `${tableContainerWidth}px`;
+                    instructionsContainer.style.width = `${tableContainerWidth}px`;
+                    console.log(`[Professional App] Instructions container width synced to: ${tableContainerWidth}px`);
+                }
+            } catch (error) {
+                console.warn('[Professional App] Error syncing instructions container width:', error);
+            }
+        };
+
+        // Initial sync
+        setTimeout(syncContainerWidth, 100);
+
+        // Setup ResizeObserver for dynamic updates
+        if (window.ResizeObserver) {
+            this.instructionsResizeObserver = new ResizeObserver((entries) => {
+                for (let entry of entries) {
+                    if (entry.target === resultsTableContainer) {
+                        syncContainerWidth();
+                    }
+                }
+            });
+
+            this.instructionsResizeObserver.observe(resultsTableContainer);
+        } else {
+            // Fallback for browsers without ResizeObserver
+            window.addEventListener('resize', syncContainerWidth);
+        }
+
+        // Also sync when table is updated
+        this.syncInstructionsWidth = syncContainerWidth;
     }
 
     /**
@@ -1255,11 +1309,16 @@ class ProfessionalApplicationController {
             <td data-value="Processing">Processing...</td>
         `;
         
-        tbody.appendChild(row);
-        
+        tbody.insertBefore(row, tbody.firstChild);
+
         // Track cycle start time and reset backend time
         this.cycleStartTime = Date.now();
         this.backendProcessingTime = null;
+
+        // Sync instructions container width after table update
+        if (this.syncInstructionsWidth) {
+            setTimeout(this.syncInstructionsWidth, 50);
+        }
     }
     
     /**
@@ -1402,8 +1461,13 @@ class ProfessionalApplicationController {
             <td>${formatValue(results.damage_type)}</td>
             <td>${timestampWithDuration}</td>
         `;
-        
-        tbody.appendChild(row);
+
+        tbody.insertBefore(row, tbody.firstChild);
+
+        // Sync instructions container width after table update
+        if (this.syncInstructionsWidth) {
+            setTimeout(this.syncInstructionsWidth, 50);
+        }
     }
     
     /**
@@ -1853,19 +1917,19 @@ class ProfessionalApplicationController {
         if (this.monitoringActive) {
             const agentDescriptions = {
                 'initial_classifier': {
-                    current: 'Initial Classification: Analyzing garment type, color, pattern, neckline, sleeve, and closure features.',
-                    next: 'Next: Extract brand information and size details from tags.'
+                    current: 'Lay the garment flat on a surface, ensuring the entire piece is clearly visible in the frame',
+                    next: 'Next: Make sure the brand and size tag is visible in the frame.'
                 },
                 'detail_extractor': {
-                    current: 'Detail Extraction: Reading brand labels and size tags for verification.',
-                    next: 'Next: Inspect garment for damage or defects.'
+                    current: 'Detail Extraction: Make sure the brand and size tag is visible in the frame.',
+                    next: 'Next: Make sure the damages are visible in the frame, if any.'
                 },
                 'damage_detector': {
-                    current: 'Damage Detection: Examining garment for stains, tears, or other damage.',
-                    next: 'Next: Compile final classification results.'
+                    current: 'Damage Detection: Make sure the damages are visible in the frame, if any',
+                    next: 'Next: Ready for next garment classification.'
                 },
                 'final_compiler': {
-                    current: 'Final Compilation: Processing complete classification results.',
+                    current: 'Final Compilation: Ready for next garment classification.',
                     next: 'Next: Ready for next garment classification.'
                 }
             };

@@ -245,7 +245,7 @@ class ResultsDisplayProfessional {
                     <td>${confidence || '-'}</td>
                 `;
                 
-                this.tableBody.appendChild(row);
+                this.tableBody.insertBefore(row, this.tableBody.firstChild);
             }
         });
         

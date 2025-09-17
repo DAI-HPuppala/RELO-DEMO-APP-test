@@ -17,12 +17,12 @@
     --secondary-blue: #2c5282;
     --accent-blue: #4a90e2;
     --light-blue: #e6f2ff;
-    
+
     --success-green: #28a745;
     --warning-amber: #ffc107;
     --danger-red: #dc3545;
     --info-cyan: #17a2b8;
-    
+
     --gray-900: #212529;
     --gray-800: #343a40;
     --gray-700: #495057;
@@ -1609,7 +1609,7 @@ body {
     text-align: center;
     font-weight: 600;
     font-size: 13px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid var(--gray-300);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1894,5 +1894,112 @@ body {
     .camera-panel,
     .updates-panel {
         height: 520px !important; /* Adjusted for medium screens */
+    }
+}
+
+/* Instructions Container */
+.instructions-section {
+    margin-top: var(--spacing-lg);
+    padding: 0 var(--spacing-lg);
+}
+
+.instructions-container {
+    background: var(--white);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    border: 1px solid var(--gray-300);
+    opacity: 0.85;
+    transition: opacity 0.3s ease;
+    max-width: 100%;
+    width: 100%;
+}
+
+.instructions-container:hover {
+    opacity: 1;
+}
+
+.instructions-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--gray-100);
+    border-bottom: 1px solid var(--gray-300);
+}
+
+.instructions-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin: 0;
+}
+
+.instructions-content {
+    padding: var(--spacing-lg);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.instruction-group {
+    background: var(--gray-50);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    border: 1px solid var(--gray-200);
+}
+
+.instruction-group h4 {
+    color: var(--gray-800);
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 var(--spacing-md) 0;
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--gray-300);
+}
+
+.instruction-item {
+    color: var(--gray-700);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: var(--spacing-sm);
+}
+
+.instruction-item:last-child {
+    margin-bottom: 0;
+}
+
+.instruction-item strong {
+    color: var(--gray-800);
+    font-weight: 600;
+}
+
+/* Responsive instructions */
+@media (max-width: 1200px) {
+    .instructions-content {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: var(--spacing-md);
+    }
+}
+
+@media (max-width: 768px) {
+    .instructions-content {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+    }
+
+    .instructions-container {
+        padding: var(--spacing-md);
+    }
+
+    .instruction-group {
+        padding: var(--spacing-sm);
+    }
+}
+
+/* Additional responsive utility classes */
+@media (max-width: 480px) {
+    .hide-on-mobile {
+        display: none !important;
     }
 }
