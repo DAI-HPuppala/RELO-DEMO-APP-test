@@ -81,4 +81,3 @@ Implementing stateful agent orchestration with multi-image inference and pause/r
 - [2025-09-10] WebRTC protocol specification completed
 - [2025-09-10] Multi-agent pipeline design finalized
 - "Always use current existing venv"
-- Only edit ./frontend/index-professional.html and ./frontend/professional-styles.css. Never anything else

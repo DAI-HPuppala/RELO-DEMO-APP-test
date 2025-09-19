@@ -247,7 +247,7 @@ class WebSocketHandlerV2:
             if orchestrator.session_state.status != "PAUSED":
                 final_compiler = FinalCompilerV2()
                 final_result = await final_compiler.process(results)
-                
+
                 await self._send_to_client(session_id, {
                     "type": "classification_complete",
                     "session_id": session_id,
@@ -336,7 +336,12 @@ class WebSocketHandlerV2:
         }
     
     async def _send_inference_update(self, session_id: str, agent_name: str, update: Dict[str, Any]):
-        """Send inference update to client"""
+        """Send inference update to client with validation"""
+        # Apply damage override for progressive updates
+        if agent_name == "damage_detector" and "attributes" in update:
+            update = update.copy()  # Don't modify original
+            update["attributes"] = self._validate_damage_attributes(update["attributes"])
+
         message = {
             "type": "inference_update",
             "session_id": session_id,
@@ -363,6 +368,41 @@ class WebSocketHandlerV2:
             "final_compiler": 1.0
         }
         return timers.get(agent_name, 4.0)
+
+    def _validate_damage_attributes(self, attributes: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate damage attributes for progressive updates"""
+        if not attributes:
+            return attributes
+
+        is_damaged = attributes.get("is_damaged")
+        damage_type = attributes.get("damage_type")
+
+        # Override logic: if is_damaged="yes" but damage_type indicates no damage
+        if self._is_positive_damage(is_damaged) and self._is_no_damage_type(damage_type):
+            logger.info(f"WebSocketV2: Progressive update override: is_damaged from '{is_damaged}' to 'No' "
+                       f"due to damage_type: '{damage_type}'")
+            attributes = attributes.copy()  # Don't modify original
+            attributes["is_damaged"] = "No"
+            # Also clear damage-related fields for consistency
+            attributes["damage_severity"] = None
+            attributes["damage_location"] = None
+            attributes["repair_feasibility"] = None
+
+        return attributes
+
+    def _is_positive_damage(self, value) -> bool:
+        """Check if value indicates damage"""
+        if not value:
+            return False
+        return str(value).lower() in ['yes', 'true', '1', 'damaged']
+
+    def _is_no_damage_type(self, value) -> bool:
+        """Check if damage_type indicates no damage"""
+        if not value:
+            return True
+        value_lower = str(value).lower()
+        return (value_lower in ['null', 'undefined', 'none', 'no', 'no damage', 'clean'] or
+                'no' in value_lower or 'none' in value_lower)
     
     async def handle_recover_session(self, message: Dict[str, Any], websocket) -> Dict[str, Any]:
         """Handle session recovery from checkpoint"""

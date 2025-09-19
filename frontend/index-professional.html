@@ -20,7 +20,7 @@
             </div>
             
             <div class="init-steps">
-                <div class="init-step" id="step-backend">
+                <div class="init-step" id="step-communication">
                     <div class="step-icon">
                         <svg class="spinner" viewBox="0 0 50 50">
                             <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
@@ -31,7 +31,7 @@
                         </svg>
                     </div>
                     <div class="step-text">
-                        <div class="step-title">Backend Server</div>
+                        <div class="step-title">Initializing Communication</div>
                         <div class="step-status">Connecting...</div>
                     </div>
                 </div>
@@ -47,12 +47,12 @@
                         </svg>
                     </div>
                     <div class="step-text">
-                        <div class="step-title">RealSense Camera</div>
+                        <div class="step-title">Zebra CV60 Initialization</div>
                         <div class="step-status">Waiting...</div>
                     </div>
                 </div>
 
-                <div class="init-step" id="step-websocket">
+                <div class="init-step" id="step-streaming">
                     <div class="step-icon">
                         <svg class="spinner" viewBox="0 0 50 50">
                             <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
@@ -63,12 +63,12 @@
                         </svg>
                     </div>
                     <div class="step-text">
-                        <div class="step-title">WebSocket Connection</div>
+                        <div class="step-title">Setting up Video Streaming</div>
                         <div class="step-status">Waiting...</div>
                     </div>
                 </div>
 
-                <div class="init-step" id="step-webrtc">
+                <div class="init-step" id="step-system">
                     <div class="step-icon">
                         <svg class="spinner" viewBox="0 0 50 50">
                             <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
@@ -79,39 +79,7 @@
                         </svg>
                     </div>
                     <div class="step-text">
-                        <div class="step-title">WebRTC Stream</div>
-                        <div class="step-status">Waiting...</div>
-                    </div>
-                </div>
-
-                <div class="init-step" id="step-gpu">
-                    <div class="step-icon">
-                        <svg class="spinner" viewBox="0 0 50 50">
-                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
-                        </svg>
-                        <svg class="checkmark" style="display:none" viewBox="0 0 52 52">
-                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
-                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
-                        </svg>
-                    </div>
-                    <div class="step-text">
-                        <div class="step-title">GPU Initialization</div>
-                        <div class="step-status">Waiting...</div>
-                    </div>
-                </div>
-
-                <div class="init-step" id="step-vlm">
-                    <div class="step-icon">
-                        <svg class="spinner" viewBox="0 0 50 50">
-                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
-                        </svg>
-                        <svg class="checkmark" style="display:none" viewBox="0 0 52 52">
-                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
-                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
-                        </svg>
-                    </div>
-                    <div class="step-text">
-                        <div class="step-title">VLM Engine</div>
+                        <div class="step-title">Warming up the System</div>
                         <div class="step-status">Waiting...</div>
                     </div>
                 </div>
@@ -147,10 +115,7 @@
                     <span class="status-dot"></span>
                     <span class="status-text">Disconnected</span>
                 </div>
-                <div class="session-info">
-                    <span class="session-label">Session:</span>
-                    <span class="session-id" id="sessionId">-</span>
-                </div>
+
             </div>
         </div>
     </header>
@@ -308,11 +273,7 @@
                             <span class="attribute-value" id="prog-closure">-</span>
                         </div>
                         <div class="attribute-row">
-                            <span class="attribute-label">Has Damage:</span>
-                            <span class="attribute-value" id="prog-damage">-</span>
-                        </div>
-                        <div class="attribute-row">
-                            <span class="attribute-label">Damage Type:</span>
+                            <span class="attribute-label">Defect:</span>
                             <span class="attribute-value" id="prog-damage-type">-</span>
                         </div>
                     </div>
@@ -348,14 +309,13 @@
                                     <th style="width: 9%">Neckline</th>
                                     <th style="width: 9%">Sleeve</th>
                                     <th style="width: 9%">Closure</th>
-                                    <th style="width: 8%">Damage</th>
-                                    <th style="width: 10%">Damage Type</th>
+                                    <th style="width: 10%">Defect</th>
                                     <th style="width: 7%">Time</th>
                                 </tr>
                             </thead>
                             <tbody id="resultsTableBody">
                                 <tr class="empty-row">
-                                    <td colspan="12">No classification results available</td>
+                                    <td colspan="10">No classification results available</td>
                                 </tr>
                             </tbody>
                         </table>

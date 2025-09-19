@@ -34,7 +34,10 @@ class DamageDetectorV2(StatefulBaseAgent):
         if "is_damaged" not in attributes:
             logger.warning("DamageDetectorV2: Missing is_damaged determination")
             return False
-        
+
+        # Apply damage consistency override before validation
+        self._apply_damage_override(attributes)
+
         # If damaged, should have type and severity
         if attributes.get("is_damaged"):
             if not attributes.get("damage_type"):
@@ -42,7 +45,7 @@ class DamageDetectorV2(StatefulBaseAgent):
                 return False
             if not attributes.get("damage_severity"):
                 logger.warning("DamageDetectorV2: Damage detected but no severity specified")
-        
+
         return True
     
     async def process(self) -> Dict[str, Any]:
@@ -65,3 +68,37 @@ class DamageDetectorV2(StatefulBaseAgent):
                 logger.info("DamageDetectorV2: No damage detected")
         
         return result
+
+    def _apply_damage_override(self, attributes: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply damage detection override logic"""
+        if not attributes:
+            return attributes
+
+        is_damaged = attributes.get("is_damaged")
+        damage_type = attributes.get("damage_type")
+
+        # Override logic: if is_damaged="yes" but damage_type indicates no damage
+        if self._is_positive_damage(is_damaged) and self._is_no_damage_type(damage_type):
+            logger.info(f"DamageDetectorV2: Overriding is_damaged from '{is_damaged}' to 'No' "
+                       f"due to damage_type: '{damage_type}'")
+            attributes["is_damaged"] = "No"
+            # Also clear damage-related fields for consistency
+            attributes["damage_severity"] = None
+            attributes["damage_location"] = None
+            attributes["repair_feasibility"] = None
+
+        return attributes
+
+    def _is_positive_damage(self, value) -> bool:
+        """Check if value indicates damage"""
+        if not value:
+            return False
+        return str(value).lower() in ['yes', 'true', '1', 'damaged']
+
+    def _is_no_damage_type(self, value) -> bool:
+        """Check if damage_type indicates no damage"""
+        if not value:
+            return True
+        value_lower = str(value).lower()
+        return (value_lower in ['null', 'undefined', 'none', 'no', 'no damage', 'clean'] or
+                'no' in value_lower or 'none' in value_lower)

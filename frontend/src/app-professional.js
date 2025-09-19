@@ -675,8 +675,14 @@ class ProfessionalApplicationController {
      */
     handleInferenceUpdate(data) {
         console.log('[Professional App] Inference update:', data);
+
+        // Apply client-side validation for damage attributes
+        if (data.agent === 'damage_detector' && data.attributes) {
+            data.attributes = this.validateDamageAttributes(data.attributes);
+        }
+
         console.log('[PROGRESSIVE ATTRIBUTES]:', data.attributes);
-        
+
         // Update progressive attributes if present
         if (data.attributes) {
             this.updateProgressiveAttributes(data.attributes);
@@ -700,6 +706,47 @@ class ProfessionalApplicationController {
         }
         
         // Track processing FPS
+    }
+
+    /**
+     * Validate damage attributes for consistency
+     */
+    validateDamageAttributes(attributes) {
+        if (!attributes) {
+            return attributes;
+        }
+
+        // Client-side consistency check as backup
+        if (this.isPositiveDamage(attributes.is_damaged) &&
+            this.isNoDamageType(attributes.damage_type)) {
+            console.warn('[Professional App] Client-side damage override applied');
+            return {
+                ...attributes,
+                is_damaged: 'No',
+                damage_severity: null,
+                damage_location: null,
+                repair_feasibility: null
+            };
+        }
+        return attributes;
+    }
+
+    /**
+     * Check if value indicates damage
+     */
+    isPositiveDamage(value) {
+        if (!value) return false;
+        return ['yes', 'true', '1', 'damaged'].includes(String(value).toLowerCase());
+    }
+
+    /**
+     * Check if damage_type indicates no damage
+     */
+    isNoDamageType(value) {
+        if (!value) return true;
+        const valueLower = String(value).toLowerCase();
+        return ['null', 'undefined', 'none', 'no', 'no damage', 'clean'].includes(valueLower) ||
+               valueLower.includes('no') || valueLower.includes('none');
     }
 
     /**
@@ -792,7 +839,13 @@ class ProfessionalApplicationController {
      */
     handleFinalResults(data) {
         console.log('[Professional App] Final classification results:', data);
-        
+
+        // Apply final validation before display
+        if (data.results && data.agent_results && data.agent_results.damage_detector) {
+            data.agent_results.damage_detector.attributes =
+                this.validateDamageAttributes(data.agent_results.damage_detector.attributes);
+        }
+
         // Clear completedAgentsInCycle FIRST before resetting nodes
         // This ensures setPipelineNodeState will actually reset them to idle
         this.completedAgentsInCycle.clear();
@@ -866,13 +919,18 @@ class ProfessionalApplicationController {
         }
         
 
-        // In auto mode, prepare a new row for the next cycle
+        // In auto mode, prepare a new row for the next cycle after a 2-second delay
         if (this.mode === 'auto' && this.monitoringActive) {
-            console.log('[Professional App] Auto mode - creating new row for next cycle');
-            // Reset progressive attributes for next cycle
-            this.resetProgressiveAttributes();
-            // Create new row for next cycle
-            this.initializeResultsTable();
+            console.log('[Professional App] Auto mode - waiting 2 seconds before next cycle');
+            setTimeout(() => {
+                if (this.mode === 'auto' && this.monitoringActive) { // Check again after delay
+                    console.log('[Professional App] Auto mode - creating new row for next cycle');
+                    // Reset progressive attributes for next cycle
+                    this.resetProgressiveAttributes();
+                    // Create new row for next cycle
+                    this.initializeResultsTable();
+                }
+            }, 3000); // 2-second delay
         }
     }
 

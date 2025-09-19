@@ -37,10 +37,14 @@ class FrameAggregator:
         
         # Calculate overall confidence
         result.overall_confidence = self._calculate_confidence(inferences)
-        
+
+        # Apply damage consistency validation for damage_detector
+        if agent_name == "damage_detector":
+            result.attributes = self._validate_damage_consistency(result.attributes)
+
         logger.info(f"Aggregated {len(inferences)} inferences for {agent_name} "
                    f"using {result.aggregation_method}")
-        
+
         return result
     
     def _aggregate_single(self, agent_name: str, 
@@ -166,3 +170,38 @@ class FrameAggregator:
             total_weight += weight
         
         return weighted_sum / total_weight if total_weight > 0 else 0.0
+
+    def _validate_damage_consistency(self, attributes: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate damage detection consistency and apply overrides"""
+        if not attributes:
+            return attributes
+
+        is_damaged = attributes.get("is_damaged")
+        damage_type = attributes.get("damage_type")
+
+        # Override logic: if is_damaged="yes" but damage_type indicates no damage
+        if self._is_positive_damage(is_damaged) and self._is_no_damage_type(damage_type):
+            logger.info(f"FrameAggregator: Overriding is_damaged from '{is_damaged}' to 'No' "
+                       f"due to damage_type: '{damage_type}'")
+            attributes = attributes.copy()  # Don't modify original
+            attributes["is_damaged"] = "No"
+            # Also clear damage-related fields for consistency
+            attributes["damage_severity"] = None
+            attributes["damage_location"] = None
+            attributes["repair_feasibility"] = None
+
+        return attributes
+
+    def _is_positive_damage(self, value) -> bool:
+        """Check if value indicates damage"""
+        if not value:
+            return False
+        return str(value).lower() in ['yes', 'true', '1', 'damaged']
+
+    def _is_no_damage_type(self, value) -> bool:
+        """Check if damage_type indicates no damage"""
+        if not value:
+            return True
+        value_lower = str(value).lower()
+        return (value_lower in ['null', 'undefined', 'none', 'no', 'no damage', 'clean'] or
+                'no' in value_lower or 'none' in value_lower)

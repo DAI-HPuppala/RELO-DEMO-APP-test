@@ -66,18 +66,26 @@ class FinalCompilerV2:
             raw_damage = agent_results["damage_detector"].get("attributes", {})
             # Normalize keys for damage detector
             damage = KeyNormalizer.normalize_agent_attributes("damage_detector", raw_damage)
-            
+
             final.is_damaged = damage.get("is_damaged", False)
             final.damage_type = damage.get("damage_type")
             final.damage_severity = damage.get("damage_severity")
-            
+
+            # Apply final damage consistency check
+            if self._is_positive_damage(final.is_damaged) and self._is_no_damage_type(final.damage_type):
+                logger.info(f"FinalCompilerV2: Final override: is_damaged from '{final.is_damaged}' to False "
+                           f"due to damage_type: '{final.damage_type}'")
+                final.is_damaged = False
+                final.damage_type = None
+                final.damage_severity = None
+
             # Add reasoning
             if damage:
                 damage_status = "damaged" if final.is_damaged else "undamaged"
                 final.add_reasoning(
                     "damage_detector",
                     agent_results["damage_detector"].get("total_inferences", 1),
-                    f"Item is {damage_status}" + 
+                    f"Item is {damage_status}" +
                     (f" ({final.damage_type}, {final.damage_severity})" if final.is_damaged else "")
                 )
         
@@ -115,3 +123,17 @@ class FinalCompilerV2:
         """Process and return compiled results"""
         final = await self.compile_results(agent_results)
         return final.to_dict()
+
+    def _is_positive_damage(self, value) -> bool:
+        """Check if value indicates damage"""
+        if not value:
+            return False
+        return str(value).lower() in ['yes', 'true', '1', 'damaged']
+
+    def _is_no_damage_type(self, value) -> bool:
+        """Check if damage_type indicates no damage"""
+        if not value:
+            return True
+        value_lower = str(value).lower()
+        return (value_lower in ['null', 'undefined', 'none', 'no', 'no damage', 'clean'] or
+                'no' in value_lower or 'none' in value_lower)

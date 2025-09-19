@@ -1,4 +1,78 @@
+# Test files
+**/test_*.py
+**/tests/
+*.test.py
+*.test.js
+__pycache__/
+*.pyc
+*.pyo
 
-# Debug frame captures
-backend/captured_frames/
-captured_frames/
+# Markdown and documentation
+*.md
+**/*.md
+
+# Spec files
+**/specs/
+**/spec/
+*.spec.js
+*.spec.py
+
+# Capture frames and media
+**/captured_frames/
+**/capture_frames/
+**/frames/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.webp
+
+# Logs
+*.log
+**/logs/
+**/backend/logs/
+ngrok.log
+backend.log
+frontend.log
+
+# Session data
+**/sessions/
+*.json
+
+# Python
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Cache
+.cache/
+.pytest_cache/

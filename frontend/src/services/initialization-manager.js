@@ -4,7 +4,15 @@
  */
 class InitializationManager {
     constructor() {
-        this.steps = [
+        // Frontend display steps (4 visible steps)
+        this.frontendSteps = [
+            { id: 'communication', name: 'Initializing Communication', status: 'pending' },
+            { id: 'camera', name: 'Zebra CV60 Initialization', status: 'pending' },
+            { id: 'streaming', name: 'Setting up Video Streaming', status: 'pending' },
+            { id: 'system', name: 'Warming up the System', status: 'pending' }
+        ];
+        // Backend execution steps (6 actual steps - unchanged)
+        this.backendSteps = [
             { id: 'backend', name: 'Backend Server', status: 'pending' },
             { id: 'camera', name: 'RealSense Camera', status: 'pending' },
             { id: 'websocket', name: 'WebSocket Connection', status: 'pending' },
@@ -33,37 +41,43 @@ class InitializationManager {
     async _runInitialization() {
         try {
             console.log('Starting initialization sequence...');
-            
-            // Step 1: Check backend server
+
+            // Frontend Step 1: "Initializing Communication" (0-25%)
+            this.updateStepStatus('communication', 'active', 'Connecting to server...');
             await this.initializeBackend();
-            
-            // Step 2: Initialize camera
-            await this.initializeCamera();
-            
-            // Step 3: Connect WebSocket
             await this.initializeWebSocket();
-            
-            // Step 4: Setup WebRTC
+            this.updateStepStatus('communication', 'completed', 'Connected');
+            this.updateProgress(25);
+
+            // Frontend Step 2: "Zebra CV60 Initialization" (25-50%)
+            this.updateStepStatus('camera', 'active', 'Initializing camera...');
+            await this.initializeCamera();
+            this.updateStepStatus('camera', 'completed', 'Camera ready');
+            this.updateProgress(50);
+
+            // Frontend Step 3: "Setting up Video Streaming" (50-75%)
+            this.updateStepStatus('streaming', 'active', 'Setting up video stream...');
             await this.initializeWebRTC();
-            
-            // Step 5: GPU Initialization
+            this.updateStepStatus('streaming', 'completed', 'Video stream ready');
+            this.updateProgress(75);
+
+            // Frontend Step 4: "Warming up the System" (75-100%)
+            this.updateStepStatus('system', 'active', 'Warming up system...');
             await this.initializeGPU();
-            
-            // Step 6: VLM Engine Warmup
             await this.initializeVLM();
-            
-            // All steps completed
+            this.updateStepStatus('system', 'completed', 'System ready');
             this.updateProgress(100);
+
             console.log('Initialization completed successfully!');
-            
+
             // Wait a moment for the animation
             await this.delay(500);
-            
+
             // Transition to main app
             this.transitionToMainApp();
-            
+
             return { success: true };
-            
+
         } catch (error) {
             console.error('Initialization failed:', error);
             this.showError(error.message);
@@ -75,27 +89,21 @@ class InitializationManager {
      * Initialize backend server connection
      */
     async initializeBackend() {
-        this.updateStepStatus('backend', 'active', 'Connecting to server...');
-        
         try {
             // Check if backend is running
             const response = await fetch('http://localhost:8000/api/health', {
                 method: 'GET',
                 mode: 'cors'
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
                 console.log('Backend health check:', data);
-                
                 await this.delay(500); // Show progress
-                this.updateStepStatus('backend', 'completed', 'Connected');
-                this.updateProgress(17);  // 1/6 steps
             } else {
                 throw new Error('Backend server is not responding');
             }
         } catch (error) {
-            this.updateStepStatus('backend', 'error', 'Connection failed');
             throw new Error(`Backend initialization failed: ${error.message}`);
         }
     }
@@ -104,44 +112,32 @@ class InitializationManager {
      * Initialize camera
      */
     async initializeCamera() {
-        this.updateStepStatus('camera', 'active', 'Initializing camera...');
-        
         try {
             // Check camera status via API
             const response = await fetch('http://localhost:8000/api/camera/status', {
                 method: 'GET',
                 mode: 'cors'
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
                 console.log('Camera status:', data);
-                
+
                 if (data.available) {
                     await this.delay(800); // Simulate camera initialization
-                    this.updateStepStatus('camera', 'completed', `${data.device_name || 'RealSense'} ready`);
-                    this.updateProgress(34);  // 2/6 steps
-                    
                     // Update camera status indicator
                     this.updateStatusIndicators(true, false, false);
                 } else {
                     // Camera not available but not critical
-                    this.updateStepStatus('camera', 'completed', 'Using test pattern');
-                    this.updateProgress(34);  // 2/6 steps
-                    
                     // Camera not actually active, but mark step as complete
                     this.updateStatusIndicators(false, false, false);
                 }
             } else {
                 // If endpoint doesn't exist, assume camera will be initialized on demand
                 await this.delay(500);
-                this.updateStepStatus('camera', 'completed', 'Ready');
-                this.updateProgress(34);  // 2/6 steps
             }
         } catch (error) {
             console.warn('Camera check failed, will initialize on demand:', error);
-            this.updateStepStatus('camera', 'completed', 'Will initialize on demand');
-            this.updateProgress(34);  // 2/6 steps
         }
     }
 
@@ -149,18 +145,16 @@ class InitializationManager {
      * Initialize WebSocket connection
      */
     async initializeWebSocket() {
-        this.updateStepStatus('websocket', 'active', 'Establishing connection...');
-        
         try {
             // Create WebRTC client (which includes WebSocket)
             this.webrtcClient = new WebRTCClient();
-            
+
             // Set up stream callback to handle video early
             this.webrtcClient.on('stream', (stream) => {
                 console.log('Video stream received during initialization');
                 // Store stream for the main app to use
                 window.initVideoStream = stream;
-                
+
                 // Show video in preview during initialization
                 const videoElement = document.getElementById('videoPreview');
                 if (videoElement) {
@@ -170,23 +164,19 @@ class InitializationManager {
                         overlay.style.display = 'none';
                     }
                 }
-                
+
                 // Update status indicators immediately when stream is received
                 this.updateStatusIndicators(true, true, true);
             });
-            
+
             // Connect WebSocket
             await this.webrtcClient.connect();
-            
             await this.delay(300);
-            this.updateStepStatus('websocket', 'completed', 'Connected');
-            this.updateProgress(50);  // 3/6 steps
-            
+
             // Update connection status indicator
             this.updateStatusIndicators(false, true, false);
-            
+
         } catch (error) {
-            this.updateStepStatus('websocket', 'error', 'Connection failed');
             throw new Error(`WebSocket initialization failed: ${error.message}`);
         }
     }
@@ -195,24 +185,18 @@ class InitializationManager {
      * Initialize WebRTC
      */
     async initializeWebRTC() {
-        this.updateStepStatus('webrtc', 'active', 'Setting up video stream...');
-        
         try {
             // Start a session to initialize WebRTC
             await this.webrtcClient.startSession('automatic', 'realsense');
-            
+
             // Wait for WebRTC to be ready
             await this.waitForWebRTC();
-            
             await this.delay(500);
-            this.updateStepStatus('webrtc', 'completed', 'Stream ready');
-            this.updateProgress(67);  // 4/6 steps
-            
+
             // Store the client globally for the app to use
             window.webrtcClient = this.webrtcClient;
-            
+
         } catch (error) {
-            this.updateStepStatus('webrtc', 'error', 'Stream setup failed');
             throw new Error(`WebRTC initialization failed: ${error.message}`);
         }
     }
@@ -221,37 +205,27 @@ class InitializationManager {
      * Initialize GPU
      */
     async initializeGPU() {
-        this.updateStepStatus('gpu', 'active', 'Detecting GPU...');
-        
         try {
             // Check GPU status from backend
             const response = await fetch('http://localhost:8000/api/vlm/status', {
                 method: 'GET',
                 mode: 'cors'
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
-                let statusMessage = 'GPU Ready';
-                
                 if (data.gpu_info && data.gpu_info.name) {
-                    statusMessage = `${data.gpu_info.name} Ready`;
                     console.log(`GPU: ${data.gpu_info.name}`);
                     console.log(`Memory: ${data.gpu_info.memory_free}MB free / ${data.gpu_info.memory_total}MB total`);
                 }
-                
                 await this.delay(500);
-                this.updateStepStatus('gpu', 'completed', statusMessage);
-                this.updateProgress(84);  // 5/6 steps
             } else {
                 // GPU not critical, continue
-                this.updateStepStatus('gpu', 'completed', 'CPU Mode');
-                this.updateProgress(84);  // 5/6 steps
+                await this.delay(500);
             }
         } catch (error) {
             console.warn('GPU check failed:', error);
-            this.updateStepStatus('gpu', 'completed', 'CPU Fallback');
-            this.updateProgress(84);  // 5/6 steps
+            await this.delay(500);
         }
     }
 
@@ -259,7 +233,6 @@ class InitializationManager {
      * Initialize VLM with GPU warmup
      */
     async initializeVLM() {
-        this.updateStepStatus('vlm', 'active', 'Checking VLM readiness...');
         
         try {
             // Quick check if VLM is already warmed up
@@ -275,9 +248,7 @@ class InitializationManager {
                 if (quickData.ready) {
                     // VLM already ready
                     await this.delay(300);
-                    this.updateStepStatus('vlm', 'completed', '✅ Already optimized (no warmup needed)');
-                    this.updateProgress(100);  // 6/6 steps - complete
-                    
+
                     // Show GPU info if available
                     if (quickData.status?.gpu_info) {
                         const gpu = quickData.status.gpu_info;
@@ -291,7 +262,6 @@ class InitializationManager {
             this.showVLMDetails();
             
             // Trigger VLM warmup
-            this.updateStepStatus('vlm', 'active', 'Initializing VLM Engine...');
             
             const warmupResponse = await fetch('http://localhost:8000/api/vlm/warmup', {
                 method: 'POST',
@@ -308,7 +278,6 @@ class InitializationManager {
                 if (warmupData.success) {
                     // Show detailed progress through warmup steps
                     const progressUpdates = warmupData.progress_updates || [];
-                    let lastProgress = 80;
                     
                     for (const update of progressUpdates) {
                         // Parse the message to extract step type
@@ -336,19 +305,13 @@ class InitializationManager {
                             icon = '✨';
                         }
                         
-                        // Update main status
-                        this.updateStepStatus('vlm', 'active', message);
+                        // Log progress message
+                        console.log(`VLM: ${message}`);
                         
                         // Add sub-step to details
                         this.addVLMSubStep(icon, message, stepClass);
                         
-                        // Update overall progress based on VLM progress
-                        const vlmProgress = update.progress || 0;
-                        const overallProgress = 84 + Math.floor(vlmProgress * 0.16); // 84-100% range
-                        if (overallProgress > lastProgress) {
-                            this.updateProgress(overallProgress);
-                            lastProgress = overallProgress;
-                        }
+                        // Track progress internally (no UI updates)
                         
                         await this.delay(300); // Slightly longer delay for visibility
                     }
@@ -368,40 +331,32 @@ class InitializationManager {
                     }
                     
                     await this.delay(500);
-                    this.updateStepStatus('vlm', 'completed', statusText);
-                    this.updateProgress(100);  // 6/6 steps - complete
-                    
+
                     // Show final GPU stats
                     if (gpuInfo.name) {
-                        console.log(`🎮 GPU: ${gpuInfo.name}`);
-                        console.log(`💾 Memory: ${gpuInfo.memory_free}MB free / ${gpuInfo.memory_total}MB total`);
+                        console.log(`GPU: ${gpuInfo.name}`);
+                        console.log(`Memory: ${gpuInfo.memory_free}MB free / ${gpuInfo.memory_total}MB total`);
                     }
-                    
-                    console.log('🚀 VLM initialization completed with single warmup!');
-                    
+
+                    console.log('VLM initialization completed with single warmup!');
+
                     // Hide VLM details after success
                     setTimeout(() => this.hideVLMDetails(), 2000);
                     
                 } else {
                     // Warmup failed but not critical - continue
                     console.warn('VLM warmup failed:', warmupData);
-                    this.updateStepStatus('vlm', 'completed', 'Cold inference mode');
-                    this.updateProgress(100);  // 6/6 steps - complete
                     this.hideVLMDetails();
                 }
             } else {
                 // API call failed but not critical
                 console.warn('VLM warmup API failed');
-                this.updateStepStatus('vlm', 'completed', 'Cold inference mode');
-                this.updateProgress(100);  // 6/6 steps - complete
                 this.hideVLMDetails();
             }
             
         } catch (error) {
             // VLM warmup failed but not critical for overall initialization
             console.warn('VLM initialization failed, will use cold inference:', error);
-            this.updateStepStatus('vlm', 'completed', 'Using cold inference');
-            this.updateProgress(100);  // 6/6 steps - complete
             this.hideVLMDetails();
         }
     }
@@ -770,13 +725,13 @@ window.retryInitialization = async function() {
     // Reset all steps
     const manager = window.initManager;
     if (manager) {
-        manager.steps.forEach(step => {
+        manager.frontendSteps.forEach(step => {
             manager.updateStepStatus(step.id, 'pending', 'Waiting...');
         });
         manager.updateProgress(0);
         manager.currentStep = 0;
         manager.initPromise = null;
-        
+
         // Restart initialization
         await manager.initialize();
     }
