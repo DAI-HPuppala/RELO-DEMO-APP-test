@@ -8,6 +8,7 @@
 .init-container .brand-text .init-title {
     background: linear-gradient(135deg, #4a90e2 0%, #1e3a5f 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -65,13 +66,17 @@
     box-sizing: border-box;
 }
 
+html, body {
+    height: 100vh;
+    overflow: hidden;
+}
+
 body {
     font-family: var(--font-primary);
     font-size: 14px;
     line-height: 1.6;
     color: var(--gray-800);
     background-color: var(--gray-100);
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
@@ -87,8 +92,6 @@ body {
 }
 
 .header-container {
-    max-width: 1920px;
-    margin: 0 auto;
     padding: var(--spacing-md) var(--spacing-lg);
     display: flex;
     justify-content: space-between;
@@ -179,10 +182,12 @@ body {
 /* Main Application Container */
 .app-container {
     flex: 1;
-    max-width: 1200px;
     width: 100%;
-    margin: 0 auto;
+    height: calc(100vh - 80px); /* Adjust based on header height */
     padding: var(--spacing-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Shared Control Styles */
@@ -489,9 +494,12 @@ body {
 }
 
 .panel-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--gray-800);
+    font-size: 13px;
+    font-weight: 700;
+    color: #24292e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
 }
 
 
@@ -535,13 +543,12 @@ body {
 }
 
 /* Video Column */
+/* Video Container - Full Resolution */
 .video-container {
     position: relative;
     background: #000;
-    height: 600px; /* Increased from 480px to accommodate CV60's taller 1760x1696 aspect ratio */
-    max-width: 580px; /* Maintain aspect ratio: 600px * (1696/1760) = 578px */
+    height: calc(100% - 120px); /* Subtract header and controls height */
     width: 100%;
-    margin: 0 auto; /* Center the container */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -550,9 +557,11 @@ body {
 }
 
 #videoPreview {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain; /* Maintain aspect ratio */
     background: #000;
 }
 
@@ -997,49 +1006,296 @@ body {
 /* New Layout Styles for Updated Professional UI */
 
 /* Top Panels - Camera and Updates Side by Side */
+/* Main Layout Container */
 .top-panels {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 40% 60%;
     gap: var(--spacing-lg);
-    margin-bottom: var(--spacing-lg);
-    align-items: stretch;
+    height: 100%;
     max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+    width: 100%;
 }
 
-.camera-panel,
-.updates-panel {
-    height: 720px; /* Increased from 500px to accommodate 600px video + stats + header */
-    display: flex;
-    flex-direction: column;
-}
-
-.camera-panel .panel,
-.updates-panel .panel {
+/* Left Panel - Camera (40% width) */
+.camera-panel {
     height: 100%;
     display: flex;
     flex-direction: column;
+    border: 2px solid var(--gray-200);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow: hidden;
 }
 
-.camera-panel .video-container {
-    /* Video container styles already defined above */
-}
-
-.updates-panel .progressive-attributes-expanded {
-    height: calc(100% - 60px);
-    overflow-y: hidden;
+.camera-panel .panel {
+    height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    border: none;
+    box-shadow: none;
 }
+
+/* Right Panel Container (60% width) */
+.right-panel-container {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: var(--spacing-lg);
+    height: 100%;
+    overflow: hidden;
+    padding: var(--spacing-md);
+    background: #f8f9fa;
+    border: 2px solid var(--gray-200);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    box-sizing: border-box;
+    max-width: calc(100% - var(--spacing-md));
+    margin-right: var(--spacing-md);
+}
+
+/* Top Right Section (40% height) */
+.top-right-section {
+    display: grid;
+    grid-template-columns: 54% 46%;
+    gap: var(--spacing-md);
+    overflow: hidden;
+    padding: 0;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    height: min-content;
+    flex-shrink: 0;
+}
+
+/* Bottom Right Section - Table (60% height) */
+.bottom-right-section {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 2px solid var(--gray-300);
+    box-sizing: border-box;
+    max-width: 100%;
+    flex: 1 1 auto;
+}
+
+/* Node and Instructions Panel */
+.node-instructions-panel {
+    height: 100%;
+    overflow: hidden;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 2px solid var(--gray-300);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    max-width: calc(100% - 8px);
+    margin-right: 8px;
+    padding: 2px;
+    position: relative;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+.node-instructions-panel .panel {
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-md);
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+/* Progressive Updates Panel */
+.progressive-updates-panel {
+    height: 100%;
+    overflow: hidden;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 2px solid var(--gray-300);
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.progressive-updates-panel .panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 12px;
+}
+
+/* Progressive Attributes Grid - Compact Layout */
+.progressive-attributes-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    padding: 8px 12px;
+    overflow: hidden;
+    flex: 0 0 auto;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin: 6px 0;
+    align-content: start;
+    height: fit-content;
+}
+
+.attribute-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 4px;
+    border: 1px solid #e1e4e8;
+    font-size: 14px;
+    min-height: 32px;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.attribute-item:hover {
+    background: #fafbfc;
+    border-color: var(--primary-light);
+}
+
+/* Full width attribute item for Defect */
+.attribute-item-full {
+    grid-column: 1 / -1;
+    background: white;
+    border: 1px solid #e1e4e8;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+.attribute-item .attribute-label {
+    font-weight: 700;
+    color: #586069;
+    margin-right: 8px;
+    min-width: fit-content;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    flex-shrink: 0;
+}
+
+.attribute-item .attribute-value {
+    color: #24292e;
+    font-weight: 600;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    flex: 1;
+    text-align: right;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+/* Progressive Instructions (Node Descriptions) */
+.node-descriptions {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: transparent;
+    margin-top: var(--spacing-md);
+    width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    position: relative;
+}
+
+/* Description header with mode and action */
+.description-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(30, 58, 95, 0.1);
+}
+
+.mode-indicator {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--font-primary);
+    color: var(--primary-blue);
+    background: rgba(30, 58, 95, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.action-hint {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-primary);
+    color: var(--gray-600);
+    text-transform: capitalize;
+}
+
+.description-current {
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--font-primary);
+    color: var(--gray-800);
+    margin-bottom: 4px;
+    line-height: 1.4;
+    display: block;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+}
+
+.description-next {
+    font-size: 13px;
+    color: var(--gray-500);
+    font-style: normal;
+    font-family: var(--font-primary);
+    line-height: 1.3;
+    display: block;
+    opacity: 0.8;
+    font-weight: 400;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+}
+
 
 
 .section-subtitle {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--gray-700);
-    margin-bottom: var(--spacing-md);
+    font-size: 12px;
+    font-weight: 700;
+    color: #24292e;
+    margin-bottom: var(--spacing-sm);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 1px solid #e1e4e8;
 }
 
 
@@ -1160,33 +1416,63 @@ body {
     display: none;
 }
 
+/* Pipeline Wrapper Container */
+.pipeline-wrapper {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--border-radius);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    margin-bottom: var(--spacing-xs);
+    padding: 4px 8px;
+    transition: all 0.3s ease;
+}
+
+.pipeline-wrapper:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
 /* Horizontal Pipeline in Analysis Panel */
 .horizontal-pipeline {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm);
-    margin: var(--spacing-xs) var(--spacing-md);
-    background: var(--gray-50);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--gray-200);
+    gap: var(--spacing-xs);
+    padding: 4px var(--spacing-sm);
+    margin: 0;
+    background: transparent;
+    border-radius: 0;
+    border: none;
+    width: 100%;
+    flex-shrink: 0;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Green indicator when nodes are clickable in manual mode */
+.pipeline-wrapper:has(.pipeline-node.clicking-enabled) {
+    border-color: rgba(40, 167, 69, 0.5);
+    box-shadow: 0 1px 3px rgba(40, 167, 69, 0.15);
 }
 
 .horizontal-pipeline .pipeline-connector {
-    width: 20px;
+    width: 24px;
     height: 2px;
-    background: var(--gray-300);
+    background: var(--gray-400);
     position: relative;
 }
 
 .horizontal-pipeline .pipeline-connector::after {
-    content: '→';
+    content: '';
     position: absolute;
-    top: -10px;
-    right: -5px;
-    color: var(--gray-400);
-    font-size: 14px;
+    top: -4px;
+    right: -8px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid var(--gray-500);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
 }
 
 /* Node Descriptions in Analysis Panel */
@@ -1280,6 +1566,8 @@ body {
     gap: var(--spacing-xs);
     cursor: default;
     transition: all 0.3s ease;
+    min-width: 80px;
+    flex-shrink: 0;
 }
 
 .pipeline-node.clickable {
@@ -1349,14 +1637,15 @@ body {
 
 /* Add subtle checkmark for completed state */
 .pipeline-node.completed .node-dot::after {
-    content: '✓';
+    content: '';
     position: absolute;
-    color: white;
-    font-size: 10px;
-    font-weight: bold;
+    width: 6px;
+    height: 3px;
+    border-left: 2px solid white;
+    border-bottom: 2px solid white;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -70%) rotate(-45deg);
 }
 
 /* Professional Animations for Node States */
@@ -1411,12 +1700,13 @@ body {
 }
 
 .node-label {
-    font-size: 10px;
+    font-size: 8px;
     font-weight: 600;
-    color: var(--gray-700);
+    color: #586069;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     transition: all 0.3s ease;
+    margin-top: 2px;
 }
 
 /* Update label colors based on node state */
@@ -1442,34 +1732,44 @@ body {
     font-weight: 500;
 }
 
-.pipeline-connector {
-    width: 20px;
-    height: 2px;
-    background: var(--gray-300);
-    position: relative;
+
+/* Instructions Wrapper Container */
+.instructions-wrapper {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--border-radius);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    margin-top: var(--spacing-xs);
+    padding: 6px 10px;
+    width: auto;
+    max-width: calc(100% - 24px);
+    margin-left: auto;
+    margin-right: auto;
+    transition: all 0.3s ease;
 }
 
-.pipeline-connector::after {
-    content: '→';
-    position: absolute;
-    top: -10px;
-    right: -5px;
-    color: var(--gray-400);
-    font-size: 14px;
+.instructions-wrapper:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 /* Node Descriptions */
 .node-descriptions {
     display: block;
-    margin-top: var(--spacing-xs);
-    padding: 6px 12px;
-    background: var(--light-blue);
-    border-radius: var(--border-radius);
-    border-left: 3px solid var(--primary-blue);
-    max-width: 350px;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    border-left: none;
+    width: 100% !important;
+    max-width: 100% !important;
     font-size: 11px;
     min-height: 30px;
     transition: opacity 0.3s ease;
+    flex-grow: 1;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    margin: 0;
 }
 
 .node-descriptions:empty {
@@ -1481,6 +1781,13 @@ body {
     font-size: 14px;
     line-height: 1.4;
     color: var(--gray-700);
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
 }
 
 .description-current {
@@ -1488,10 +1795,14 @@ body {
     font-weight: 500;
 }
 
+/* Removed bullet - clean text display */
+
 .description-next {
     opacity: 0.8;
     font-style: italic;
 }
+
+/* Removed NEXT tag - clean text display */
 
 .description-current strong,
 .description-next strong {
@@ -1542,11 +1853,18 @@ body {
     margin-bottom: var(--spacing-lg);
 }
 
+/* Bottom Right Section - Table */
+.bottom-right-section .panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
 .results-table-container-scrollable {
     padding: 0;
     overflow-x: auto;
     overflow-y: auto;
-    max-height: 400px;
+    flex: 1;
     position: relative;
     border: 1px solid var(--gray-200);
     border-radius: var(--border-radius);
@@ -1813,17 +2131,6 @@ body {
     cursor: not-allowed;
 }
 
-/* Add lock icon for disabled nodes in manual mode */
-.pipeline-node:not(.clicking-enabled) .node-circle::after {
-    content: '🔒';
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    font-size: 10px;
-    background: white;
-    border-radius: 50%;
-    padding: 2px;
-}
 
 @keyframes rotate-dashed {
     from { transform: rotate(0deg); }
@@ -1844,12 +2151,36 @@ body {
 }
 
 @media (max-width: 768px) {
-    
+    /* Mobile layout adjustments */
+    html, body {
+        height: auto;
+        overflow-y: auto;
+    }
+
+    .app-container {
+        height: auto;
+        overflow: visible;
+    }
+
     .top-panels {
         grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        height: auto;
     }
-    
-    
+
+    .right-panel-container {
+        grid-template-rows: auto auto;
+        height: auto;
+    }
+
+    .top-right-section {
+        grid-template-columns: 1fr;
+    }
+
+    .progressive-attributes-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
     .agent-updates-grid {
         grid-template-columns: 1fr;
     }
@@ -1898,10 +2229,7 @@ body {
 }
 
 /* Instructions Container */
-.instructions-section {
-    margin-top: var(--spacing-lg);
-    padding: 0 var(--spacing-lg);
-}
+/* Instructions section removed - using progressive instructions */
 
 .instructions-container {
     background: var(--white);

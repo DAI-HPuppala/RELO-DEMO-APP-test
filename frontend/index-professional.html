@@ -124,9 +124,9 @@
     <!-- Main Application Container -->
     <main class="app-container">
 
-        <!-- Top Section: Camera and Progressive Updates -->
+        <!-- Main Layout Container -->
         <div class="top-panels">
-            <!-- Left Panel: Camera Feed -->
+            <!-- Left Panel: Camera Feed (40% width) -->
             <section class="camera-panel">
                 <div class="panel">
                     <div class="panel-header">
@@ -194,96 +194,118 @@
                 </div>
             </section>
 
-            <!-- Right Panel: Progressive Updates -->
-            <section class="updates-panel">
-                <div class="panel">
-                    <div class="panel-header">
-                        <h3 class="panel-title">Real-time Analysis Progress</h3>
-                        <span class="update-counter" id="updateCounter">0 inferences</span>
-                    </div>
-                    <!-- Horizontal Pipeline Status -->
-                    <div class="horizontal-pipeline">
-                        <div class="pipeline-node idle" id="node-initial" data-agent="initial_classifier">
-                            <div class="node-circle">
-                                <div class="node-dot"></div>
+            <!-- Right Panel Container (60% width) -->
+            <div class="right-panel-container">
+                <!-- Top Right Section (40% height): Progressive Updates + Pipeline -->
+                <div class="top-right-section">
+                    <!-- Progressive Updates Panel -->
+                    <div class="progressive-updates-panel">
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h3 class="panel-title">Live Attributes</h3>
                             </div>
-                            <div class="node-info">
-                                <div class="node-label">Initial</div>
-                                <div class="node-timer" id="initial-timer">0s/4s</div>
-                            </div>
-                        </div>
-                        <div class="pipeline-connector"></div>
-                        <div class="pipeline-node idle" id="node-detail" data-agent="detail_extractor">
-                            <div class="node-circle">
-                                <div class="node-dot"></div>
-                            </div>
-                            <div class="node-info">
-                                <div class="node-label">Details</div>
-                                <div class="node-timer" id="detail-timer">0s/3s</div>
-                            </div>
-                        </div>
-                        <div class="pipeline-connector"></div>
-                        <div class="pipeline-node idle" id="node-damage" data-agent="damage_detector">
-                            <div class="node-circle">
-                                <div class="node-dot"></div>
-                            </div>
-                            <div class="node-info">
-                                <div class="node-label">Damage</div>
-                                <div class="node-timer" id="damage-timer">0s/4s</div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Node Descriptions -->
-                    <div class="node-descriptions" id="nodeDescriptions">
-                        <div class="description-current" id="currentDescription"></div>
-                        <div class="description-next" id="nextDescription"></div>
-                    </div>
-                    <!-- Progressive Attributes Display - Expanded to fill panel -->
-                    <div class="progressive-attributes-expanded">
-                        <div class="attribute-row">
+                            <!-- Progressive Attributes Display -->
+                            <div class="progressive-attributes-grid">
+                                <div class="attribute-item">
                             <span class="attribute-label">Type:</span>
                             <span class="attribute-value" id="prog-type">-</span>
                         </div>
-                        <div class="attribute-row">
+                                <div class="attribute-item">
                             <span class="attribute-label">Color:</span>
                             <span class="attribute-value" id="prog-color">-</span>
                         </div>
-                        <div class="attribute-row">
+                                <div class="attribute-item">
                             <span class="attribute-label">Pattern:</span>
                             <span class="attribute-value" id="prog-pattern">-</span>
                         </div>
-                        <div class="attribute-row">
+                                <div class="attribute-item">
                             <span class="attribute-label">Brand:</span>
                             <span class="attribute-value" id="prog-brand">-</span>
                         </div>
-                        <div class="attribute-row">
+                                <div class="attribute-item">
                             <span class="attribute-label">Size:</span>
                             <span class="attribute-value" id="prog-size">-</span>
                         </div>
-                        <div class="attribute-row">
+                                <div class="attribute-item">
                             <span class="attribute-label">Neckline:</span>
                             <span class="attribute-value" id="prog-neckline">-</span>
                         </div>
-                        <div class="attribute-row">
+                                <div class="attribute-item">
                             <span class="attribute-label">Sleeve:</span>
                             <span class="attribute-value" id="prog-sleeve">-</span>
                         </div>
-                        <div class="attribute-row">
+                                <div class="attribute-item">
                             <span class="attribute-label">Closure:</span>
                             <span class="attribute-value" id="prog-closure">-</span>
                         </div>
-                        <div class="attribute-row">
+                                <div class="attribute-item attribute-item-full">
                             <span class="attribute-label">Defect:</span>
                             <span class="attribute-value" id="prog-damage-type">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Node Graph and Instructions Panel -->
+                    <div class="node-instructions-panel">
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h3 class="panel-title">Analysis Pipeline</h3>
+                                <span class="update-counter" id="updateCounter">0 inferences</span>
+                            </div>
+                        </div>
+                        <!-- Pipeline Wrapper Container -->
+                        <div class="pipeline-wrapper">
+                            <!-- Horizontal Pipeline Status -->
+                            <div class="horizontal-pipeline">
+                                <div class="pipeline-node idle" id="node-initial" data-agent="initial_classifier">
+                                        <div class="node-circle">
+                                            <div class="node-dot"></div>
+                                        </div>
+                                        <div class="node-info">
+                                            <div class="node-label">Initial</div>
+                                            <div class="node-timer" id="initial-timer">0s/4s</div>
+                                        </div>
+                                    </div>
+                                    <div class="pipeline-connector"></div>
+                                    <div class="pipeline-node idle" id="node-detail" data-agent="detail_extractor">
+                                        <div class="node-circle">
+                                            <div class="node-dot"></div>
+                                        </div>
+                                        <div class="node-info">
+                                            <div class="node-label">Details</div>
+                                            <div class="node-timer" id="detail-timer">0s/3s</div>
+                                        </div>
+                                    </div>
+                                    <div class="pipeline-connector"></div>
+                                    <div class="pipeline-node idle" id="node-damage" data-agent="damage_detector">
+                                        <div class="node-circle">
+                                            <div class="node-dot"></div>
+                                        </div>
+                                        <div class="node-info">
+                                            <div class="node-label">Damage</div>
+                                            <div class="node-timer" id="damage-timer">0s/4s</div>
+                                        </div>
+                                    </div>
+                                </div>
+                        </div>
+                        <!-- Progressive Instructions -->
+                        <div class="instructions-wrapper">
+                            <div class="node-descriptions" id="instructionsContainer">
+                                <div class="description-header">
+                                    <span class="mode-indicator" id="modeIndicator">AUTO</span>
+                                    <span class="action-hint" id="actionHint">Processing</span>
+                                </div>
+                                <div class="description-current" id="currentDescription">Lay the garment flat on a surface, ensuring the entire piece is clearly visible in the frame.</div>
+                                <div class="description-next" id="nextDescription">Capture a clear image of the garment's brand and size tag for verification.</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </section>
-        </div>
 
-        <!-- Results Section: Fixed Table -->
-        <section class="results-section">
-            <div class="panel">
+                <!-- Bottom Right Section (60% height): Table Container -->
+                <div class="bottom-right-section">
+                    <div class="panel">
                 <div class="panel-header">
                     <h3 class="panel-title">Final Classification Results</h3>
                     <div class="export-controls">
@@ -321,11 +343,13 @@
                         </table>
                     </div>
                 </div>
+                    </div>
+                </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Instructions Section -->
-        <section class="instructions-section">
+        <!-- Instructions section removed - using progressive instructions in main UI -->
+        <!-- <section class="instructions-section" style="display:none;">
             <div class="instructions-container" id="instructionsContainer">
                 <div class="instructions-header">
                     <h3>RELO Classifier User Guide</h3>
@@ -385,7 +409,7 @@
                     </div>
                 </div>
             </div>
-        </section>
+        </section> -->
 
     </main>
 

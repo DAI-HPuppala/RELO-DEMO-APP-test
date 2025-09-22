@@ -69,104 +69,139 @@ class CV60VideoTrack(VideoStreamTrack):
         self._last_valid_frame = None  # Cache for brief gaps only
         self._last_frame_use_count = 0  # Track how many times we reused last frame
         self._test_mode_logged = False  # Track if test mode fallback has been logged
+        self._creation_time = time.time()  # Track when this track was created
         self._initialize_cv60()
 
     def _initialize_cv60(self):
-        """Initialize CV60 camera using eBUS SDK."""
+        """Initialize CV60 camera using eBUS SDK with retry logic."""
         if not eb:
             logger.error("eBUS SDK not available, using test pattern")
             self.is_initialized = False
             self._start_capture_thread()
             return False
 
-        try:
-            with self._contexts_lock:
-                # Check if context already exists for this camera
-                if self.connection_id in self._contexts:
-                    ctx = self._contexts[self.connection_id]
-                    if ctx and ctx.get('device'):
-                        logger.info(f"Reusing existing camera context for {self.connection_id}")
-                        self.is_initialized = True
-                        self._start_capture_thread()
-                        return True
+        max_retries = 3
+        retry_delay = 1.0  # seconds
 
-                logger.info(f"Connecting to CV60 camera at {self.connection_id}")
+        for attempt in range(max_retries):
+            try:
+                with self._contexts_lock:
+                    # Check if context already exists for this camera
+                    if self.connection_id in self._contexts:
+                        ctx = self._contexts[self.connection_id]
+                        if ctx and ctx.get('device'):
+                            logger.info(f"Reusing existing camera context for {self.connection_id}")
+                            self.is_initialized = True
+                            self._start_capture_thread()
+                            return True
 
-                # Attempt device connection
-                try:
-                    result, device = eb.PvDevice.CreateAndConnect(self.connection_id)
-                    if not device:
-                        raise Exception(f"Failed to connect to device {self.connection_id}")
-                except Exception as e:
-                    logger.error(f"Connection error: {e}")
-                    self.is_initialized = False
-                    self._start_capture_thread()
-                    return False
+                    logger.info(f"Connecting to CV60 camera at {self.connection_id} (attempt {attempt + 1}/{max_retries})")
 
-                # Open stream
-                logger.info("Opening stream...")
-                try:
-                    result, stream = eb.PvStream.CreateAndOpen(self.connection_id)
-                    if not stream:
-                        raise Exception("Failed to open stream")
-                except Exception as e:
-                    logger.error(f"Stream open error: {e}")
-                    device.Disconnect()
-                    self.is_initialized = False
-                    self._start_capture_thread()
-                    return False
-
-                # Configure packet size for GigE
-                if isinstance(device, eb.PvDeviceGEV):
-                    system = eb.PvSystem()
-                    system.Find()
-                    for k in range(system.GetInterfaceCount()):
-                        iface = system.GetInterface(k)
-                        try:
-                            ip = str(iface.GetIPAddress(0))
-                        except:
+                    # Attempt device connection
+                    try:
+                        result, device = eb.PvDevice.CreateAndConnect(self.connection_id)
+                        if not device:
+                            raise Exception(f"Failed to connect to device {self.connection_id}")
+                    except Exception as e:
+                        logger.error(f"Connection error on attempt {attempt + 1}: {e}")
+                        if attempt < max_retries - 1:
+                            logger.info(f"Retrying in {retry_delay} seconds...")
+                            time.sleep(retry_delay)
                             continue
-                        if ip.startswith(('169.254', '192.168')):
-                            device.NegotiatePacketSize()
-                            device.SetStreamDestination(ip, stream.GetLocalPort())
-                            break
+                        else:
+                            logger.error(f"All {max_retries} connection attempts failed")
+                            self.is_initialized = False
+                            self._start_capture_thread()
+                            return False
 
-                # Allocate buffers
-                size = device.GetPayloadSize()
-                buf_count = min(stream.GetQueuedBufferMaximum(), BUFFER_COUNT)
-                buffers = []
-                for _ in range(buf_count):
-                    buf = eb.PvBuffer()
-                    buf.Alloc(size)
-                    buffers.append(buf)
-                    stream.QueueBuffer(buf)
+                    # Open stream
+                    logger.info("Opening stream...")
+                    try:
+                        result, stream = eb.PvStream.CreateAndOpen(self.connection_id)
+                        if not stream:
+                            raise Exception("Failed to open stream")
+                    except Exception as e:
+                        logger.error(f"Stream open error on attempt {attempt + 1}: {e}")
+                        device.Disconnect()
+                        if attempt < max_retries - 1:
+                            logger.info(f"Retrying in {retry_delay} seconds...")
+                            time.sleep(retry_delay)
+                            continue
+                        else:
+                            self.is_initialized = False
+                            self._start_capture_thread()
+                            return False
 
-                # Start acquisition
-                device.StreamEnable()
-                device.GetParameters().Get("AcquisitionStart").Execute()
+                    # Configure packet size for GigE
+                    if isinstance(device, eb.PvDeviceGEV):
+                        system = eb.PvSystem()
+                        system.Find()
+                        for k in range(system.GetInterfaceCount()):
+                            iface = system.GetInterface(k)
+                            try:
+                                ip = str(iface.GetIPAddress(0))
+                            except:
+                                continue
+                            if ip.startswith(('169.254', '192.168')):
+                                device.NegotiatePacketSize()
+                                device.SetStreamDestination(ip, stream.GetLocalPort())
+                                break
 
-                # Store context
-                ctx = {
-                    "device": device,
-                    "stream": stream,
-                    "buffers": buffers,
-                    "last_capture_time": None,
-                    "last_error": None
-                }
-                self._contexts[self.connection_id] = ctx
+                    # Allocate buffers
+                    size = device.GetPayloadSize()
+                    buf_count = min(stream.GetQueuedBufferMaximum(), BUFFER_COUNT)
+                    buffers = []
+                    for _ in range(buf_count):
+                        buf = eb.PvBuffer()
+                        buf.Alloc(size)
+                        buffers.append(buf)
+                        stream.QueueBuffer(buf)
 
-                logger.info(f"CV60 camera initialized successfully at {self.connection_id}")
-                self.is_initialized = True
+                    # Start acquisition
+                    device.StreamEnable()
+                    device.GetParameters().Get("AcquisitionStart").Execute()
 
-            # Start frame capture thread
-            self._start_capture_thread()
-            return True
+                    # Store context
+                    ctx = {
+                        "device": device,
+                        "stream": stream,
+                        "buffers": buffers,
+                        "last_capture_time": None,
+                        "last_error": None
+                    }
+                    self._contexts[self.connection_id] = ctx
 
-        except Exception as e:
-            logger.error(f"Failed to initialize CV60: {str(e)}")
-            self.is_initialized = False
-            self._start_capture_thread()
-            return False
+                    logger.info(f"CV60 camera initialized successfully at {self.connection_id} (attempt {attempt + 1}/{max_retries})")
+                    self.is_initialized = True
+
+                    # Start frame capture thread
+                    self._start_capture_thread()
+                    return True
+
+            except Exception as e:
+                logger.error(f"Failed to initialize CV60 on attempt {attempt + 1}: {str(e)}")
+                if attempt < max_retries - 1:
+                    logger.info(f"Retrying camera initialization in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    # Clean up any partial initialization
+                    try:
+                        if 'device' in locals() and device:
+                            device.Disconnect()
+                        if 'stream' in locals() and stream:
+                            stream.Close()
+                    except:
+                        pass
+                    continue
+                else:
+                    logger.error(f"All {max_retries} attempts failed to initialize CV60 camera")
+                    self.is_initialized = False
+                    self._start_capture_thread()
+                    return False
+
+        # Should not reach here, but just in case
+        self.is_initialized = False
+        self._start_capture_thread()
+        return False
 
     def _start_capture_thread(self):
         """Start the frame capture thread."""
@@ -182,6 +217,8 @@ class CV60VideoTrack(VideoStreamTrack):
         """Continuously capture frames in a separate thread."""
         consecutive_errors = 0
         max_consecutive_errors = 10
+        last_reconnect_attempt = 0
+        reconnect_interval = 30  # Try to reconnect every 30 seconds if in test mode
 
         while not self._stop_capture:
             try:
@@ -191,6 +228,19 @@ class CV60VideoTrack(VideoStreamTrack):
                 if current_time - self._last_frame_time < self._frame_interval:
                     time.sleep(0.001)
                     continue
+
+                # If not initialized, attempt reconnection periodically
+                if not self.is_initialized and eb:
+                    if current_time - last_reconnect_attempt > reconnect_interval:
+                        logger.info("Attempting to reconnect to CV60 camera...")
+                        last_reconnect_attempt = current_time
+                        # Try to reinitialize (will use retry logic)
+                        if self._initialize_cv60():
+                            logger.info("Successfully reconnected to CV60 camera!")
+                            consecutive_errors = 0
+                            continue
+                        else:
+                            logger.warning("Failed to reconnect, continuing with test pattern")
 
                 # If not initialized or eBUS not available, generate test frames
                 if not self.is_initialized or not eb:
@@ -479,8 +529,11 @@ class CV60VideoTrack(VideoStreamTrack):
             logger.error(f"   📍 Camera IP: {self.connection_id}")
             logger.error(f"   🔧 eBUS SDK Available: {eb is not None}")
             logger.error(f"   🎯 Camera Initialized: {self.is_initialized}")
+            logger.error(f"   ⏰ Track Age: {time.time() - self._creation_time:.1f}s")
+            logger.error(f"   🆔 Session ID: {self.current_session_id}")
             logger.error(f"   ❗ Fallback Reason: {fallback_reason}")
-            logger.error("   📊 This indicates camera hardware/network issues or extended runtime degradation")
+            logger.error("   📊 This indicates camera hardware/network issues or page refresh recovery")
+            logger.error("   🔄 Will attempt reconnection every 30 seconds")
             self._test_mode_logged = True
 
         frame = np.zeros((480, 640, 3), dtype=np.uint8)

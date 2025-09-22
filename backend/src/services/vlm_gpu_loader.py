@@ -251,7 +251,7 @@ class VLMGPULoader:
                 await self._save_preprocessed_frames(frames, prompt, agent_name)
 
                 base64_images = []
-                for frame in frames:
+                for frame_idx, frame in enumerate(frames):
                     # Convert numpy array to PIL Image
                     if frame.dtype != np.uint8:
                         frame = (frame * 255).astype(np.uint8)
@@ -259,16 +259,32 @@ class VLMGPULoader:
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     image = Image.fromarray(frame_rgb)
 
+                    # Log original frame resolution
+                    original_width, original_height = image.size
+                    logger.info(f"📏 Original frame resolution: {original_width}x{original_height} (aspect ratio: {original_width/original_height:.2f}:1)")
+
                     # Agent-specific resolution optimization
-                    if agent_name in ["initial_classifier", "damage_detector"]:
+                    if agent_name in ["initial_classifier"]:
                         # Resize to 448x448 for faster inference (type detection and damage assessment)
                         image.thumbnail((448, 448), Image.Resampling.LANCZOS)
+                    elif agent_name in ["damage_detector"]:
+                        # Different resolutions for different frames
+                        if frame_idx == 0:
+                            # Shared frame from initial_classifier: 510x510
+                            image.thumbnail((510, 510), Image.Resampling.LANCZOS)
+                        else:
+                            # Fresh live frame: 768x768
+                            image.thumbnail((768, 768), Image.Resampling.LANCZOS)
                     elif agent_name == "detail_extractor":
                         # Keep full resolution for reading fine details (brand names, size labels)
                         image.thumbnail((896, 896), Image.Resampling.LANCZOS)  # No resize needed
                     else:
                         # Default: resize to 448x448 for unknown agents
                         image.thumbnail((448, 448), Image.Resampling.LANCZOS)
+
+                    # Log final resized resolution
+                    final_width, final_height = image.size
+                    logger.info(f"🔄 Resized resolution for {agent_name} frame[{frame_idx}]: {final_width}x{final_height} (aspect ratio: {final_width/final_height:.2f}:1)")
 
                     # Convert to base64
                     buffer = io.BytesIO()

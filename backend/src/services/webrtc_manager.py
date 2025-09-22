@@ -124,8 +124,8 @@ class WebRTCManager:
         """Handle WebRTC offer and create answer."""
         try:
             pc = await self.create_peer_connection(session_id)
-            
-            # Initialize camera service and video track (singleton pattern)
+
+            # Initialize camera service and video track (singleton pattern with reset logic)
             async with WebRTCManager._camera_service_lock:
                 if not WebRTCManager._camera_service:
                     try:
@@ -137,11 +137,34 @@ class WebRTCManager:
                     WebRTCManager._camera_service = CV60CameraService()
                     WebRTCManager._camera_service.initialize_camera(camera_source)
                     logger.info("CV60CameraService initialized")
-                
+
+                # Check if existing video track is in test mode and needs reset
+                if WebRTCManager._video_track:
+                    # Check if the video track is in test mode (not properly initialized)
+                    if hasattr(WebRTCManager._video_track, 'is_initialized') and not WebRTCManager._video_track.is_initialized:
+                        logger.warning("🔄 CAMERA RESET: Existing video track is in test mode")
+                        logger.info(f"   Previous session: {getattr(WebRTCManager._video_track, 'current_session_id', 'unknown')}")
+                        logger.info(f"   New session: {session_id}")
+                        # Stop the old track
+                        if hasattr(WebRTCManager._video_track, 'stop'):
+                            WebRTCManager._video_track.stop()
+                        WebRTCManager._video_track = None
+                        logger.info("✅ Video track reset - will attempt to reconnect to camera")
+                    # Also reset if the track has been running for too long (stale)
+                    elif hasattr(WebRTCManager._video_track, '_creation_time'):
+                        import time
+                        track_age = time.time() - WebRTCManager._video_track._creation_time
+                        if track_age > 3600:  # Reset if track is older than 1 hour
+                            logger.warning(f"🔄 CAMERA RESET: Video track is stale ({track_age:.0f}s old)")
+                            if hasattr(WebRTCManager._video_track, 'stop'):
+                                WebRTCManager._video_track.stop()
+                            WebRTCManager._video_track = None
+                            logger.info("✅ Stale video track cleared")
+
                 # Create video track with session ID for frame buffer
                 if not WebRTCManager._video_track:
                     WebRTCManager._video_track = WebRTCManager._camera_service.get_video_track(session_id)
-                    logger.info(f"Video track created for session {session_id}")
+                    logger.info(f"New video track created for session {session_id}")
             
             # First set the remote description to understand what the client wants
             remote_sdp = RTCSessionDescription(

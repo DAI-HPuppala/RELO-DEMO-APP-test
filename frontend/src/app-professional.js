@@ -81,14 +81,10 @@ class ProfessionalApplicationController {
         // Function to sync container widths
         const syncContainerWidth = () => {
             try {
-                const tableContainerRect = resultsTableContainer.getBoundingClientRect();
-                const tableContainerWidth = tableContainerRect.width;
-
-                if (tableContainerWidth > 0) {
-                    instructionsContainer.style.maxWidth = `${tableContainerWidth}px`;
-                    instructionsContainer.style.width = `${tableContainerWidth}px`;
-                    console.log(`[Professional App] Instructions container width synced to: ${tableContainerWidth}px`);
-                }
+                // Remove inline styles to let CSS handle the width properly
+                instructionsContainer.style.maxWidth = '';
+                instructionsContainer.style.width = '';
+                console.log(`[Professional App] Instructions container width reset to CSS defaults`);
             } catch (error) {
                 console.warn('[Professional App] Error syncing instructions container width:', error);
             }
@@ -198,6 +194,15 @@ class ProfessionalApplicationController {
             radio.addEventListener('change', (e) => {
                 this.mode = e.target.value;
                 console.log('[Professional App] Mode changed to:', this.mode);
+
+                // Update mode indicator immediately
+                const modeIndicator = document.getElementById('modeIndicator');
+                if (modeIndicator) {
+                    modeIndicator.textContent = this.mode === 'manual' ? 'MANUAL' : 'AUTO';
+                }
+
+                // Update descriptions and action hints
+                this.updateNodeDescriptions();
                 this.updatePauseResumeButtons();
             });
         });
@@ -402,9 +407,11 @@ class ProfessionalApplicationController {
                     redoBtn.style.display = 'inline-flex';
                     redoBtn.disabled = false;
                 }
-
-                this.updateNodeDescriptions();
             }
+
+            // Update node descriptions and indicators for current mode
+            this.updateNodeDescriptions();
+
             this.streamViewer.hideOverlay();
             this.updatePauseResumeButtons();
             
@@ -774,26 +781,32 @@ class ProfessionalApplicationController {
         // Update node clicking state
         const wasEnabled = this.nodeClickingEnabled;
         this.nodeClickingEnabled = shouldEnableNodeClicking;
-        
+
         // If state changed from disabled to enabled
         if (!wasEnabled && this.nodeClickingEnabled) {
             console.log('[Professional App] All 3 agents completed in current cycle - node clicking now enabled');
-            
+
             // Update visual feedback for nodes
             const pipelineNodes = document.querySelectorAll('.pipeline-node');
             pipelineNodes.forEach(node => {
                 node.classList.add('clicking-enabled');
             });
+
+            // Update action hint to reflect new state
+            this.updateNodeDescriptions();
         }
         // If state changed from enabled to disabled (shouldn't happen unless new session)
         else if (wasEnabled && !this.nodeClickingEnabled) {
             console.log('[Professional App] Node clicking disabled (new session?)');
-            
+
             // Remove visual feedback for nodes
             const pipelineNodes = document.querySelectorAll('.pipeline-node');
             pipelineNodes.forEach(node => {
                 node.classList.remove('clicking-enabled');
             });
+
+            // Update action hint to reflect new state
+            this.updateNodeDescriptions();
         }
         
         // Log completed and pending agents for debugging
@@ -1775,21 +1788,27 @@ class ProfessionalApplicationController {
      */
     handleModeToggle(event) {
         const isManual = !event.target.checked;
-        
+
         // Only allow mode change when monitoring is stopped
         if (this.monitoringActive) {
             event.target.checked = !isManual;
             return;
         }
-        
+
         this.mode = isManual ? 'manual' : 'auto';
         this.manualModeEnabled = isManual;
-        
+
         console.log('[Professional App] Mode changed to:', this.mode);
-        
+
+        // Update mode indicator immediately
+        const modeIndicator = document.getElementById('modeIndicator');
+        if (modeIndicator) {
+            modeIndicator.textContent = isManual ? 'MANUAL' : 'AUTO';
+        }
+
         // Update UI based on mode
         this.updateModeUI(isManual);
-        
+
         // Update node descriptions
         this.updateNodeDescriptions();
     }
@@ -1948,10 +1967,20 @@ class ProfessionalApplicationController {
     initializeNodeDescriptions() {
         const currentDesc = document.getElementById('currentDescription');
         const nextDesc = document.getElementById('nextDescription');
-        
+        const modeIndicator = document.getElementById('modeIndicator');
+        const actionHint = document.getElementById('actionHint');
+
         if (currentDesc && nextDesc) {
-            currentDesc.innerHTML = '<strong>Ready:</strong> Click Start to begin classification';
-            nextDesc.innerHTML = 'Auto mode will process through all agents automatically';
+            currentDesc.textContent = 'Click Start to begin garment classification';
+            nextDesc.textContent = 'The system will guide you through each step';
+        }
+
+        // Set initial mode and action
+        if (modeIndicator) {
+            modeIndicator.textContent = this.mode === 'manual' ? 'MANUAL' : 'AUTO';
+        }
+        if (actionHint) {
+            actionHint.textContent = 'Ready';
         }
     }
     
@@ -1961,13 +1990,23 @@ class ProfessionalApplicationController {
     updateNodeDescriptions(currentAgent = null) {
         const currentDesc = document.getElementById('currentDescription');
         const nextDesc = document.getElementById('nextDescription');
+        const modeIndicator = document.getElementById('modeIndicator');
+        const actionHint = document.getElementById('actionHint');
 
         if (!currentDesc || !nextDesc) return;
 
-        // Default display when empty
+        // Update mode indicator
+        if (modeIndicator) {
+            modeIndicator.textContent = this.mode === 'manual' ? 'MANUAL' : 'AUTO';
+        }
+
+        // Default display when not active
         if (!this.monitoringActive) {
-            currentDesc.textContent = 'Initial Classification: Lay the garment flat on a surface, ensuring the entire piece is clearly visible in the frame.';
-            nextDesc.textContent = 'Next: Capture a clear image of the garment\'s brand and size tag for verification.';
+            currentDesc.textContent = 'Lay the garment flat on a surface, ensuring the entire piece is clearly visible in the frame';
+            nextDesc.textContent = 'Capture a clear image of the garment\'s brand and size tag for verification';
+            if (actionHint) {
+                actionHint.textContent = 'Ready';
+            }
             return;
         }
 
@@ -1976,19 +2015,27 @@ class ProfessionalApplicationController {
             const agentDescriptions = {
                 'initial_classifier': {
                     current: 'Lay the garment flat on a surface, ensuring the entire piece is clearly visible in the frame',
-                    next: 'Next: Make sure the brand and size tag is visible in the frame.'
+                    next: 'Make sure the brand and size tag is visible in the frame',
+                    autoAction: 'Scanning',
+                    manualAction: this.nodeClickingEnabled ? 'Next' : 'Wait'
                 },
                 'detail_extractor': {
-                    current: 'Detail Extraction: Make sure the brand and size tag is visible in the frame.',
-                    next: 'Next: Make sure the damages are visible in the frame, if any.'
+                    current: 'Make sure the brand and size tag is visible in the frame',
+                    next: 'Make sure any damages are visible in the frame',
+                    autoAction: 'Reading',
+                    manualAction: this.nodeClickingEnabled ? 'Next' : 'Wait'
                 },
                 'damage_detector': {
-                    current: 'Damage Detection: Make sure the damages are visible in the frame, if any',
-                    next: 'Next: Ready for next garment classification.'
+                    current: 'Make sure any damages are visible in the frame',
+                    next: 'Ready for next garment classification',
+                    autoAction: 'Checking',
+                    manualAction: this.nodeClickingEnabled ? 'Next' : 'Wait'
                 },
                 'final_compiler': {
-                    current: 'Final Compilation: Ready for next garment classification.',
-                    next: 'Next: Ready for next garment classification.'
+                    current: 'Compiling final classification results',
+                    next: 'Ready for next garment classification',
+                    autoAction: 'Finishing',
+                    manualAction: 'Complete'
                 }
             };
 
@@ -2012,7 +2059,8 @@ class ProfessionalApplicationController {
             const agentMap = {
                 'initial': 'initial_classifier',
                 'detail': 'detail_extractor',
-                'damage': 'damage_detector'
+                'damage': 'damage_detector',
+                'final': 'final_compiler'
             };
             activeAgent = agentMap[activeAgent] || activeAgent;
 
@@ -2020,10 +2068,31 @@ class ProfessionalApplicationController {
             if (activeAgent && agentDescriptions[activeAgent]) {
                 currentDesc.textContent = agentDescriptions[activeAgent].current;
                 nextDesc.textContent = agentDescriptions[activeAgent].next;
+                if (actionHint) {
+                    // Set action hint based on mode
+                    if (this.mode === 'manual') {
+                        actionHint.textContent = agentDescriptions[activeAgent].manualAction;
+                    } else {
+                        actionHint.textContent = agentDescriptions[activeAgent].autoAction;
+                    }
+                }
             } else {
                 // Default processing state
-                currentDesc.textContent = 'Processing: Analyzing garment characteristics and attributes.';
-                nextDesc.textContent = 'Next: Continue through classification pipeline.';
+                currentDesc.textContent = 'Analyzing garment characteristics and attributes';
+                nextDesc.textContent = 'Continue through classification pipeline';
+                if (actionHint) {
+                    // Default hints when no specific agent is active
+                    if (this.mode === 'manual') {
+                        actionHint.textContent = this.nodeClickingEnabled ? 'Select' : 'Wait';
+                    } else {
+                        actionHint.textContent = 'Active';
+                    }
+                }
+            }
+
+            // Special case for paused state
+            if (this.isPaused && actionHint) {
+                actionHint.textContent = 'Paused';
             }
         }
     }
