@@ -179,7 +179,10 @@ class StatefulBaseAgent(ABC):
                 if shared_frame is not None:
                     frames.append(shared_frame)
                     batch_size -= 1
-                    logger.debug(f"damage_detector using shared frame from initial_classifier")
+                    logger.info(f"✅ damage_detector successfully retrieved shared frame from initial_classifier")
+                    logger.debug(f"Shared frame shape: {shared_frame.shape if hasattr(shared_frame, 'shape') else 'unknown'}")
+                else:
+                    logger.warning(f"⚠️ damage_detector could not retrieve shared frame - will capture {batch_size} new frames")
         
         # Capture new frames
         while len(frames) < batch_size and time.time() < end_time:

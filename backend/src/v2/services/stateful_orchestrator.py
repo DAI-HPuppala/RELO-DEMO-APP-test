@@ -21,8 +21,9 @@ logger = logging.getLogger(__name__)
 class StatefulOrchestrator:
     """Orchestrates stateful agent execution with multi-inference and timers"""
     
-    def __init__(self, session_id: str):
+    def __init__(self, session_id: str, manual_mode: bool = False):
         self.session_id = session_id
+        self.manual_mode = manual_mode
         self.session_state = SessionState(session_id=session_id)
         self.frame_registry = FrameRegistry(session_id)
         self.frame_manager = FrameManager(session_id)
@@ -158,12 +159,16 @@ class StatefulOrchestrator:
         
         # Initialize or get agent state
         if agent_name not in self.session_state.agent_states:
+            logger.info(f"Creating NEW agent state for {agent_name} with timer={timer_seconds}s")
             self.session_state.agent_states[agent_name] = AgentState(
                 agent_name=agent_name,
                 timer_seconds=timer_seconds
             )
-        
+        else:
+            logger.warning(f"Agent state for {agent_name} already exists with inference_count={self.session_state.agent_states[agent_name].inference_count}")
+
         agent_state = self.session_state.agent_states[agent_name]
+        logger.info(f"Starting timer for {agent_name} - inference_count={agent_state.inference_count}")
         agent_state.start_timer()
         
         # Send agent_started message with optimization info
@@ -282,7 +287,11 @@ class StatefulOrchestrator:
             if shared_frame is not None:
                 frames.append(shared_frame)
                 batch_size -= 1  # Reduce new frames needed
-                logger.debug(f"Added shared frame for damage_detector")
+                logger.info(f"✅ Successfully retrieved shared frame from initial_classifier for damage_detector")
+                logger.debug(f"Shared frame shape: {shared_frame.shape}, dtype: {shared_frame.dtype}")
+            else:
+                logger.error("❌ Failed to retrieve shared frame for damage_detector - will capture 2 new frames instead")
+                # Don't reduce batch_size, capture 2 new frames as fallback
         
         # Collect new frames
         if self.frame_provider:
@@ -307,8 +316,9 @@ class StatefulOrchestrator:
                         
                         # Register first frame from initial_classifier
                         if agent_name == "initial_classifier" and inference_num == 1 and len(frames) == 1:
-                            await self.frame_registry.register_initial_first_frame(frame)
-                            logger.debug("Registered initial frame for sharing")
+                            frame_id = await self.frame_registry.register_initial_first_frame(frame)
+                            logger.info(f"✅ Registered initial_classifier first frame for sharing with damage_detector: {frame_id}")
+                            logger.debug(f"Frame shape: {frame.shape}, dtype: {frame.dtype}")
                     else:
                         logger.warning(f"Frame provider returned None for frame {i+1}/{batch_size}")
                 except Exception as e:
@@ -319,7 +329,10 @@ class StatefulOrchestrator:
         if len(frames) == 0:
             logger.warning(f"No frames collected for {agent_name} inference #{inference_num}")
         else:
-            if inference_num > 1:
+            # Special logging for damage_detector's first inference
+            if agent_name == "damage_detector" and inference_num == 1 and len(frames) == 2:
+                logger.info(f"Collected {len(frames)} frames for {agent_name} inference #{inference_num}: 1 shared + 1 new")
+            elif inference_num > 1:
                 logger.info(f"Collected {len(frames)} frame{'s' if len(frames) > 1 else ''} for {agent_name} inference #{inference_num} (with context)")
             else:
                 logger.info(f"Collected {len(frames)} frame{'s' if len(frames) > 1 else ''} for {agent_name} inference #{inference_num}")
@@ -460,6 +473,47 @@ class StatefulOrchestrator:
     def get_agent_state(self, agent_name: str) -> Optional[AgentState]:
         """Get state for a specific agent"""
         return self.session_state.agent_states.get(agent_name)
+
+    def reset_agent_state(self, agent_name: str) -> None:
+        """Reset a specific agent's state (for manual mode redo/jump)"""
+        if agent_name in self.session_state.agent_states:
+            # Log the current state before deletion
+            old_state = self.session_state.agent_states[agent_name]
+            logger.info(f"Deleting agent state for {agent_name} - had inference_count={old_state.inference_count}")
+            del self.session_state.agent_states[agent_name]
+            logger.info(f"Reset agent state for {agent_name} - will restart from inference #1")
+            # Verify it's deleted
+            if agent_name in self.session_state.agent_states:
+                logger.error(f"ERROR: Agent {agent_name} still exists after deletion!")
+            else:
+                logger.info(f"Confirmed: Agent {agent_name} deleted from session_state.agent_states")
+
+            # If resetting initial_classifier, update frame registry
+            if agent_name == "initial_classifier" and self.frame_registry:
+                # Clear the previous shared frame
+                asyncio.create_task(self._update_initial_shared_frame())
+
+    async def _update_initial_shared_frame(self) -> None:
+        """Clear old and prepare for new initial shared frame"""
+        try:
+            # Clear the old shared frame key
+            if "initial_first" in self.frame_registry.shared_frames:
+                old_frame_id = self.frame_registry.shared_frames["initial_first"]
+                await self.frame_registry.release_frame(old_frame_id)
+                del self.frame_registry.shared_frames["initial_first"]
+                logger.info("Cleared old initial_first shared frame for new capture")
+        except Exception as e:
+            logger.error(f"Error updating initial shared frame: {e}")
+
+    def reset_all_agent_states(self) -> None:
+        """Reset all agent states for new cycle (manual mode only)"""
+        if self.manual_mode:
+            self.session_state.agent_states.clear()
+            logger.info("Reset all agent states for new manual mode cycle")
+
+            # Clean up frame registry
+            if self.frame_registry:
+                asyncio.create_task(self.frame_registry.cleanup())
     
     async def load_from_checkpoint(self) -> bool:
         """Load session state from checkpoint if it exists"""

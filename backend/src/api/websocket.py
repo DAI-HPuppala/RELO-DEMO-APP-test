@@ -25,6 +25,9 @@ manual_mode_handlers: Dict[str, ManualModeHandler] = {}
 # Store manual mode session states
 manual_mode_sessions: Dict[str, ManualSessionState] = {}
 
+# Store orchestrators for each session
+orchestrators: Dict[str, Any] = {}
+
 # Store reference to webrtc_manager for control message handling
 _webrtc_manager = None
 _control_handler_setup = False
@@ -226,7 +229,11 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
         for key in keys_to_stop:
             if key in monitoring_controls:
                 del monitoring_controls[key]
-        
+
+        # Clean up orchestrators
+        if session_id in orchestrators:
+            del orchestrators[session_id]
+
         # Clean up manual mode handlers and sessions
         if session_id in manual_mode_handlers:
             logger.info(f"Cleaning up manual mode handler for {session_id}")
@@ -396,9 +403,9 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
         # Create monitoring control for this session
         monitoring_controls[session_id] = {'running': True, 'paused': False}
         
-        # Import V2 stateful orchestrator  
+        # Import V2 stateful orchestrator
         from v2.services.stateful_orchestrator import StatefulOrchestrator
-        orchestrator = StatefulOrchestrator(session_id)
+        orchestrator = StatefulOrchestrator(session_id, manual_mode=is_manual_mode)
         
         # Setup VLM integration
         vlm_setup_success = await setup_orchestrator_vlm(orchestrator)
@@ -464,7 +471,10 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
                     logger.error(f"Failed to send message via data channel for session {session_id}")
         
         orchestrator.send_message = v2_message_callback
-        
+
+        # Store orchestrator for later use
+        orchestrators[session_id] = orchestrator
+
         # Check if manual mode requested
         if is_manual_mode:
             logger.info(f"Entering manual mode for session {session_id}")
@@ -475,11 +485,14 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
             
             handler = manual_mode_handlers[session_id]
             handler.activate_manual_mode()
-            
+
+            # Pass orchestrator reference to handler
+            handler.set_orchestrator(orchestrator)
+
             # Set up callbacks
             async def send_manual_status(status):
                 await webrtc_manager.send_manual_mode_status(session_id, status)
-            
+
             handler.set_callbacks(send_status=send_manual_status)
             
             # Mark as manual mode in monitoring controls
@@ -614,7 +627,11 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
             await webrtc_manager.send_manual_mode_status(session_id, status)
         
         handler.set_callbacks(send_status=send_manual_status)
-        
+
+        # Pass orchestrator reference if available
+        if session_id in orchestrators:
+            handler.set_orchestrator(orchestrators[session_id])
+
         # Stop any automatic monitoring
         if session_id in monitoring_controls:
             monitoring_controls[session_id]['running'] = False
@@ -665,8 +682,13 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
             action = result.get("action")
             
             if action in ["navigate_next", "navigate_previous", "select_agent", "redo_agent"]:
-                # We're ready to run the current agent
-                agent_name = handler.get_current_agent()
+                # We're ready to run the agent
+                if action == "redo_agent":
+                    # For redo, use the agent specified in the result
+                    agent_name = result.get("agent", handler.get_current_agent())
+                else:
+                    # For navigation, use the current agent
+                    agent_name = handler.get_current_agent()
                 
                 # Mark in monitoring controls for manual mode flow
                 if session_id not in monitoring_controls:

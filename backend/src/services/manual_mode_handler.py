@@ -57,6 +57,9 @@ class ManualModeHandler:
         self.send_status_callback: Optional[Callable] = None
         self.run_agent_callback: Optional[Callable] = None
         self.run_final_compiler_callback: Optional[Callable] = None
+
+        # Orchestrator reference for state management
+        self.orchestrator = None
         
         logger.info(f"ManualModeHandler initialized for session {session_id}")
     
@@ -76,7 +79,7 @@ class ManualModeHandler:
         """Check if manual mode is active"""
         return self.manual_mode_active
     
-    def set_callbacks(self, 
+    def set_callbacks(self,
                      send_status: Optional[Callable] = None,
                      run_agent: Optional[Callable] = None,
                      run_final_compiler: Optional[Callable] = None):
@@ -87,6 +90,11 @@ class ManualModeHandler:
             self.run_agent_callback = run_agent
         if run_final_compiler:
             self.run_final_compiler_callback = run_final_compiler
+
+    def set_orchestrator(self, orchestrator):
+        """Set orchestrator reference for state management"""
+        self.orchestrator = orchestrator
+        logger.info(f"Orchestrator reference set for manual mode handler")
     
     async def handle_command(self, command_data: Dict) -> Dict[str, Any]:
         """Handle incoming manual command"""
@@ -123,7 +131,12 @@ class ManualModeHandler:
             self.current_agent_index -= 1
             self.current_agent = self.agent_sequence[self.current_agent_index]
             self.navigation_history.append(self.current_agent)
-            
+
+            # Reset the agent state if navigating to it
+            if self.orchestrator:
+                self.orchestrator.reset_agent_state(self.current_agent)
+                logger.info(f"Reset orchestrator state for previous agent {self.current_agent}")
+
             logger.info(f"Navigated to previous agent: {self.current_agent}")
             
             return {
@@ -185,7 +198,12 @@ class ManualModeHandler:
         self.current_agent_index += 1
         self.current_agent = self.agent_sequence[self.current_agent_index]
         self.navigation_history.append(self.current_agent)
-        
+
+        # Reset the agent state if navigating to it
+        if self.orchestrator and self.completed_agents.get(self.current_agent, False):
+            self.orchestrator.reset_agent_state(self.current_agent)
+            logger.info(f"Reset orchestrator state for next agent {self.current_agent}")
+
         logger.info(f"Navigated to next agent: {self.current_agent}")
         
         return {
@@ -197,16 +215,22 @@ class ManualModeHandler:
     
     async def _handle_redo(self, command_data: Dict) -> Dict[str, Any]:
         """Re-run the current agent"""
-        agent = command_data.get("agent", self.current_agent)
-        
+        # Always redo the current agent, ignore what frontend sends
+        agent = self.current_agent
+
         logger.info(f"Redo requested for agent: {agent}")
-        
+
         # Clear previous results for this agent
         if agent in self.agent_results:
             del self.agent_results[agent]
-        
+
         # Mark as not completed to allow re-running
         self.completed_agents[agent] = False
+
+        # Reset the agent state in orchestrator for fresh start
+        if self.orchestrator:
+            self.orchestrator.reset_agent_state(agent)
+            logger.info(f"Reset orchestrator state for agent {agent} - will start from inference #1")
         
         return {
             "success": True,
@@ -239,6 +263,11 @@ class ManualModeHandler:
                 if target_agent in self.agent_results:
                     del self.agent_results[target_agent]
                 self.completed_agents[target_agent] = False
+
+                # Reset the agent state in orchestrator for fresh start
+                if self.orchestrator:
+                    self.orchestrator.reset_agent_state(target_agent)
+                    logger.info(f"Reset orchestrator state for jumped agent {target_agent}")
             
             logger.info(f"Jumped to agent: {target_agent} at index {agent_index}")
             
@@ -299,6 +328,12 @@ class ManualModeHandler:
         self.navigation_history = [self.current_agent]
         self.waiting_for_command = True
         # Note: completed_agents_set is NOT cleared - it persists across cycles
+
+        # Reset all agent states in orchestrator for new cycle
+        if self.orchestrator:
+            self.orchestrator.reset_all_agent_states()
+            logger.info(f"Reset all orchestrator agent states for new cycle {self.current_cycle}")
+
         logger.info(f"Reset after final compiler, starting cycle {self.current_cycle}, completed agents set: {self.completed_agents_set}")
     
     def can_compile(self) -> bool:

@@ -29,15 +29,20 @@ class FrameRegistry:
         
         logger.info(f"FrameRegistry initialized for session {session_id}")
     
-    async def register_frame(self, frame_data: np.ndarray, agent_name: str, 
+    async def register_frame(self, frame_data: np.ndarray, agent_name: str,
                             frame_number: int = 0) -> str:
         """Register a new frame and return its ID"""
         async with self._lock:
             frame_id = f"{agent_name}_{int(time.time()*1000)}_{uuid4().hex[:8]}"
-            
-            # Convert numpy array to bytes (JPEG encoding would go here)
-            frame_bytes = frame_data.tobytes()
-            
+
+            # Store frame metadata for proper reconstruction
+            dtype_str = str(frame_data.dtype)
+            shape = frame_data.shape
+
+            # Convert numpy array to bytes with metadata
+            # Format: dtype_str|shape|data_bytes
+            frame_bytes = f"{dtype_str}|{shape}|".encode() + frame_data.tobytes()
+
             frame = Frame(
                 frame_id=frame_id,
                 session_id=self.session_id,
@@ -120,16 +125,40 @@ class FrameRegistry:
     async def get_frame_for_damage_detector(self) -> Optional[np.ndarray]:
         """Get the shared initial frame for damage detector's first inference"""
         frame = await self.get_shared_frame("initial_first")
-        if frame and frame.data:
-            # Convert bytes back to numpy array
-            # In real implementation, would decode from JPEG
-            try:
+        if not frame:
+            logger.warning("No shared frame found with key 'initial_first' for damage_detector")
+            return None
+
+        if not frame.data:
+            logger.error(f"Shared frame {frame.frame_id} has no data")
+            return None
+
+        try:
+            # Parse metadata and reconstruct array
+            # Format: dtype_str|shape|data_bytes
+            header_end = frame.data.find(b'|', frame.data.find(b'|') + 1)
+            if header_end == -1:
+                # Fallback for old format without metadata
+                logger.warning("Frame data in old format, attempting legacy decode")
                 array = np.frombuffer(frame.data, dtype=np.uint8)
                 array = array.reshape((frame.height, frame.width, 3))
                 return array
-            except Exception as e:
-                logger.error(f"Failed to decode shared frame: {e}")
-        return None
+
+            header = frame.data[:header_end].decode()
+            dtype_str, shape_str = header.split('|')
+            shape = eval(shape_str)  # Safe since we control the format
+            data_bytes = frame.data[header_end + 1:]
+
+            array = np.frombuffer(data_bytes, dtype=np.dtype(dtype_str))
+            array = array.reshape(shape)
+
+            logger.debug(f"Successfully retrieved shared frame for damage_detector: shape={array.shape}, dtype={array.dtype}")
+            return array
+
+        except Exception as e:
+            logger.error(f"Failed to decode shared frame: {e}")
+            logger.error(f"Frame ID: {frame.frame_id}, Data size: {len(frame.data)} bytes")
+            return None
     
     async def cleanup(self) -> None:
         """Clean up all frames for this session"""

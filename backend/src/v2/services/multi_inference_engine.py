@@ -106,7 +106,13 @@ class MultiInferenceEngine:
         logger.info("="*80)
         logger.info(f"🎯 INFERENCE START: {agent_name.upper()} - Inference #{inference_num}")
         logger.info("="*80)
-        if inference_num == 1:
+
+        # Special logging for damage_detector's first inference with frame sharing
+        if agent_name.lower() == "damage_detector" and inference_num == 1 and len(frames) == 2:
+            logger.info(f"📸 FRAME SOURCES: 2 frames total for damage detector first inference")
+            logger.info(f"  🔄 1 SHARED frame from initial_classifier (reused)")
+            logger.info(f"  📷 1 NEW frame captured from camera")
+        elif inference_num == 1:
             logger.info(f"📸 FRAME CAPTURED: {len(frames)} {'frame' if len(frames) == 1 else 'frames'} captured from camera (first inference)")
         else:
             logger.info(f"📸 FRAME CAPTURED: 1 new frame captured for inference #{inference_num}")
@@ -123,8 +129,14 @@ class MultiInferenceEngine:
                     logger.info(f"Previous Reasoning: {previous_context.get('reasoning')}")
                 logger.info("*" * 69)
 
-        for i, path in enumerate(saved_frame_paths, 1):
-            logger.info(f"  📁 NEW Frame SAVED TO: {path}")
+        # Log saved frames with proper labeling for damage_detector
+        if agent_name.lower() == "damage_detector" and inference_num == 1 and len(saved_frame_paths) == 2:
+            # First frame is shared, second is new
+            logger.info(f"  📁 SHARED Frame SAVED TO: {saved_frame_paths[0]} (from initial_classifier)")
+            logger.info(f"  📁 NEW Frame SAVED TO: {saved_frame_paths[1]} (captured by damage_detector)")
+        else:
+            for i, path in enumerate(saved_frame_paths, 1):
+                logger.info(f"  📁 NEW Frame SAVED TO: {path}")
 
         if inference_num > 1 and previous_context and previous_context.get('frame_data') is not None:
             logger.info(f"  📁 PREVIOUS Frame: Used from inference #{previous_context.get('inference_num')} (in memory)")
@@ -214,8 +226,18 @@ class MultiInferenceEngine:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
             for idx, frame in enumerate(frames):
-                # Generate filename with prefix for previous frames
-                prefix = "prev_" if is_previous else ""
+                # Special naming for damage_detector's first inference
+                if agent_name.lower() == "damage_detector" and inference_num == 1 and len(frames) == 2:
+                    if idx == 0:
+                        # First frame is the shared frame from initial_classifier
+                        prefix = "shared_from_initial_"
+                    else:
+                        # Second frame is newly captured
+                        prefix = "new_"
+                else:
+                    # Default prefix for previous frames
+                    prefix = "prev_" if is_previous else ""
+
                 filename = f"{agent_name}_inf{inference_num}_{prefix}frame{idx+1}_{timestamp}.jpg"
                 filepath = agent_dir / filename
 
