@@ -79,3 +79,7 @@ build/
 
 # QR Code directory
 QR-Code/
+
+# Unused modules
+backend/cv60_ebus_module/
+cv60_ebus_module/
