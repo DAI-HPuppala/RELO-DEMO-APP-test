@@ -24,6 +24,7 @@ class ProfessionalApplicationController {
         this.processingTimer = null;
         this.currentAgent = 'initial_classifier';
         this.manualModeEnabled = false;
+        this.manualCyclePending = false; // Flag to defer row creation in manual mode
         this.lastSessionId = null;
         this.previousAgentStates = {};
         
@@ -46,6 +47,10 @@ class ProfessionalApplicationController {
         this.currentRowIndex = 0;
         this.cycleStartTime = null;
         this.backendProcessingTime = null; // Store backend-reported processing time
+
+        // Edit history for undo functionality (stores history per cell)
+        this.editHistory = new Map(); // Key: "row-col", Value: array of previous values
+        this.currentEditCell = null; // Track currently focused cell for undo
         
         // Track session processing times for averaging
         this.sessionProcessingTimes = [];
@@ -124,7 +129,10 @@ class ProfessionalApplicationController {
         
         // Set up event listeners
         this.setupEventListeners();
-        
+
+        // Initialize table inline editing
+        this.initializeTableEditing();
+
         // Set up WebRTC callbacks
         this.setupWebRTCCallbacks();
         
@@ -230,6 +238,270 @@ class ProfessionalApplicationController {
     }
 
     /**
+     * Initialize table inline editing functionality
+     */
+    initializeTableEditing() {
+        const tbody = document.getElementById('resultsTableBody');
+        if (!tbody) return;
+
+        // Use event delegation for double-click editing
+        tbody.addEventListener('dblclick', (e) => {
+            const cell = e.target.closest('td');
+            if (!cell || cell.classList.contains('editing')) return;
+
+            const row = cell.closest('tr');
+            if (!row || row.classList.contains('empty-row')) return;
+
+            const cellIndex = Array.from(row.cells).indexOf(cell);
+            // Only allow editing columns 1-10 (excluding 0=index, 11=timestamp)
+            if (cellIndex < 1 || cellIndex > 10) return;
+
+            this.makeEditable(cell, row, cellIndex);
+        });
+
+        // Add click handler to track focused cell for undo
+        tbody.addEventListener('click', (e) => {
+            const cell = e.target.closest('td');
+            if (!cell || cell.classList.contains('editing')) return;
+
+            const row = cell.closest('tr');
+            if (!row || row.classList.contains('empty-row')) return;
+
+            const cellIndex = Array.from(row.cells).indexOf(cell);
+            if (cellIndex < 1 || cellIndex > 10) return;
+
+            // Set current cell for undo tracking using row number
+            const rowNumber = row.cells[0].textContent.trim();
+            this.currentEditCell = `row${rowNumber}-col${cellIndex}`;
+
+            // Add visual indicator for focused cell
+            tbody.querySelectorAll('td.cell-focused').forEach(td => td.classList.remove('cell-focused'));
+            cell.classList.add('cell-focused');
+
+            // Show undo hint for first-time users (only once per session)
+            if (!this.undoHintShown) {
+                this.showUndoHint();
+                this.undoHintShown = true;
+            }
+        });
+
+        // Global keyboard listener for undo (Ctrl+Z / Cmd+Z)
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                this.undoLastEdit();
+            }
+        });
+    }
+
+    /**
+     * Make a table cell editable inline
+     */
+    makeEditable(cell, row, cellIndex) {
+        const tbody = document.getElementById('resultsTableBody');
+
+        // Use a unique identifier that includes row number from the table
+        const rowNumber = row.cells[0].textContent.trim(); // Get the # column value
+        const cellKey = `row${rowNumber}-col${cellIndex}`;
+        const originalValue = cell.textContent.trim();
+
+        // Store original value in history if this is the first edit for this cell
+        if (!this.editHistory.has(cellKey)) {
+            this.editHistory.set(cellKey, []);
+        }
+
+        cell.classList.add('editing');
+
+        // Create input element
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = originalValue;
+        input.className = 'inline-edit-input';
+
+        // Clear cell and add input
+        cell.textContent = '';
+        cell.appendChild(input);
+        input.focus();
+        input.select();
+
+        // Save function
+        const save = () => {
+            const newValue = input.value.trim() || originalValue;
+
+            // Only add to history if value actually changed
+            if (newValue !== originalValue) {
+                const history = this.editHistory.get(cellKey);
+                history.push(originalValue);
+                // Keep max 10 history items per cell
+                if (history.length > 10) {
+                    history.shift();
+                }
+            }
+
+            cell.textContent = newValue;
+            cell.classList.remove('editing');
+            // Update data-value attribute for consistency
+            cell.setAttribute('data-value', newValue);
+
+            // Set this as current cell for undo using the same unique key
+            this.currentEditCell = cellKey;
+        };
+
+        // Cancel function
+        const cancel = () => {
+            cell.textContent = originalValue;
+            cell.classList.remove('editing');
+        };
+
+        // Event listeners
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                save();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancel();
+            }
+        });
+
+        // Save on blur (when clicking outside)
+        input.addEventListener('blur', save);
+    }
+
+    /**
+     * Undo last edit for the currently focused cell
+     */
+    undoLastEdit() {
+        if (!this.currentEditCell) {
+            console.log('[Professional App] No cell selected for undo');
+            return;
+        }
+
+        const history = this.editHistory.get(this.currentEditCell);
+        if (!history || history.length === 0) {
+            console.log('[Professional App] No edit history for this cell');
+            this.showUndoTooltip('No changes to undo');
+            return;
+        }
+
+        // Parse the key to get row number and column index
+        const match = this.currentEditCell.match(/row(\d+)-col(\d+)/);
+        if (!match) return;
+
+        const rowNumber = match[1];
+        const cellIndex = parseInt(match[2]);
+
+        // Find the row by its number (first column value)
+        const tbody = document.getElementById('resultsTableBody');
+        let targetRow = null;
+        for (let row of tbody.children) {
+            if (row.cells[0].textContent.trim() === rowNumber) {
+                targetRow = row;
+                break;
+            }
+        }
+
+        if (!targetRow) return;
+
+        const cell = targetRow.cells[cellIndex];
+        if (!cell) return;
+
+        // Don't undo if cell is currently being edited
+        if (cell.classList.contains('editing')) return;
+
+        // Get previous value from history
+        const previousValue = history.pop();
+        const currentValue = cell.textContent.trim();
+
+        // Update cell with previous value
+        cell.textContent = previousValue;
+        cell.setAttribute('data-value', previousValue);
+
+        // Show undo feedback
+        this.showUndoTooltip('Undone');
+        cell.classList.add('undo-animation');
+        setTimeout(() => cell.classList.remove('undo-animation'), 300);
+
+        console.log(`[Professional App] Undo: "${currentValue}" → "${previousValue}"`);
+    }
+
+    /**
+     * Show undo tooltip feedback
+     */
+    showUndoTooltip(message) {
+        // Remove any existing tooltip
+        const existingTooltip = document.querySelector('.undo-tooltip');
+        if (existingTooltip) {
+            existingTooltip.remove();
+        }
+
+        // Create and show new tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'undo-tooltip';
+        tooltip.textContent = message;
+        document.body.appendChild(tooltip);
+
+        // Position near the focused cell
+        if (this.currentEditCell) {
+            const match = this.currentEditCell.match(/row(\d+)-col(\d+)/);
+            if (match) {
+                const rowNumber = match[1];
+                const cellIndex = parseInt(match[2]);
+
+                // Find the row by its number
+                const tbody = document.getElementById('resultsTableBody');
+                for (let row of tbody.children) {
+                    if (row.cells[0].textContent.trim() === rowNumber) {
+                        const cell = row.cells[cellIndex];
+                        if (cell) {
+                            const rect = cell.getBoundingClientRect();
+                            tooltip.style.left = rect.left + rect.width / 2 + 'px';
+                            tooltip.style.top = rect.top - 35 + 'px';
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Auto-remove after 2 seconds
+        setTimeout(() => tooltip.remove(), 2000);
+    }
+
+    /**
+     * Show undo hint for first-time users
+     */
+    showUndoHint() {
+        const hint = document.createElement('div');
+        hint.className = 'undo-hint';
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        hint.innerHTML = `
+            <span style="opacity: 0.7">Click any cell to select, then</span><br>
+            <strong>${isMac ? '⌘' : 'Ctrl'}+Z</strong> to undo changes
+        `;
+        document.body.appendChild(hint);
+
+        // Show the hint
+        setTimeout(() => hint.classList.add('show'), 100);
+
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            hint.classList.remove('show');
+            setTimeout(() => hint.remove(), 300);
+        }, 5000);
+    }
+
+    /**
+     * Clear all edit history (optional utility method)
+     * Can be called manually if needed: app.clearAllEditHistory()
+     */
+    clearAllEditHistory() {
+        this.editHistory.clear();
+        this.currentEditCell = null;
+        console.log('[Professional App] All edit history cleared');
+    }
+
+    /**
      * Set up WebRTC callbacks
      */
     setupWebRTCCallbacks() {
@@ -296,6 +568,9 @@ class ProfessionalApplicationController {
             case 'manual_mode_status':
                 this.handleManualModeStatus(data);
                 break;
+            case 'monitoring_cycle_started':
+                this.handleMonitoringCycleStarted(data);
+                break;
             default:
                 console.log('Unknown message type:', data.type);
         }
@@ -307,17 +582,20 @@ class ProfessionalApplicationController {
     async startMonitoring() {
         try {
             console.log('[Professional App] Starting classification monitoring');
-            
+
+            // Clear stopping flag when starting new session
+            this.stoppingSession = false;
+
             // Reset components
             this.resultsDisplay.reset();
             this.progressMonitor.reset();
-            
+
             // Ensure table header stays sticky
             this.ensureTableHeaderSticky();
-            
+
             // Force complete reset of all pipeline nodes
             this.forceResetAllNodes();
-            
+
             // Clear completed agents tracking
             this.completedAgentsInCycle.clear();
             
@@ -340,8 +618,8 @@ class ProfessionalApplicationController {
             // Clear all progressive attributes for new session
             this.resetProgressiveAttributes();
 
-            // Create initial row for this monitoring session
-            this.initializeResultsTable();
+            // Don't create row here - let monitoring_cycle_started message handle it
+            // This prevents duplicate row creation in auto mode
 
             // Reset node clicking for manual mode (backend will control this)
             if (this.mode === 'manual') {
@@ -494,28 +772,33 @@ class ProfessionalApplicationController {
      */
     stopMonitoring() {
         console.log('[Professional App] Stopping monitoring');
-        
+
         this.monitoringActive = false;
-        
+        this.stoppingSession = true; // Flag to gray out agents after they complete
+
         // Stop processing timer
         this.stopProcessingTimer();
-        
-        // Stop all agent timers
+
+        // Don't stop active agent timers - let them complete
+        // Only stop idle agent timers
         ['initial', 'detail', 'damage'].forEach(agent => {
-            this.stopAgentTimer(agent);
+            const fullAgentName = agent === 'initial' ? 'initial_classifier' :
+                                 agent === 'detail' ? 'detail_extractor' :
+                                 'damage_detector';
+
+            // Only stop timer if agent is not processing
+            if (this.agentStates[fullAgentName] !== 'processing') {
+                this.stopAgentTimer(agent);
+                this.setPipelineNodeState(agent, 'idle');
+                this.resetAgentTimer(agent);
+            }
         });
-        
-        // Force immediate visual reset of all pipeline nodes to gray
-        this.forceResetAllNodes();
-        
-        // Reset agent states (also reset the short form aliases)
+
+        // Reset only inactive agent states
         ['initial_classifier', 'detail_extractor', 'damage_detector', 'initial', 'detail', 'damage'].forEach(agent => {
-            this.agentStates[agent] = 'inactive';
-        });
-        
-        // Reset timers
-        ['initial', 'detail', 'damage'].forEach(agent => {
-            this.resetAgentTimer(agent);
+            if (this.agentStates[agent] !== 'processing') {
+                this.agentStates[agent] = 'inactive';
+            }
         });
         
         // Update UI state
@@ -620,6 +903,21 @@ class ProfessionalApplicationController {
      */
     handleAgentStarted(data) {
         console.log('[Professional App] Agent started:', data.agent, 'Session:', data.session_id);
+
+        // In manual mode, if we have a pending cycle and initial agent starts, create the row now
+        // BUT only if we don't already have a current row (to handle navigation within same cycle)
+        if (this.manualCyclePending && (data.agent === 'initial_classifier' || data.agent === 'initial')) {
+            // Check if we already have a current row - if so, don't create a new one
+            const existingRow = document.getElementById('current-classification-row');
+            if (!existingRow) {
+                console.log('[Professional App] Manual mode - creating row now that user started initial agent');
+                this.initializeResultsTable();
+            } else {
+                console.log('[Professional App] Manual mode - current row already exists, not creating new one');
+            }
+            this.manualCyclePending = false;
+        }
+
         this.progressMonitor.onAgentStarted(data);
         this.updateSystemStatus(`Processing: ${data.agent}`);
 
@@ -627,14 +925,14 @@ class ProfessionalApplicationController {
         if (data.session_id) {
             this.lastSessionId = data.session_id;
         }
-        
+
         // Update pipeline flow visualization for the current agent
         // This will set the agent to processing (orange)
         this.updatePipelineFlow(data.agent, 'active')
-        
+
         // Don't reset attributes here - they should persist from previous agents
         // Only reset at the start of a new cycle
-        
+
         // Update inference count and progress for the agent
         this.updateAgentProgress(data.agent, 0);
 
@@ -762,22 +1060,22 @@ class ProfessionalApplicationController {
     handleManualModeStatus(data) {
         console.log('[Professional App] Manual mode status:', data);
         console.log('[Professional App] handleManualModeStatus called with node_clicking_enabled:', data.node_clicking_enabled);
-        
+
         // Check if all three main agents have been completed in the CURRENT cycle
         // Node clicking should ONLY be enabled when all 3 agents are completed in the current cycle
         let shouldEnableNodeClicking = false;
-        
+
         if (data.completed_agents && Array.isArray(data.completed_agents)) {
             // Check if the current cycle has all 3 required agents completed
             const requiredAgents = ['initial_classifier', 'detail_extractor', 'damage_detector'];
             const currentCycleCompleted = requiredAgents.every(agent => data.completed_agents.includes(agent));
-            
+
             // Enable node clicking ONLY if all 3 agents are completed in current cycle
             shouldEnableNodeClicking = currentCycleCompleted && data.completed_agents.length === 3;
-            
+
             console.log(`[Professional App] Current cycle completed agents: ${data.completed_agents}, all 3 completed: ${shouldEnableNodeClicking}`);
         }
-        
+
         // Update node clicking state
         const wasEnabled = this.nodeClickingEnabled;
         this.nodeClickingEnabled = shouldEnableNodeClicking;
@@ -819,30 +1117,61 @@ class ProfessionalApplicationController {
     }
 
     /**
+     * Handle monitoring cycle started
+     */
+    handleMonitoringCycleStarted(data) {
+        console.log('[Professional App] Monitoring cycle started:', data);
+
+        // Track cycle number
+        this.currentCycleNumber = data.cycle_number || 1;
+
+        // In manual mode, don't create row immediately - wait for user to actually start the cycle
+        if (this.mode === 'manual') {
+            console.log('[Professional App] Manual mode - deferring row creation until user starts cycle');
+            // Don't reset attributes here - they should persist until final compiler runs
+            // Attributes will be cleared in handleFinalResults when cycle truly completes
+            this.manualCyclePending = true;  // Flag to create row when first agent starts
+        } else {
+            // Auto mode - create row immediately as cycles run continuously
+            this.resetProgressiveAttributes();
+            this.initializeResultsTable();
+            console.log(`[Professional App] Created new row for cycle ${this.currentCycleNumber}`);
+        }
+    }
+
+    /**
      * Handle agent completed
      */
     handleAgentCompleted(data) {
         console.log('[Professional App] Agent completed:', data.agent);
         console.log('[FINALIZED] Agent results:', data.results);
-        
+
         this.progressMonitor.onAgentCompleted(data);
-        
-        // Update pipeline flow - this will set the node to green and track completion
-        this.updatePipelineFlow(data.agent, 'complete');
-        
+
+        // If stop was pressed, gray out the agent and reset timer after completion
+        if (this.stoppingSession) {
+            const agentShortName = data.agent.replace('_classifier', '').replace('_extractor', '').replace('_detector', '');
+            this.setPipelineNodeState(agentShortName, 'idle');
+            this.resetAgentTimer(agentShortName);
+            this.agentStates[data.agent] = 'inactive';
+            this.agentStates[agentShortName] = 'inactive';
+        } else {
+            // Normal flow - set node to green
+            this.updatePipelineFlow(data.agent, 'complete');
+        }
+
         // Track completed state for cycle detection
         this.previousAgentStates[data.agent] = 'completed';
-        
+
         // Log the current state of completedAgentsInCycle for debugging
         console.log('[Professional App] Completed agents in cycle:', Array.from(this.completedAgentsInCycle));
-        
+
         // Update progressive attributes with final results
         if (data.results) {
             this.updateProgressiveAttributes(data.results);
             this.updateResultsTablePartial(data.agent, data.results);
         }
-        
-        
+
         // IMPORTANT: Don't reset any nodes here - they should stay green until final_compiler triggers
         // The nodes will be reset in handleFinalResults when the cycle truly completes
     }
@@ -862,16 +1191,16 @@ class ProfessionalApplicationController {
         // Clear completedAgentsInCycle FIRST before resetting nodes
         // This ensures setPipelineNodeState will actually reset them to idle
         this.completedAgentsInCycle.clear();
-        
+
         // When cycle completes (final compiler agent triggers):
         // NOW set detail and damage nodes to gray (idle)
         this.setPipelineNodeState('detail', 'idle');
         this.setPipelineNodeState('damage', 'idle');
-        
+
         // Set initial node to orange (processing) when final compiler triggers
         // This indicates ready for next cycle
         this.setPipelineNodeState('initial', 'processing');
-        
+
         // Mark all agents as completed for cycle detection
         this.previousAgentStates['initial'] = 'completed';
         this.previousAgentStates['initial_classifier'] = 'completed';
@@ -879,72 +1208,76 @@ class ProfessionalApplicationController {
         this.previousAgentStates['detail_extractor'] = 'completed';
         this.previousAgentStates['damage'] = 'completed';
         this.previousAgentStates['damage_detector'] = 'completed';
-        
+
         console.log('[Professional App] Cycle complete - nodes reset for next cycle');
-        
+
         // Stop processing timer
         const processingTime = this.stopProcessingTimer();
-        
+
         // Store backend processing time if provided
         if (data.processing_time !== undefined) {
             this.backendProcessingTime = data.processing_time;
             console.log('[Professional App] Backend reported processing time:', this.backendProcessingTime + 's');
         }
-        
+
         // Add processing time to results (prefer backend time if available)
         if (data.results) {
             data.results.processing_time = this.backendProcessingTime || processingTime;
             data.results.session_id = this.sessionId;
             data.results.agents_completed = data.agents_completed;
         }
-        
+
         // Display final results
         this.resultsDisplay.displayFinalResults(data.results);
-        
+
         // Update the results table with final data
         this.updateResultsTable(data.results);
-        
+
         this.updateSystemStatus('Classification Complete');
-        
+
         // Don't reset nodes here - let the next cycle's initial agent handle it
         // The nodes should stay in their completed (green) state until the next cycle starts
-        
+
         // Enable export buttons
         const exportCsvBtn = document.getElementById('exportCsvBtn');
         const exportJsonBtn = document.getElementById('exportJsonBtn');
         if (exportCsvBtn) exportCsvBtn.disabled = false;
         if (exportJsonBtn) exportJsonBtn.disabled = false;
-        
+
         // Track session time and update average
-        const duration = this.cycleStartTime ? 
+        const duration = this.cycleStartTime ?
             ((Date.now() - this.cycleStartTime) / 1000) : 0;
-        
+
         if (duration > 0) {
             this.sessionProcessingTimes.push(duration);
             this.totalSessions++;
             this.updateAverageProcessingTime();
-            
+
             // Update total sessions display
             const totalSessionsEl = document.getElementById('totalSessions');
             if (totalSessionsEl) {
                 totalSessionsEl.textContent = this.totalSessions;
             }
         }
-        
 
-        // In auto mode, prepare a new row for the next cycle after a 2-second delay
-        if (this.mode === 'auto' && this.monitoringActive) {
-            console.log('[Professional App] Auto mode - waiting 2 seconds before next cycle');
-            setTimeout(() => {
-                if (this.mode === 'auto' && this.monitoringActive) { // Check again after delay
-                    console.log('[Professional App] Auto mode - creating new row for next cycle');
-                    // Reset progressive attributes for next cycle
-                    this.resetProgressiveAttributes();
-                    // Create new row for next cycle
-                    this.initializeResultsTable();
-                }
-            }, 3000); // 2-second delay
+        // In manual mode, mark current row as completed and clear attributes
+        // so the next cycle starts fresh
+        if (this.mode === 'manual') {
+            const currentRow = document.getElementById('current-classification-row');
+            if (currentRow) {
+                // Remove the id so next cycle can create a new current row
+                currentRow.removeAttribute('id');
+                currentRow.classList.add('completed-row');
+                console.log('[Professional App] Manual mode - marked current row as completed');
+            }
+            // Clear live attributes after final results are displayed
+            // This ensures attributes persist through all agents but clear after final compilation
+            this.resetProgressiveAttributes();
+            console.log('[Professional App] Manual mode - cleared live attributes after final results');
         }
+
+        // Don't create row here in auto mode - the backend's monitoring_cycle_started message will handle it
+        // This prevents duplicate row creation from the 2nd cycle onward
     }
 
     /**
@@ -1506,34 +1839,11 @@ class ProfessionalApplicationController {
             currentRow.id = '';
             return;
         }
-        
-        // This shouldn't normally happen, but create a new row if needed
-        this.currentRowIndex++;
-        const row = document.createElement('tr');
-        
-        // Helper function to format values professionally
-        const formatValue = (attr) => {
-            if (attr === null || attr === undefined || attr === '') return '-';
-            return String(attr).replace(/_/g, ' ')
-                .replace(/\b\w/g, l => l.toUpperCase());
-        };
-        
-        row.innerHTML = `
-            <td>${this.currentRowIndex}</td>
-            <td>${formatValue(results.item_type || results.clothing_type || results.type)}</td>
-            <td>${formatValue(results.color || results.primary_color)}</td>
-            <td>${formatValue(results.pattern)}</td>
-            <td>${formatValue(results.brand)}</td>
-            <td>${formatValue(results.size)}</td>
-            <td>${formatValue(results.neckline)}</td>
-            <td>${formatValue(results.sleeve_type || results.sleeve_length || results.sleeve)}</td>
-            <td>${formatValue(results.closure_type || results.closure)}</td>
-            <td>${results.has_damage === true ? 'Yes' : results.has_damage === false ? 'No' : '-'}</td>
-            <td>${formatValue(results.damage_type)}</td>
-            <td>${timestampWithDuration}</td>
-        `;
 
-        tbody.insertBefore(row, tbody.firstChild);
+        // This shouldn't happen - log error if no current row exists
+        console.error('[Professional App] ERROR: updateResultsTable called but no current-classification-row exists!');
+        console.error('[Professional App] This indicates a timing issue with row creation. Results:', results);
+        // Do NOT create a fallback row - this would cause duplicate rows
 
         // Sync instructions container width after table update
         if (this.syncInstructionsWidth) {

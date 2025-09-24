@@ -1123,7 +1123,7 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
             orchestrator.session_state.reset_for_new_cycle()
             
             # Small delay between cycles
-            await asyncio.sleep(1)
+            await asyncio.sleep(4)
         
         logger.info(f"V1-to-V2 monitoring flow stopped after {cycle_count} cycles")
         
@@ -1174,8 +1174,17 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
             
             # Create cycle session ID
             cycle_session_id = f"{session_id}_manual_cycle_{cycle_count}"
-            # Starting manual mode cycle {cycle_count}
-            
+            logger.info(f"Starting manual mode cycle {cycle_count}")
+
+            # Send cycle started message to frontend
+            if orchestrator.send_message:
+                await orchestrator.send_message({
+                    "type": "monitoring_cycle_started",
+                    "session_id": session_id,
+                    "cycle_session_id": cycle_session_id,
+                    "cycle_number": cycle_count
+                })
+
             # Initialize agents for this cycle
             from v2.agents.initial_classifier_v2 import InitialClassifierV2
             from v2.agents.detail_extractor_v2 import DetailExtractorV2

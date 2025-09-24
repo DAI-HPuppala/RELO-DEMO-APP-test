@@ -76,3 +76,6 @@ build/
 # Cache
 .cache/
 .pytest_cache/
+
+# QR Code directory
+QR-Code/

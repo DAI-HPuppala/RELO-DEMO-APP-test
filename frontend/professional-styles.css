@@ -2046,6 +2046,156 @@ body {
     padding: var(--spacing-xl);
 }
 
+/* Inline editing styles for classification table */
+.classification-table td.editing {
+    padding: 0;
+    background: #fff;
+    box-shadow: inset 0 0 0 2px var(--accent-blue);
+    position: relative;
+    z-index: 10;
+}
+
+.inline-edit-input {
+    width: 100%;
+    height: 100%;
+    padding: 10px 8px;
+    border: none;
+    outline: none;
+    font-size: 13px;
+    font-family: inherit;
+    background: transparent;
+    text-align: center;
+    color: var(--gray-700);
+}
+
+/* Visual feedback for editable cells */
+.classification-table tbody td:not(:first-child):not(:last-child) {
+    cursor: text;
+    transition: background-color 0.2s ease;
+}
+
+.classification-table tbody td:not(:first-child):not(:last-child):hover {
+    background-color: var(--light-blue);
+    position: relative;
+}
+
+/* Show edit hint on hover for editable cells */
+.classification-table tbody td:not(:first-child):not(:last-child):hover::before {
+    content: "Double-click to edit";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background: var(--gray-800);
+    color: var(--white);
+    font-size: 11px;
+    white-space: nowrap;
+    border-radius: 4px;
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+    animation: fadeIn 0.3s ease-in-out 0.5s forwards;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 0.9;
+    }
+}
+
+/* Disable edit hint when cell is being edited */
+.classification-table tbody td.editing::before {
+    display: none;
+}
+
+/* Cell focus indicator for undo tracking */
+.classification-table tbody td.cell-focused {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: -2px;
+}
+
+/* Undo animation effect */
+.classification-table tbody td.undo-animation {
+    animation: undoFlash 0.3s ease-in-out;
+}
+
+@keyframes undoFlash {
+    0% {
+        background-color: var(--success-green);
+        transform: scale(1);
+    }
+    50% {
+        background-color: rgba(40, 167, 69, 0.2);
+        transform: scale(1.02);
+    }
+    100% {
+        background-color: transparent;
+        transform: scale(1);
+    }
+}
+
+/* Undo tooltip */
+.undo-tooltip {
+    position: fixed;
+    padding: 6px 12px;
+    background: var(--gray-800);
+    color: var(--white);
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+    z-index: 10000;
+    pointer-events: none;
+    transform: translateX(-50%);
+    animation: slideDown 0.2s ease-out;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.undo-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid var(--gray-800);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* Keyboard hint for undo in status bar or help section */
+.undo-hint {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.7);
+    color: var(--white);
+    font-size: 11px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.classification-table tbody td.cell-focused ~ .undo-hint,
+.undo-hint.show {
+    opacity: 1;
+}
+
 .result-loading {
     color: var(--gray-400);
     font-style: italic;

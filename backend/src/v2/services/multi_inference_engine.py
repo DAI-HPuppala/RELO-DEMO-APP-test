@@ -259,7 +259,7 @@ class MultiInferenceEngine:
         prompts = {
             "initial_classifier": "Analyze this garment and identify: type (e.g., T-shirt, Dress, Pants, Shoes, Shirt, Shorts, Jacket, Sweatshirt, Sweater, Hoodie), color, pattern, neckline style, sleeve length, and closure type. Neckline, closure type, and sleeve length are optional or could be null for Shoes. Return null for unrecognizable attributes.",
             "detail_extractor": "Look for brand name and size label on this garment. Return brand and size, or null if not visible.",
-            "damage_detector": "Analyze the garment carefully and identify if damaged (yes/no), Damage-type (with location as as small sentence). Creases, folds, and wrinkles are not damages. Be very strict on damage detection. Return null as damage_type, if no damage found. ",
+            "damage_detector": "Analyze the garment carefully and identify if damaged (yes/no), Damage-type (with location as as small sentence). Only flag major damage like holes, tears, stains, scratches, spots, abrasions, etc. Return null as damage_type, if no damage found. ",
             "final_compiler": "Compile final classification based on all attributes."
         }
 
