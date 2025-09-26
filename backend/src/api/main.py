@@ -5,6 +5,10 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 import logging
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables FIRST before any other imports
+load_dotenv()
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -13,7 +17,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
-from dotenv import load_dotenv
 
 from api.routes import session, health
 from api.websocket import websocket_endpoint
@@ -22,9 +25,6 @@ from services import SessionManager, WebRTCManager
 from services.vlm_singleton import vlm_singleton, get_vlm_status
 from services.ollama_optimizer import optimize_ollama_at_startup
 from services.gpu_initializer import ensure_gpu_ready, gpu_initializer
-
-# Load environment variables
-load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -75,6 +75,10 @@ async def lifespan(app: FastAPI):
         logger.info("Initializing WebRTCManager...")
         webrtc_manager = WebRTCManager()
         logger.info(f"WebRTCManager initialized: {webrtc_manager}")
+
+        # Start periodic cleanup task for memory management
+        await webrtc_manager.start_periodic_cleanup()
+        logger.info("✅ Started WebRTC periodic cleanup task")
         
         # NOTE: VLM initialization moved to frontend control
         # The VLM singleton will be initialized once during frontend initialization
@@ -106,6 +110,11 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("🛑 Shutting down Returns Classifier API")
+
+    # Stop periodic cleanup task
+    if webrtc_manager:
+        await webrtc_manager.stop_periodic_cleanup()
+        logger.info("Stopped WebRTC periodic cleanup task")
     
     # Clean up WebRTC connections
     if webrtc_manager:

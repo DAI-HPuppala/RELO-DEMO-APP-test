@@ -17,10 +17,6 @@ class DetailExtractorV2(StatefulBaseAgent):
         self.expected_attributes = [
             "brand",
             "size",
-            "material",
-            "care_instructions",
-            "style_details",
-            "condition_notes"
         ]
         
         # Removed verbose initialization logging
@@ -36,10 +32,6 @@ class DetailExtractorV2(StatefulBaseAgent):
             logger.warning("DetailExtractorV2: Neither brand nor size detected")
             return False
         
-        # Material is important
-        if not attributes.get("material"):
-            logger.warning("DetailExtractorV2: No material information detected")
-        
         return True
     
     async def process(self) -> Dict[str, Any]:
@@ -53,6 +45,6 @@ class DetailExtractorV2(StatefulBaseAgent):
         if "attributes" in result:
             attrs = result["attributes"]
             logger.info(f"DetailExtractorV2 extracted: Brand={attrs.get('brand', 'N/A')}, "
-                       f"Size={attrs.get('size', 'N/A')}, Material={attrs.get('material', 'N/A')}")
+                       f"Size={attrs.get('size', 'N/A')}")
         
         return result

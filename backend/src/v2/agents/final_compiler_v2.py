@@ -67,17 +67,24 @@ class FinalCompilerV2:
             # Normalize keys for damage detector
             damage = KeyNormalizer.normalize_agent_attributes("damage_detector", raw_damage)
 
-            final.is_damaged = damage.get("is_damaged", False)
+            # Get damage_type and derive is_damaged from it
             final.damage_type = damage.get("damage_type")
-            final.damage_severity = damage.get("damage_severity")
 
-            # Apply final damage consistency check
-            if self._is_positive_damage(final.is_damaged) and self._is_no_damage_type(final.damage_type):
-                logger.info(f"FinalCompilerV2: Final override: is_damaged from '{final.is_damaged}' to False "
-                           f"due to damage_type: '{final.damage_type}'")
+            # Check if damage_type indicates no damage
+            if self._indicates_no_damage(final.damage_type):
                 final.is_damaged = False
                 final.damage_type = None
                 final.damage_severity = None
+            else:
+                final.is_damaged = True
+                # Get severity if available, or derive from damage_type
+                final.damage_severity = damage.get("damage_severity")
+                if not final.damage_severity and final.damage_type:
+                    damage_lower = str(final.damage_type).lower()
+                    if any(word in damage_lower for word in ["major", "large", "severe", "significant"]):
+                        final.damage_severity = "major"
+                    elif any(word in damage_lower for word in ["minor", "small", "slight", "tiny"]):
+                        final.damage_severity = "minor"
 
             # Add reasoning
             if damage:
@@ -124,16 +131,27 @@ class FinalCompilerV2:
         final = await self.compile_results(agent_results)
         return final.to_dict()
 
-    def _is_positive_damage(self, value) -> bool:
-        """Check if value indicates damage"""
-        if not value:
-            return False
-        return str(value).lower() in ['yes', 'true', '1', 'damaged']
-
-    def _is_no_damage_type(self, value) -> bool:
-        """Check if damage_type indicates no damage"""
+    def _indicates_no_damage(self, value) -> bool:
+        """Check if damage_type value indicates no damage"""
         if not value:
             return True
-        value_lower = str(value).lower()
-        return (value_lower in ['null', 'undefined', 'none', 'no', 'no damage', 'clean'] or
-                'no' in value_lower or 'none' in value_lower)
+
+        value_str = str(value).lower().strip()
+
+        # Common no-damage indicators
+        no_damage_indicators = [
+            'null', 'none', 'nil', 'nill', 'undefined',
+            'no damage', 'not damaged', 'no', 'clean',
+            'good condition', 'perfect', 'pristine', 'n/a',
+            'not applicable', 'na', 'nothing', 'empty', ''
+        ]
+
+        # Check exact matches
+        if value_str in no_damage_indicators:
+            return True
+
+        # Check if starts with "no" or "not"
+        if value_str.startswith(('no ', 'not ', 'no-', 'not-')):
+            return True
+
+        return False

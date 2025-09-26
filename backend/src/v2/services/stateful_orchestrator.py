@@ -528,9 +528,9 @@ class StatefulOrchestrator:
             logger.error(f"Failed to load checkpoint: {e}")
             return False
     
-    def get_checkpoint_info(self) -> Dict[str, Any]:
+    async def get_checkpoint_info(self) -> Dict[str, Any]:
         """Get information about existing checkpoint"""
-        return self.state_persistence.get_checkpoint_info()
+        return await self.state_persistence.get_checkpoint_info()
     
     async def get_performance_metrics(self) -> Dict[str, Any]:
         """Get comprehensive performance metrics"""

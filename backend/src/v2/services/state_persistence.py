@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
+import aiofiles
 
 from ..models.session_state import SessionState, SessionStatus, SessionMode
 from ..models.agent_state import AgentState, AgentStatus
@@ -83,18 +84,18 @@ class StatePersistence:
             logger.error(f"Failed to queue checkpoint: {e}")
     
     async def _write_checkpoint(self, state_dict: Dict[str, Any]) -> None:
-        """Write checkpoint to disk"""
+        """Write checkpoint to disk (async)"""
         try:
             # Backup existing checkpoint
             if self.checkpoint_path.exists():
                 self.checkpoint_path.rename(self.backup_path)
-            
-            # Write new checkpoint
-            with open(self.checkpoint_path, 'w') as f:
-                json.dump(state_dict, f, indent=2)
-            
+
+            # Write new checkpoint asynchronously
+            async with aiofiles.open(self.checkpoint_path, 'w') as f:
+                await f.write(json.dumps(state_dict, indent=2))
+
             logger.debug(f"Checkpoint saved for session {self.session_id}")
-            
+
         except Exception as e:
             logger.error(f"Failed to write checkpoint: {e}")
             # Restore backup if write failed
@@ -102,14 +103,15 @@ class StatePersistence:
                 self.backup_path.rename(self.checkpoint_path)
     
     async def load_checkpoint(self) -> Optional[SessionState]:
-        """Load session state from checkpoint"""
+        """Load session state from checkpoint (async)"""
         try:
             if not self.checkpoint_path.exists():
                 logger.info(f"No checkpoint found for session {self.session_id}")
                 return None
-            
-            with open(self.checkpoint_path, 'r') as f:
-                state_dict = json.load(f)
+
+            async with aiofiles.open(self.checkpoint_path, 'r') as f:
+                content = await f.read()
+                state_dict = json.loads(content)
             
             # Reconstruct session state
             session_state = SessionState(session_id=state_dict["session_id"])
@@ -165,15 +167,16 @@ class StatePersistence:
         
         logger.info(f"StatePersistence cleaned up for session {self.session_id}")
     
-    def get_checkpoint_info(self) -> Dict[str, Any]:
-        """Get information about existing checkpoint"""
+    async def get_checkpoint_info(self) -> Dict[str, Any]:
+        """Get information about existing checkpoint (async)"""
         if not self.checkpoint_path.exists():
             return {"exists": False}
-        
+
         try:
             stat = self.checkpoint_path.stat()
-            with open(self.checkpoint_path, 'r') as f:
-                data = json.load(f)
+            async with aiofiles.open(self.checkpoint_path, 'r') as f:
+                content = await f.read()
+                data = json.loads(content)
             
             return {
                 "exists": True,

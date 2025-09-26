@@ -986,7 +986,7 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
                 timer_seconds = orchestrator.get_agent_timer(agent_name)
                 
                 logger.info(f"Running {agent_name} with {timer_seconds}s timer")
-                
+
                 # Send agent_started via V2 message system
                 if orchestrator.send_message:
                     await orchestrator.send_message({
@@ -996,7 +996,7 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
                         "timer_seconds": timer_seconds,
                         "mode": "automatic"
                     })
-                
+
                 # Run agent with timer through orchestrator - with interruption support
                 try:
                     # Verify VLM is still ready before running agent
@@ -1166,24 +1166,12 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                 return
         
         cycle_count = 0
-        
+        cycle_session_id = None  # Will be set when cycle actually starts
+
         # Run until stopped
         while monitoring_control.get('running', True) and manual_handler.is_active():
-            cycle_count += 1
-            manual_handler.current_cycle = cycle_count
-            
-            # Create cycle session ID
-            cycle_session_id = f"{session_id}_manual_cycle_{cycle_count}"
-            logger.info(f"Starting manual mode cycle {cycle_count}")
-
-            # Send cycle started message to frontend
-            if orchestrator.send_message:
-                await orchestrator.send_message({
-                    "type": "monitoring_cycle_started",
-                    "session_id": session_id,
-                    "cycle_session_id": cycle_session_id,
-                    "cycle_number": cycle_count
-                })
+            # Cycle counter and messages will be sent after final_compiler or on first run
+            # This prevents spam every second
 
             # Initialize agents for this cycle
             from v2.agents.initial_classifier_v2 import InitialClassifierV2
@@ -1209,9 +1197,26 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
             
             # Skip reset here - already done by reset_after_final_compiler()
             # Only reset if this is the very first cycle
-            if cycle_count == 1:
+            if cycle_count == 0:
+                # First cycle - increment counter and send message
+                cycle_count += 1
+                manual_handler.current_cycle = cycle_count
+
+                # Create cycle session ID
+                cycle_session_id = f"{session_id}_manual_cycle_{cycle_count}"
+                logger.info(f"Starting manual mode cycle {cycle_count}")
+
+                # Send cycle started message to frontend
+                if orchestrator.send_message:
+                    await orchestrator.send_message({
+                        "type": "monitoring_cycle_started",
+                        "session_id": session_id,
+                        "cycle_session_id": cycle_session_id,
+                        "cycle_number": cycle_count
+                    })
+
                 manual_handler.reset()
-            
+
             # Start with the first agent automatically
             first_agent_run = True
             
@@ -1354,9 +1359,27 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                 
                 # Start new cycle - use the new reset method
                 manual_handler.reset_after_final_compiler()
+
+                # Increment cycle counter for next cycle
+                cycle_count += 1
+                manual_handler.current_cycle = cycle_count
+
+                # Create new cycle session ID
+                cycle_session_id = f"{session_id}_manual_cycle_{cycle_count}"
+                logger.info(f"Starting manual mode cycle {cycle_count} after final_compiler")
+
+                # Send cycle started message to frontend
+                if orchestrator.send_message:
+                    await orchestrator.send_message({
+                        "type": "monitoring_cycle_started",
+                        "session_id": session_id,
+                        "cycle_session_id": cycle_session_id,
+                        "cycle_number": cycle_count
+                    })
+
                 # Set flag to run first agent of new cycle
                 first_agent_run = True
-                
+
                 # Clear monitoring control flags for clean state
                 monitoring_control['waiting_for_manual_agent'] = False
                 monitoring_control['manual_agent'] = None

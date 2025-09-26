@@ -167,7 +167,7 @@ class WebSocketHandlerV2:
                 await self._send_to_client(session_id, {
                     "type": "session_resumed",
                     "session_id": session_id,
-                    "checkpoint_info": orchestrator.get_checkpoint_info()
+                    "checkpoint_info": await orchestrator.get_checkpoint_info()
                 })
             
             # Initialize agents
@@ -421,7 +421,7 @@ class WebSocketHandlerV2:
             return {
                 "type": "session_recovered",
                 "session_id": session_id,
-                "checkpoint_info": orchestrator.get_checkpoint_info(),
+                "checkpoint_info": await orchestrator.get_checkpoint_info(),
                 "session_state": orchestrator.session_state.to_dict() if hasattr(orchestrator.session_state, 'to_dict') else {}
             }
         else:
@@ -439,7 +439,7 @@ class WebSocketHandlerV2:
             return {"type": "error", "message": "Session not found"}
         
         orchestrator = self.sessions[session_id]
-        info = orchestrator.get_checkpoint_info()
+        info = await orchestrator.get_checkpoint_info()
         
         return {
             "type": "checkpoint_info",

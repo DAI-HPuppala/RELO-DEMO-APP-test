@@ -35,7 +35,6 @@ __pycache__/
 ngrok.log
 backend.log
 frontend.log
-
 # Session data
 **/sessions/
 *.json
@@ -79,7 +78,9 @@ build/
 
 # QR Code directory
 QR-Code/
-
+vlm_optimization_experiments/
+vlm_prompt_validation/
+text_zoom_experiments/
 # Unused modules
 backend/cv60_ebus_module/
 cv60_ebus_module/

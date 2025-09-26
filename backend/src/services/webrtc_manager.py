@@ -4,7 +4,8 @@ import json
 import logging
 import socket
 from typing import Dict, Optional, Any
-from datetime import datetime
+from datetime import datetime, timedelta
+import time
 
 from aiortc import (
     RTCPeerConnection, 
@@ -43,6 +44,12 @@ class WebRTCManager:
         self.max_buffer_size = 10  # Keep moderate buffer to avoid starvation
         # Callback for handling control messages from data channel
         self.control_message_handler = None
+
+        # Session management for TTL-based cleanup
+        self.session_timestamps: Dict[str, float] = {}  # Track when each session was created
+        self.session_ttl_seconds = 3600  # 1 hour TTL by default
+        self.cleanup_task = None  # Background cleanup task
+        self.cleanup_interval_seconds = 60  # Run cleanup every minute
     
     async def create_peer_connection(self, session_id: str) -> RTCPeerConnection:
         """Create a new peer connection for a session."""
@@ -50,8 +57,9 @@ class WebRTCManager:
         # Don't specify configuration to use defaults which work better locally
         pc = RTCPeerConnection()
         
-        # Store the connection
+        # Store the connection with timestamp
         self.peer_connections[session_id] = pc
+        self.session_timestamps[session_id] = time.time()  # Track creation time
         
         # Store WebSocket for sending ICE candidates
         self.websocket_for_session = getattr(self, 'websocket_for_session', {})
@@ -512,34 +520,52 @@ class WebRTCManager:
         logger.error(f"WebRTC connection failed for {session_id}")
     
     async def close_connection(self, session_id: str):
-        """Close a peer connection."""
+        """Close a peer connection and clean up all associated resources."""
         pc = self.peer_connections.get(session_id)
         if pc:
             await pc.close()
             del self.peer_connections[session_id]
-        
+
         # Clean up data channels
         for key in list(self.data_channels.keys()):
             if session_id in key:
                 del self.data_channels[key]
-        
+
         # Update camera feed
         if session_id in self.camera_feeds:
             self.camera_feeds[session_id].disconnect()
-        
-        logger.info(f"Closed connection for session {session_id}")
+            del self.camera_feeds[session_id]
+
+        # Clean up frame buffers to free memory
+        if session_id in self.frame_buffers:
+            buffer_size = len(self.frame_buffers[session_id])
+            del self.frame_buffers[session_id]
+            logger.debug(f"Cleared frame buffer for {session_id} ({buffer_size} frames freed)")
+
+        # Clean up session timestamp
+        if session_id in self.session_timestamps:
+            del self.session_timestamps[session_id]
+
+        logger.info(f"Closed connection and cleaned resources for session {session_id}")
     
     async def cleanup_stale_connections(self):
-        """Clean up stale connections."""
+        """Clean up only failed or closed connections - keeps active sessions alive."""
         stale_sessions = []
-        
+
+        # Only check for failed/closed connections - NOT based on age
         for session_id, pc in self.peer_connections.items():
             if pc.connectionState in ["failed", "closed"]:
                 stale_sessions.append(session_id)
-        
+                logger.info(f"Session {session_id} marked for cleanup: connection {pc.connectionState}")
+
+        # Clean up all stale sessions
         for session_id in stale_sessions:
             await self.close_connection(session_id)
-        
+
+        if stale_sessions:
+            logger.info(f"Cleaned up {len(stale_sessions)} dead sessions. "
+                       f"Active sessions: {len(self.peer_connections)}")
+
         return len(stale_sessions)
     
     def add_frame_to_buffer(self, session_id: str, frame):
@@ -648,5 +674,34 @@ class WebRTCManager:
             # Fallback to buffer if video track not available
             frame = self.get_latest_frame(session_id)
             return frame  # Already a copy from get_latest_frame
-        
+
         return provider
+
+    async def start_periodic_cleanup(self):
+        """Start background task for periodic cleanup of stale connections."""
+        if self.cleanup_task is None or self.cleanup_task.done():
+            self.cleanup_task = asyncio.create_task(self._periodic_cleanup_loop())
+            logger.info(f"Started periodic cleanup task (interval: {self.cleanup_interval_seconds}s)")
+
+    async def stop_periodic_cleanup(self):
+        """Stop the periodic cleanup task."""
+        if self.cleanup_task and not self.cleanup_task.done():
+            self.cleanup_task.cancel()
+            try:
+                await self.cleanup_task
+            except asyncio.CancelledError:
+                pass
+            logger.info("Stopped periodic cleanup task")
+
+    async def _periodic_cleanup_loop(self):
+        """Background loop that runs cleanup periodically."""
+        while True:
+            try:
+                await asyncio.sleep(self.cleanup_interval_seconds)
+                cleaned = await self.cleanup_stale_connections()
+                if cleaned > 0:
+                    logger.info(f"Periodic cleanup removed {cleaned} stale sessions")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in periodic cleanup: {e}")

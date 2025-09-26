@@ -163,7 +163,9 @@ class MultiInferenceEngine:
                 # Use GPU-optimized inference with agent name for better detection
                 # Use frames_to_process which includes previous frame for batch processing
                 result_data = await vlm_loader.infer_optimized(frames_to_process, prompt, agent_name)
-                
+                logger.info("=/*"*40)
+                logger.info(f"GPU inference completed for {agent_name} in {time.time() - start_time:.2f}s and agent response: {result_data}")
+                logger.info("=/*"*40)
                 # Create InferenceResult object
                 result = InferenceResult(
                     agent_name=agent_name,
@@ -257,9 +259,9 @@ class MultiInferenceEngine:
     def _get_agent_prompt(self, agent_name: str, inference_num: int, previous_context: Dict[str, Any] = None) -> str:
         """Generate appropriate prompt based on agent name and context"""
         prompts = {
-            "initial_classifier": "Analyze this garment and identify: type (e.g., T-shirt, Dress, Pants, Shoes, Shirt, Shorts, Jacket, Sweatshirt, Sweater, Hoodie), color, pattern, neckline style, sleeve length, and closure type. Neckline, closure type, and sleeve length are optional or could be null for Shoes. Return null for unrecognizable attributes.",
-            "detail_extractor": "Look for brand name and size label on this garment. Return brand and size, or null if not visible.",
-            "damage_detector": "Analyze the garment carefully and identify if damaged (yes/no), Damage-type (with location as as small sentence). Only flag major damage like holes, tears, stains, scratches, spots, abrasions, etc. Return null as damage_type, if no damage found. ",
+            "initial_classifier": "Analyze this garment and identify: type (e.g., T-shirt, Dress, Pants, Shoes, Shirt, Shorts, Jacket, Sweatshirt, Sweater, Hoodie, Bag), color, pattern, neckline style, sleeve length, and closure type. Neckline, closure type, and sleeve length are optional or could be null for Shoes. Return null for unrecognizable attributes.",
+            "detail_extractor": "Search for brand name/logo and size on this garment. Return brand and size, or null if not visible.",
+            "damage_detector": "Analyze the garment carefully and identify if damaged (yes/no), Damage-type (include location wrt to garment as small sentence). Only flag major damage like values are: Cut/Tear, Abrasion / Scratch, Bodily fluids, Crease, Damaged Button / Fastener / Zipper / Clasp / Sequins, Dirty/Stains, Discoloration, Hair, Fuzz or Lint, Hole. Return null as damage_type, if no damage found. If multiple damage found, return seperate them by comma. Only JSON response.",
             "final_compiler": "Compile final classification based on all attributes."
         }
 

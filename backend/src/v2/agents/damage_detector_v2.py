@@ -15,11 +15,7 @@ class DamageDetectorV2(StatefulBaseAgent):
         super().__init__("damage_detector", timer_seconds=4.0)
         
         self.expected_attributes = [
-            "is_damaged",
-            "damage_type",
-            "damage_severity",
-            "damage_location",
-            "repair_feasibility"
+            "damage_type"  # Only damage_type is returned by the model
         ]
         
         # Removed verbose initialization logging
@@ -30,75 +26,104 @@ class DamageDetectorV2(StatefulBaseAgent):
     
     def validate_result(self, attributes: Dict[str, Any]) -> bool:
         """Validate that result contains expected attributes"""
-        # Must have is_damaged determination
-        if "is_damaged" not in attributes:
-            logger.warning("DamageDetectorV2: Missing is_damaged determination")
+        # Must have damage_type (can be null)
+        if "damage_type" not in attributes:
+            logger.warning("DamageDetectorV2: Missing damage_type")
             return False
 
-        # Apply damage consistency override before validation
-        self._apply_damage_override(attributes)
-
-        # If damaged, should have type and severity
-        if attributes.get("is_damaged"):
-            if not attributes.get("damage_type"):
-                logger.warning("DamageDetectorV2: Damage detected but no type specified")
-                return False
-            if not attributes.get("damage_severity"):
-                logger.warning("DamageDetectorV2: Damage detected but no severity specified")
+        # Derive is_damaged from damage_type
+        self._derive_is_damaged(attributes)
 
         return True
     
     async def process(self) -> Dict[str, Any]:
         """Main processing method"""
         logger.info("DamageDetectorV2 starting multi-inference processing with frame sharing")
-        
+
         # Note: First inference will automatically include shared frame from initial_classifier
         # This is handled by the base class's _capture_frames_with_retry method
-        
+
         # Run timer-based inference loop
         result = await self.run_with_timer()
-        
-        # Log summary
+
+        # Derive is_damaged from damage_type for all results
         if "attributes" in result:
             attrs = result["attributes"]
-            if attrs.get("is_damaged"):
-                logger.info(f"DamageDetectorV2 found damage: Type={attrs.get('damage_type', 'N/A')}, "
-                           f"Severity={attrs.get('damage_severity', 'N/A')}")
+
+            # Check if attributes are empty
+            if not attrs:
+                logger.warning("DamageDetectorV2: No attributes returned from model!")
+                # Initialize with default values
+                attrs["damage_type"] = None
+                attrs["is_damaged"] = False
+                result["attributes"] = attrs
             else:
-                logger.info("DamageDetectorV2: No damage detected")
-        
+                # Log raw output from model (before derivation)
+                logger.info("="*60)
+                logger.info("DamageDetectorV2 RAW OUTPUT FROM MODEL:")
+                logger.info(f"  - damage_type (from model): {attrs.get('damage_type', 'NOT FOUND')}")
+                logger.info("="*60)
+
+                # Derive is_damaged from damage_type
+                self._derive_is_damaged(attrs)
+
+                # Log derived attributes after processing
+                logger.info("DamageDetectorV2 DERIVED ATTRIBUTES:")
+                logger.info(f"  - is_damaged (derived): {attrs.get('is_damaged', False)}")
+                logger.info(f"  - damage_type (final): {attrs.get('damage_type', None)}")
+
+                # Log final summary
+                if attrs.get("is_damaged"):
+                    logger.info(f"DamageDetectorV2 RESULT: ✅ Damage found - Type={attrs.get('damage_type', 'N/A')}")
+                else:
+                    logger.info("DamageDetectorV2 RESULT: ✅ No damage detected")
+        else:
+            logger.warning("DamageDetectorV2: No 'attributes' key in result!")
+
         return result
 
-    def _apply_damage_override(self, attributes: Dict[str, Any]) -> Dict[str, Any]:
-        """Apply damage detection override logic"""
+    def _derive_is_damaged(self, attributes: Dict[str, Any]) -> None:
+        """Derive is_damaged attribute from damage_type value"""
         if not attributes:
-            return attributes
+            return
 
-        is_damaged = attributes.get("is_damaged")
         damage_type = attributes.get("damage_type")
 
-        # Override logic: if is_damaged="yes" but damage_type indicates no damage
-        if self._is_positive_damage(is_damaged) and self._is_no_damage_type(damage_type):
-            logger.info(f"DamageDetectorV2: Overriding is_damaged from '{is_damaged}' to 'No' "
-                       f"due to damage_type: '{damage_type}'")
-            attributes["is_damaged"] = "No"
-            # Also clear damage-related fields for consistency
-            attributes["damage_severity"] = None
-            attributes["damage_location"] = None
-            attributes["repair_feasibility"] = None
+        # Check if damage_type indicates no damage
+        if self._indicates_no_damage(damage_type):
+            attributes["is_damaged"] = False
+        else:
+            # There is damage
+            attributes["is_damaged"] = True
+            # Extract location from damage_type if present (e.g., "stain on front")
+            if damage_type and isinstance(damage_type, str):
+                # Try to extract location from damage_type description
+                damage_parts = damage_type.lower()
+                if " on " in damage_parts or " at " in damage_parts or " in " in damage_parts:
+                    # Has location info
+                    attributes["damage_location"] = damage_type
 
-        return attributes
-
-    def _is_positive_damage(self, value) -> bool:
-        """Check if value indicates damage"""
-        if not value:
-            return False
-        return str(value).lower() in ['yes', 'true', '1', 'damaged']
-
-    def _is_no_damage_type(self, value) -> bool:
-        """Check if damage_type indicates no damage"""
+    def _indicates_no_damage(self, value) -> bool:
+        """Check if damage_type value indicates no damage"""
         if not value:
             return True
-        value_lower = str(value).lower()
-        return (value_lower in ['null', 'undefined', 'none', 'no', 'no damage', 'clean'] or
-                'no' in value_lower or 'none' in value_lower)
+
+        value_str = str(value).lower().strip()
+
+        # Common no-damage indicators
+        no_damage_indicators = [
+            'null', 'none', 'nil', 'nill', 'undefined',
+            'no damage', 'not damaged', 'no', 'clean',
+            'good condition', 'perfect', 'pristine', 'n/a',
+            'not applicable', 'na', 'nothing', 'empty', ''
+        ]
+
+        # Check exact matches
+        if value_str in no_damage_indicators:
+            return True
+
+        # Check if starts with "no" or "not"
+        if value_str.startswith(('no ', 'not ', 'no-', 'not-')):
+            return True
+
+        return False
