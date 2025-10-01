@@ -241,6 +241,7 @@ body {
     pointer-events: none;
     animation: tooltipFadeUp 0.2s ease-in;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-width: 200px; /* Limit tooltip width */
 }
 
 .btn[data-tooltip]:not(:disabled):hover::before {
@@ -257,6 +258,15 @@ body {
     z-index: 10000;
     pointer-events: none;
     animation: tooltipFadeUp 0.2s ease-in;
+}
+
+/* Ensure parent containers allow tooltip overflow */
+.camera-panel {
+    overflow: visible !important;
+}
+
+.panel {
+    overflow: visible !important;
 }
 
 
@@ -705,18 +715,26 @@ body {
     background: var(--gray-50);
     border-bottom: 1px solid var(--gray-200);
     gap: var(--spacing-md);
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    min-height: 60px; /* Ensure minimum height for buttons */
+    overflow: visible; /* Ensure tooltips are visible */
 }
 
 .control-group {
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
+    flex-shrink: 0; /* Prevent mode toggle from shrinking */
 }
 
 .camera-controls .control-buttons {
     display: flex;
     gap: var(--spacing-sm);
     align-items: center;
+    flex-wrap: wrap; /* Allow buttons to wrap */
+    flex: 1; /* Take available space */
+    justify-content: flex-end; /* Align buttons to the right */
+    min-width: 0; /* Allow shrinking */
 }
 
 /* FPS Overlay */
@@ -2503,15 +2521,97 @@ body {
 }
 
 /* Responsive Updates */
-@media (max-width: 1024px) {
+@media (max-width: 1440px) {
     .camera-controls .control-buttons {
-        flex-wrap: wrap;
-        gap: var(--spacing-xs);
+        gap: 6px;
+    }
+
+    .camera-controls .btn {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+
+    .camera-controls .btn .btn-icon {
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .camera-controls {
+        gap: var(--spacing-sm);
+    }
+
+    .camera-controls .control-buttons {
+        gap: 5px;
     }
 
     .camera-controls .btn {
         font-size: 11px;
+        padding: 5px 9px;
+    }
+
+    .camera-controls .btn .btn-icon {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .camera-controls {
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .camera-controls .control-buttons {
+        gap: 4px;
+    }
+
+    .camera-controls .btn {
+        font-size: 10px;
         padding: 4px 8px;
+    }
+
+    .camera-controls .btn .btn-icon {
+        font-size: 11px;
+    }
+
+    .camera-controls .btn .btn-text {
+        display: inline; /* Keep text visible */
+    }
+}
+
+@media (max-width: 900px) {
+    .camera-controls .btn {
+        font-size: 9px;
+        padding: 4px 6px;
+    }
+
+    .camera-controls .btn .btn-icon {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 800px) {
+    /* Stack mode toggle and buttons vertically on very small screens */
+    .camera-controls {
+        justify-content: center;
+        gap: var(--spacing-xs);
+    }
+
+    .control-group {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .camera-controls .control-buttons {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Adjust tooltips for small screens */
+    .btn[data-tooltip]:not(:disabled):hover::after {
+        font-size: 11px;
+        padding: 6px 10px;
+        max-width: 150px;
+        white-space: normal; /* Allow text wrapping on small screens */
     }
 }
 
