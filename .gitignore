@@ -1,0 +1,86 @@
+# Test files
+**/test_*.py
+**/tests/
+*.test.py
+*.test.js
+__pycache__/
+*.pyc
+*.pyo
+
+# Markdown and documentation
+*.md
+**/*.md
+
+# Spec files
+**/specs/
+**/spec/
+*.spec.js
+*.spec.py
+
+# Capture frames and media
+**/captured_frames/
+**/capture_frames/
+**/frames/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.webp
+
+# Logs
+*.log
+**/logs/
+**/backend/logs/
+ngrok.log
+backend.log
+frontend.log
+# Session data
+**/sessions/
+*.json
+
+# Python
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Cache
+.cache/
+.pytest_cache/
+
+# QR Code directory
+QR-Code/
+vlm_optimization_experiments/
+vlm_prompt_validation/
+text_zoom_experiments/
+# Unused modules
+backend/cv60_ebus_module/
+cv60_ebus_module/

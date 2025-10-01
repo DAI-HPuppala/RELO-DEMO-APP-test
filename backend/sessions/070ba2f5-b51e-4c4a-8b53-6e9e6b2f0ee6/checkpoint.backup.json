@@ -1,0 +1,44 @@
+{
+  "session_id": "070ba2f5-b51e-4c4a-8b53-6e9e6b2f0ee6",
+  "status": "active",
+  "mode": "automatic",
+  "current_agent": "initial_classifier",
+  "agents_completed": [],
+  "paused_agent": null,
+  "timestamp": "2025-09-30T18:17:15.592661",
+  "agent_states": {
+    "initial_classifier": {
+      "status": "completed",
+      "timer_seconds": 4,
+      "timer_remaining": 0,
+      "inference_count": 2,
+      "current_inference_num": 0,
+      "finalized_attributes": {
+        "closure type": "Button",
+        "pattern": "Solid",
+        "sleeve length": "Long",
+        "type": "Shirt",
+        "color": "White",
+        "neckline": "Round",
+        "neckline style": "Round"
+      },
+      "aggregation_method": "last_with_fallback",
+      "error_message": null,
+      "has_results": true
+    },
+    "detail_extractor": {
+      "status": "completed",
+      "timer_seconds": 3,
+      "timer_remaining": 0,
+      "inference_count": 1,
+      "current_inference_num": 0,
+      "finalized_attributes": {
+        "brand": null,
+        "size": null
+      },
+      "aggregation_method": "single",
+      "error_message": null,
+      "has_results": true
+    }
+  }
+}

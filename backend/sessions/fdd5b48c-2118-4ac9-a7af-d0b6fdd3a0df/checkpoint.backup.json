@@ -1,0 +1,30 @@
+{
+  "session_id": "fdd5b48c-2118-4ac9-a7af-d0b6fdd3a0df",
+  "status": "active",
+  "mode": "automatic",
+  "current_agent": "initial_classifier",
+  "agents_completed": [],
+  "paused_agent": null,
+  "timestamp": "2025-09-30T18:18:11.924332",
+  "agent_states": {
+    "initial_classifier": {
+      "status": "completed",
+      "timer_seconds": 4,
+      "timer_remaining": 0,
+      "inference_count": 2,
+      "current_inference_num": 0,
+      "finalized_attributes": {
+        "closure type": "Zipper",
+        "pattern": "Solid",
+        "sleeve length": "Long",
+        "type": "Shirt",
+        "color": "Black",
+        "neckline": "Round",
+        "neckline style": "Round"
+      },
+      "aggregation_method": "last_with_fallback",
+      "error_message": null,
+      "has_results": true
+    }
+  }
+}
