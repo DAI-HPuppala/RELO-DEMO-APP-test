@@ -16,6 +16,7 @@ numpy==1.26.4
 # Camera support
 # pyrealsense2==2.56.5.9235  # Intel RealSense SDK - Removed, using CV60 with eBUS SDK
 av==14.4.0  # For video frame handling
+depthai==2.24.0.0  # OAK-D Pro camera support via DepthAI SDK
 
 # Ollama client
 ollama==0.1.7

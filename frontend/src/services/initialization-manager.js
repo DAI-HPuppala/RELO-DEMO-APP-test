@@ -7,14 +7,14 @@ class InitializationManager {
         // Frontend display steps (4 visible steps)
         this.frontendSteps = [
             { id: 'communication', name: 'Initializing Communication', status: 'pending' },
-            { id: 'camera', name: 'Zebra CV60 Initialization', status: 'pending' },
+            { id: 'camera', name: 'Camera Initialization', status: 'pending' },
             { id: 'streaming', name: 'Setting up Video Streaming', status: 'pending' },
             { id: 'system', name: 'Warming up the System', status: 'pending' }
         ];
         // Backend execution steps (6 actual steps - unchanged)
         this.backendSteps = [
             { id: 'backend', name: 'Backend Server', status: 'pending' },
-            { id: 'camera', name: 'RealSense Camera', status: 'pending' },
+            { id: 'camera', name: 'Camera Initialization', status: 'pending' },
             { id: 'websocket', name: 'WebSocket Connection', status: 'pending' },
             { id: 'webrtc', name: 'WebRTC Stream', status: 'pending' },
             { id: 'gpu', name: 'GPU Initialization', status: 'pending' },
@@ -49,7 +49,7 @@ class InitializationManager {
             this.updateStepStatus('communication', 'completed', 'Connected');
             this.updateProgress(25);
 
-            // Frontend Step 2: "Zebra CV60 Initialization" (25-50%)
+            // Frontend Step 2: "Camera Initialization" (25-50%)
             this.updateStepStatus('camera', 'active', 'Initializing camera...');
             await this.initializeCamera();
             this.updateStepStatus('camera', 'completed', 'Camera ready');

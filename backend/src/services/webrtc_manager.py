@@ -3,13 +3,14 @@ import asyncio
 import json
 import logging
 import socket
+import os
 from typing import Dict, Optional, Any
 from datetime import datetime, timedelta
 import time
 
 from aiortc import (
-    RTCPeerConnection, 
-    RTCSessionDescription, 
+    RTCPeerConnection,
+    RTCSessionDescription,
     RTCDataChannel,
     RTCConfiguration,
     RTCIceServer
@@ -147,15 +148,27 @@ class WebRTCManager:
             # Initialize camera service and video track (singleton pattern with reset logic)
             async with WebRTCManager._camera_service_lock:
                 if not WebRTCManager._camera_service:
-                    try:
-                        # Use the CV60 camera service
-                        from services.cv60_camera import CV60CameraService
-                    except ImportError:
-                        # Try alternative import path
-                        from .cv60_camera import CV60CameraService
-                    WebRTCManager._camera_service = CV60CameraService()
-                    WebRTCManager._camera_service.initialize_camera(camera_source)
-                    logger.info("CV60CameraService initialized")
+                    # Get camera type from environment variable (default to CV60)
+                    camera_type = os.getenv('CAMERA_TYPE', 'CV60').upper()
+
+                    if camera_type == 'OAKD':
+                        # Use OAK-D Pro camera service
+                        try:
+                            from services.oakd_camera import OakDCameraService
+                        except ImportError:
+                            from .oakd_camera import OakDCameraService
+                        WebRTCManager._camera_service = OakDCameraService()
+                        WebRTCManager._camera_service.initialize_camera(camera_source)
+                        logger.info("OakDCameraService initialized")
+                    else:
+                        # Use CV60 camera service (default)
+                        try:
+                            from services.cv60_camera import CV60CameraService
+                        except ImportError:
+                            from .cv60_camera import CV60CameraService
+                        WebRTCManager._camera_service = CV60CameraService()
+                        WebRTCManager._camera_service.initialize_camera(camera_source)
+                        logger.info("CV60CameraService initialized")
 
                 # Check if existing video track is in test mode and needs reset
                 if WebRTCManager._video_track:
