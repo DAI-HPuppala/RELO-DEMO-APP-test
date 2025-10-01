@@ -84,3 +84,4 @@ text_zoom_experiments/
 # Unused modules
 backend/cv60_ebus_module/
 cv60_ebus_module/
+OCR_test/
