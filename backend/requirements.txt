@@ -1,0 +1,38 @@
+# Core dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+python-multipart==0.0.6
+
+# WebRTC support
+aiortc==1.13.0
+aiohttp==3.9.1
+
+# Image processing
+opencv-python==4.8.1.78
+Pillow==10.1.0
+numpy==1.26.4
+
+# Camera support
+# pyrealsense2==2.56.5.9235  # Intel RealSense SDK - Removed, using CV60 with eBUS SDK
+av==14.4.0  # For video frame handling
+
+# Ollama client
+ollama==0.1.7
+
+# Utilities
+python-dotenv==1.0.0
+uuid6==2023.5.2
+aiofiles==23.2.1  # For async file I/O
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2
+pytest-cov==4.1.0
+websockets==12.0  # For WebSocket testing
+
+# Development
+black==23.11.0
+flake8==6.1.0
+mypy==1.7.1
