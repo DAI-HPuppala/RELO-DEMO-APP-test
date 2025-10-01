@@ -51,7 +51,11 @@ class ProfessionalApplicationController {
         // Edit history for undo functionality (stores history per cell)
         this.editHistory = new Map(); // Key: "row-col", Value: array of previous values
         this.currentEditCell = null; // Track currently focused cell for undo
-        
+
+        // Row selection for deletion
+        this.selectedRows = new Set(); // Track selected row IDs
+        this.lastSelectedRowId = null; // For shift-click range selection
+
         // Track session processing times for averaging
         this.sessionProcessingTimes = [];
         this.totalSessions = 0;
@@ -132,6 +136,9 @@ class ProfessionalApplicationController {
 
         // Initialize table inline editing
         this.initializeTableEditing();
+
+        // Initialize keyboard shortcuts
+        this.initializeKeyboardShortcuts();
 
         // Set up WebRTC callbacks
         this.setupWebRTCCallbacks();
@@ -224,17 +231,91 @@ class ProfessionalApplicationController {
         }
         
         // Export buttons
-        const exportCsvBtn = document.getElementById('exportCsvBtn');
-        const exportJsonBtn = document.getElementById('exportJsonBtn');
-        
-        if (exportCsvBtn) {
-            exportCsvBtn.addEventListener('click', () => this.exportResultsAsCSV());
+        // Export All button
+        const exportAllBtn = document.getElementById('exportAllBtn');
+        if (exportAllBtn) {
+            exportAllBtn.addEventListener('click', () => this.exportAllResults());
         }
-        
-        if (exportJsonBtn) {
-            exportJsonBtn.addEventListener('click', () => this.exportResultsAsJSON());
+
+        // Delete button
+        const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+        if (deleteSelectedBtn) {
+            deleteSelectedBtn.addEventListener('click', () => this.deleteSelectedRows());
         }
-        
+
+        // Export Selected button
+        const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+        if (exportSelectedBtn) {
+            exportSelectedBtn.addEventListener('click', () => this.exportSelectedRows());
+        }
+
+        // Row selection handler (event delegation on tbody)
+        const tbody = document.getElementById('resultsTableBody');
+        if (tbody) {
+            tbody.addEventListener('click', (e) => {
+                const cell = e.target.closest('.selectable-cell');
+                if (!cell) return;
+
+                const row = cell.closest('tr');
+                if (!row || row.classList.contains('empty-row')) return;
+
+                const rowId = row.getAttribute('data-row-id');
+                if (!rowId) return;
+
+                // Shift+Click: Range selection
+                if (e.shiftKey && this.lastSelectedRowId !== null) {
+                    this.selectRowRange(this.lastSelectedRowId, rowId);
+                } else {
+                    // Normal click: Toggle selection
+                    if (this.selectedRows.has(rowId)) {
+                        this.selectedRows.delete(rowId);
+                        row.classList.remove('row-selected');
+                    } else {
+                        this.selectedRows.add(rowId);
+                        row.classList.add('row-selected');
+                    }
+                    this.lastSelectedRowId = rowId;
+                }
+
+                // Update UI
+                this.updateDeleteButtonState();
+                this.updateSelectionCounter();
+            });
+        }
+
+        // Header select-all handler
+        const selectAllHeader = document.getElementById('selectAllHeader');
+        if (selectAllHeader) {
+            selectAllHeader.addEventListener('click', () => this.toggleSelectAll());
+        }
+
+        // Global click handler for deselection and closing edit inputs
+        document.addEventListener('click', (e) => {
+            // Check if click is outside the table
+            const table = e.target.closest('.classification-table');
+
+            // Don't deselect if clicking on modal, delete button, export button, or header
+            const modal = e.target.closest('.modal-backdrop');
+            const deleteBtn = e.target.closest('#deleteSelectedBtn');
+            const exportBtn = e.target.closest('#exportSelectedBtn');
+            const selectAllHeader = e.target.closest('#selectAllHeader');
+
+            // Clear row selections when clicking outside
+            if (!table && !modal && !deleteBtn && !exportBtn && !selectAllHeader && this.selectedRows.size > 0) {
+                this.clearRowSelection();
+            }
+
+            // Close any active editing inputs when clicking outside the input
+            const editingCell = document.querySelector('td.editing');
+            if (editingCell) {
+                const editInput = editingCell.querySelector('.inline-edit-input');
+                // If we're clicking outside the editing input, blur it to trigger save
+                if (editInput && !editInput.contains(e.target)) {
+                    editInput.blur();
+                }
+            }
+        });
+
     }
 
     /**
@@ -298,7 +379,11 @@ class ProfessionalApplicationController {
      * Make a table cell editable inline
      */
     makeEditable(cell, row, cellIndex) {
-        const tbody = document.getElementById('resultsTableBody');
+        // Prevent editing if row is selected
+        if (row.classList.contains('row-selected')) {
+            console.log('[Professional App] Cannot edit selected rows');
+            return;
+        }
 
         // Use a unique identifier that includes row number from the table
         const rowNumber = row.cells[0].textContent.trim(); // Get the # column value
@@ -328,6 +413,13 @@ class ProfessionalApplicationController {
         const save = () => {
             const newValue = input.value.trim() || originalValue;
 
+            // Store the very first original value if not already stored
+            if (!cell.hasAttribute('data-original-value')) {
+                cell.setAttribute('data-original-value', originalValue);
+            }
+
+            const veryOriginalValue = cell.getAttribute('data-original-value');
+
             // Only add to history if value actually changed
             if (newValue !== originalValue) {
                 const history = this.editHistory.get(cellKey);
@@ -335,6 +427,56 @@ class ProfessionalApplicationController {
                 // Keep max 10 history items per cell
                 if (history.length > 10) {
                     history.shift();
+                }
+            }
+
+            // Check if current value differs from very original value
+            if (newValue !== veryOriginalValue) {
+                cell.classList.add('cell-edited');
+
+                // Update row metadata with edit information
+                try {
+                    const metadataStr = row.getAttribute('data-metadata');
+                    if (metadataStr) {
+                        const metadata = JSON.parse(metadataStr);
+
+                        // Get column name from table header
+                        const cellColumnIndex = Array.from(row.cells).indexOf(cell);
+                        const thead = document.querySelector('.classification-table thead');
+                        const headers = thead ? Array.from(thead.querySelectorAll('th')) : [];
+                        const columnName = headers[cellColumnIndex]?.textContent.trim() || `col_${cellColumnIndex}`;
+
+                        // Store edit: original -> final
+                        metadata.edits[columnName] = {
+                            original: veryOriginalValue,
+                            final: newValue
+                        };
+
+                        row.setAttribute('data-metadata', JSON.stringify(metadata));
+                    }
+                } catch (e) {
+                    console.error('[Professional App] Error updating edit metadata:', e);
+                }
+            } else {
+                cell.classList.remove('cell-edited');
+
+                // Remove from edits if restored to original
+                try {
+                    const metadataStr = row.getAttribute('data-metadata');
+                    if (metadataStr) {
+                        const metadata = JSON.parse(metadataStr);
+                        const cellColumnIndex = Array.from(row.cells).indexOf(cell);
+                        const thead = document.querySelector('.classification-table thead');
+                        const headers = thead ? Array.from(thead.querySelectorAll('th')) : [];
+                        const columnName = headers[cellColumnIndex]?.textContent.trim() || `col_${cellColumnIndex}`;
+
+                        if (metadata.edits[columnName]) {
+                            delete metadata.edits[columnName];
+                            row.setAttribute('data-metadata', JSON.stringify(metadata));
+                        }
+                    }
+                } catch (e) {
+                    console.error('[Professional App] Error removing edit metadata:', e);
                 }
             }
 
@@ -416,6 +558,12 @@ class ProfessionalApplicationController {
         // Update cell with previous value
         cell.textContent = previousValue;
         cell.setAttribute('data-value', previousValue);
+
+        // Check if restored to original value - remove edited indicator
+        const veryOriginalValue = cell.getAttribute('data-original-value');
+        if (veryOriginalValue && previousValue === veryOriginalValue) {
+            cell.classList.remove('cell-edited');
+        }
 
         // Show undo feedback
         this.showUndoTooltip('Undone');
@@ -656,6 +804,15 @@ class ProfessionalApplicationController {
             this.monitoringActive = true;
             this.isPaused = false;
 
+            // Clear any row selections and disable delete button
+            this.clearRowSelection();
+
+            // Disable export buttons during monitoring
+            const exportAllBtn = document.getElementById('exportAllBtn');
+            const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+            if (exportAllBtn) exportAllBtn.disabled = true;
+            if (exportSelectedBtn) exportSelectedBtn.disabled = true;
+
             // Update buttons based on mode
             if (this.mode === 'auto') {
                 // Show and enable pause/resume button for auto mode
@@ -814,7 +971,7 @@ class ProfessionalApplicationController {
         if (stopBtn) stopBtn.disabled = true;
         if (pauseResumeBtn) {
             pauseResumeBtn.disabled = true;
-            pauseResumeBtn.style.display = 'inline-flex';
+            pauseResumeBtn.style.display = 'none';  // Hide pause button on stop
             this.setPauseResumeButton(false); // Reset to Pause state
         }
         
@@ -822,10 +979,50 @@ class ProfessionalApplicationController {
         if (prevBtn) prevBtn.disabled = true;
         if (nextBtn) nextBtn.disabled = true;
         if (redoBtn) redoBtn.disabled = true;
-        
+
         // Enable mode toggle
         if (modeToggle) modeToggle.disabled = false;
-        
+
+        // Update delete button state (enable if rows selected)
+        this.updateDeleteButtonState();
+
+        // Enable export buttons (only if table has data)
+        const tbody = document.getElementById('resultsTableBody');
+        const hasData = tbody && !tbody.querySelector('.empty-row');
+        const exportAllBtn = document.getElementById('exportAllBtn');
+        const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+        if (exportAllBtn) exportAllBtn.disabled = !hasData;
+        if (exportSelectedBtn) exportSelectedBtn.disabled = !hasData || this.selectedRows.size === 0;
+
+        // Disable node clicking and remove green border
+        if (this.manualModeEnabled) {
+            this.nodeClickingEnabled = false;
+            const pipelineNodes = document.querySelectorAll('.pipeline-node');
+            pipelineNodes.forEach(node => {
+                node.classList.remove('clicking-enabled');
+            });
+
+            // Reset Previous button to default disabled style (remove inline opacity)
+            if (prevBtn) {
+                prevBtn.style.opacity = '';
+            }
+
+            // Reset Next button text to "> Next" if it was changed to "Save" or similar
+            if (nextBtn) {
+                const btnText = nextBtn.querySelector('.btn-text');
+                const btnIcon = nextBtn.querySelector('.btn-icon');
+                if (btnText && btnText.textContent !== 'Next') {
+                    btnText.textContent = 'Next';
+                    nextBtn.setAttribute('data-tooltip', 'Go to next agent');
+                    if (btnIcon) {
+                        btnIcon.textContent = '▶';  // Arrow for next
+                    }
+                }
+            }
+
+            console.log('[Professional App] Node clicking disabled and green border removed on stop');
+        }
+
         // Clear node descriptions
         this.updateNodeDescriptions();
         
@@ -842,7 +1039,8 @@ class ProfessionalApplicationController {
         this.sessionId = null;
         this.webrtcClient.sessionId = null;
 
-        this.streamViewer.showOverlay('Classification stopped');
+        // Keep camera feed visible when stopped (don't show overlay)
+        // this.streamViewer.showOverlay('Classification stopped');
         this.isPaused = false;
         this.updatePauseResumeButtons();
         
@@ -1090,8 +1288,31 @@ class ProfessionalApplicationController {
                 node.classList.add('clicking-enabled');
             });
 
-            // Update action hint to reflect new state
+            // Disable Previous button (no longer needed with clickable nodes)
+            const prevBtn = document.getElementById('prevBtn');
+            if (prevBtn) {
+                prevBtn.disabled = true;
+                prevBtn.style.opacity = '0.5';
+                console.log('[Professional App] Previous button disabled - nodes are now clickable');
+            }
+
+            // Update descriptions to reflect new state
             this.updateNodeDescriptions();
+
+            // Change Next button text to Save and update tooltip and icon
+            const nextBtn = document.getElementById('nextBtn');
+            if (nextBtn) {
+                const btnText = nextBtn.querySelector('.btn-text');
+                const btnIcon = nextBtn.querySelector('.btn-icon');
+                if (btnText) {
+                    btnText.textContent = 'Save';
+                    nextBtn.setAttribute('data-tooltip', 'Save results');
+                    if (btnIcon) {
+                        btnIcon.textContent = '✓';  // Checkmark for save
+                    }
+                    console.log('[Professional App] Next button changed to Save with checkmark icon');
+                }
+            }
         }
         // If state changed from enabled to disabled (shouldn't happen unless new session)
         else if (wasEnabled && !this.nodeClickingEnabled) {
@@ -1103,10 +1324,17 @@ class ProfessionalApplicationController {
                 node.classList.remove('clicking-enabled');
             });
 
+            // Re-enable Previous button
+            const prevBtn = document.getElementById('prevBtn');
+            if (prevBtn) {
+                prevBtn.disabled = false;
+                prevBtn.style.opacity = '1';
+            }
+
             // Update action hint to reflect new state
             this.updateNodeDescriptions();
         }
-        
+
         // Log completed and pending agents for debugging
         if (data.completed_agents) {
             console.log('[Professional App] Completed agents (current cycle):', data.completed_agents);
@@ -1193,6 +1421,39 @@ class ProfessionalApplicationController {
         this.completedAgentsInCycle.clear();
 
         // When cycle completes (final compiler agent triggers):
+        // Disable node clicking and remove green border in manual mode
+        if (this.manualModeEnabled && this.nodeClickingEnabled) {
+            this.nodeClickingEnabled = false;
+            const pipelineNodes = document.querySelectorAll('.pipeline-node');
+            pipelineNodes.forEach(node => {
+                node.classList.remove('clicking-enabled');
+            });
+
+            // Re-enable Previous button
+            const prevBtn = document.getElementById('prevBtn');
+            if (prevBtn) {
+                prevBtn.disabled = false;
+                prevBtn.style.opacity = '1';
+                console.log('[Professional App] Previous button re-enabled after cycle completion');
+            }
+
+            // Change Save button text back to Next and restore tooltip and icon
+            const nextBtn = document.getElementById('nextBtn');
+            if (nextBtn) {
+                const btnText = nextBtn.querySelector('.btn-text');
+                const btnIcon = nextBtn.querySelector('.btn-icon');
+                if (btnText && btnText.textContent === 'Save') {
+                    btnText.textContent = 'Next';
+                    nextBtn.setAttribute('data-tooltip', 'Go to next agent');
+                    if (btnIcon) {
+                        btnIcon.textContent = '▶';  // Arrow for next
+                    }
+                }
+            }
+
+            console.log('[Professional App] Node clicking disabled after final_compiler execution');
+        }
+
         // NOW set detail and damage nodes to gray (idle)
         this.setPipelineNodeState('detail', 'idle');
         this.setPipelineNodeState('damage', 'idle');
@@ -1238,11 +1499,9 @@ class ProfessionalApplicationController {
         // Don't reset nodes here - let the next cycle's initial agent handle it
         // The nodes should stay in their completed (green) state until the next cycle starts
 
-        // Enable export buttons
-        const exportCsvBtn = document.getElementById('exportCsvBtn');
-        const exportJsonBtn = document.getElementById('exportJsonBtn');
-        if (exportCsvBtn) exportCsvBtn.disabled = false;
-        if (exportJsonBtn) exportJsonBtn.disabled = false;
+        // Enable export button only if monitoring is stopped
+        const exportAllBtn = document.getElementById('exportAllBtn');
+        if (exportAllBtn) exportAllBtn.disabled = this.monitoringActive;
 
         // Track session time and update average
         const duration = this.cycleStartTime ?
@@ -1684,22 +1943,42 @@ class ProfessionalApplicationController {
     initializeResultsTable() {
         const tbody = document.getElementById('resultsTableBody');
         if (!tbody) return;
-        
+
         // Don't clear existing rows, just add new one
         // Remove empty row if it exists
         const emptyRow = tbody.querySelector('.empty-row');
         if (emptyRow) {
             tbody.innerHTML = '';
         }
-        
+
         // Increment row index
         this.currentRowIndex++;
-        
+
+        // Generate cycle ID from session and cycle number
+        const cycleId = `${this.sessionId || 'unknown'}_cycle_${this.currentCycleNumber || this.currentRowIndex}`;
+
         // Create a row with loading placeholders
         const row = document.createElement('tr');
         row.id = 'current-classification-row';
+        row.setAttribute('data-row-id', this.currentRowIndex);
+        row.setAttribute('data-cycle-id', cycleId);
+
+        // Store metadata as JSON in data attribute
+        const metadata = {
+            mode: this.mode,
+            cycle_start: Date.now(),
+            frontend_time: null,
+            backend_time: null,
+            inference_counts: {
+                initial: 0,
+                detail: 0,
+                damage: 0
+            },
+            edits: {}
+        };
+        row.setAttribute('data-metadata', JSON.stringify(metadata));
         row.innerHTML = `
-            <td data-value="${this.currentRowIndex}">${this.currentRowIndex}</td>
+            <td class="selectable-cell" data-value="${this.currentRowIndex}" data-row-id="${this.currentRowIndex}">${this.currentRowIndex}</td>
             <td data-value="N/A">-</td>
             <td data-value="N/A">-</td>
             <td data-value="N/A">-</td>
@@ -1712,7 +1991,7 @@ class ProfessionalApplicationController {
             <td data-value="N/A">-</td>
             <td data-value="Processing">Processing...</td>
         `;
-        
+
         tbody.insertBefore(row, tbody.firstChild);
 
         // Track cycle start time and reset backend time
@@ -1801,6 +2080,29 @@ class ProfessionalApplicationController {
             const cells = currentRow.getElementsByTagName('td');
             if (cells.length > 11) {
                 cells[11].textContent = timestampWithDuration;
+            }
+
+            // Update row metadata with processing times
+            try {
+                const metadataStr = currentRow.getAttribute('data-metadata');
+                if (metadataStr) {
+                    const metadata = JSON.parse(metadataStr);
+                    metadata.frontend_time = parseFloat(duration);
+                    metadata.backend_time = this.backendProcessingTime;
+
+                    // Update inference counts if available from results
+                    if (results.inference_counts) {
+                        metadata.inference_counts = {
+                            initial: results.inference_counts.initial_classifier || 0,
+                            detail: results.inference_counts.detail_extractor || 0,
+                            damage: results.inference_counts.damage_detector || 0
+                        };
+                    }
+
+                    currentRow.setAttribute('data-metadata', JSON.stringify(metadata));
+                }
+            } catch (e) {
+                console.error('[Professional App] Error updating processing metadata:', e);
             }
             
             // Also update any missing cells with final data from all agents
@@ -1950,24 +2252,79 @@ class ProfessionalApplicationController {
             console.log('[Professional App] Ready for next automatic cycle');
         }
     }
-    
+
     /**
-     * Export results as CSV
+     * Export all results - show modal to choose format
      */
-    exportResultsAsCSV() {
+    exportAllResults() {
+        // Don't allow export during monitoring
+        if (this.monitoringActive) {
+            console.log('[Professional App] Cannot export while monitoring is active');
+            return;
+        }
+
         const tbody = document.getElementById('resultsTableBody');
         if (!tbody || tbody.querySelector('.empty-row')) {
             alert('No results to export');
             return;
         }
-        
-        // Create CSV content with exact table headers
-        const headers = ['#', 'Type', 'Color', 'Pattern', 'Brand', 'Size', 'Neckline', 'Sleeve', 'Closure', 'Damage', 'Damage Type', 'Timestamp'];
+
+        // Count total rows
+        const rows = tbody.querySelectorAll('tr:not(.empty-row)');
+        const rowCount = rows.length;
+
+        // Show export format selection modal
+        this.showCustomModal({
+            title: 'Export All Results',
+            message: `Choose export format for ${rowCount} row(s):`,
+            buttons: [
+                {
+                    text: 'Cancel',
+                    className: 'btn-cancel',
+                    onClick: null
+                },
+                {
+                    text: 'CSV (Data Only)',
+                    className: 'btn-confirm',
+                    onClick: () => this.exportResultsAsCleanCSV()
+                },
+                {
+                    text: 'CSV (with Metadata)',
+                    className: 'btn-confirm',
+                    onClick: () => this.exportResultsAsCSV()
+                },
+                {
+                    text: 'JSON',
+                    className: 'btn-confirm',
+                    onClick: () => this.exportResultsAsJSON()
+                }
+            ]
+        });
+    }
+
+    /**
+     * Export results as clean CSV (data only, no metadata)
+     */
+    exportResultsAsCleanCSV() {
+        // Don't allow export during monitoring
+        if (this.monitoringActive) {
+            console.log('[Professional App] Cannot export while monitoring is active');
+            return;
+        }
+
+        const tbody = document.getElementById('resultsTableBody');
+        if (!tbody || tbody.querySelector('.empty-row')) {
+            alert('No results to export');
+            return;
+        }
+
+        // Create CSV content with visible table headers only
+        const headers = ['#', 'Type', 'Color', 'Pattern', 'Brand', 'Size', 'Neckline', 'Sleeve', 'Closure', 'Damaged', 'Defect', 'Time'];
         const rows = [];
-        
+
         // Add headers
         rows.push(headers.join(','));
-        
+
         // Add data rows - export exactly what's visible in the table
         const dataRows = tbody.querySelectorAll('tr:not(.empty-row)');
         dataRows.forEach(row => {
@@ -1983,6 +2340,105 @@ class ProfessionalApplicationController {
             });
             rows.push(rowData.join(','));
         });
+
+        // Create download with today's date
+        const csvContent = rows.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `classification_data_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        console.log('[Professional App] Exported clean CSV (data only)');
+    }
+
+    /**
+     * Export results as CSV with metadata
+     */
+    exportResultsAsCSV() {
+        // Don't allow export during monitoring
+        if (this.monitoringActive) {
+            console.log('[Professional App] Cannot export while monitoring is active');
+            return;
+        }
+
+        const tbody = document.getElementById('resultsTableBody');
+        if (!tbody || tbody.querySelector('.empty-row')) {
+            alert('No results to export');
+            return;
+        }
+
+        // Create CSV content with exact table headers + Cycle ID + Metadata
+        const headers = [
+            '#', 'Cycle ID', 'Mode', 'Type', 'Color', 'Pattern', 'Brand', 'Size',
+            'Neckline', 'Sleeve', 'Closure', 'Damage', 'Damage Type', 'Timestamp',
+            'Frontend Time (s)', 'Backend Time (s)', 'Initial Inferences', 'Detail Inferences',
+            'Damage Inferences', 'Edited Cells'
+        ];
+        const rows = [];
+
+        // Add headers
+        rows.push(headers.join(','));
+
+        // Add data rows - export exactly what's visible in the table
+        const dataRows = tbody.querySelectorAll('tr:not(.empty-row)');
+        dataRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const cycleId = row.getAttribute('data-cycle-id') || 'unknown';
+
+            // Parse metadata
+            let metadata = {
+                mode: 'unknown',
+                frontend_time: null,
+                backend_time: null,
+                inference_counts: { initial: 0, detail: 0, damage: 0 },
+                edits: {}
+            };
+            try {
+                const metadataStr = row.getAttribute('data-metadata');
+                if (metadataStr) {
+                    metadata = JSON.parse(metadataStr);
+                }
+            } catch (e) {
+                console.error('[CSV Export] Error parsing metadata:', e);
+            }
+
+            // Build row data with cycle_id and mode
+            const rowData = [
+                cells[0].textContent.trim(),  // # column
+                cycleId,
+                metadata.mode || 'unknown'
+            ];
+
+            // Add classification data columns
+            for (let i = 1; i < cells.length; i++) {
+                let content = cells[i].textContent.trim();
+                // Escape commas and quotes in cell content
+                if (content.includes(',') || content.includes('"')) {
+                    content = `"${content.replace(/"/g, '""')}"`;
+                }
+                rowData.push(content);
+            }
+
+            // Add metadata columns
+            rowData.push(metadata.frontend_time?.toFixed(2) || '-');
+            rowData.push(metadata.backend_time?.toFixed(2) || '-');
+            rowData.push(metadata.inference_counts?.initial || 0);
+            rowData.push(metadata.inference_counts?.detail || 0);
+            rowData.push(metadata.inference_counts?.damage || 0);
+
+            // Format edits as: "Color(Blue to Red); Size(M to L)"
+            const editsFormatted = Object.entries(metadata.edits || {})
+                .map(([col, edit]) => `${col}(${edit.original} to ${edit.final})`)
+                .join('; ');
+            rowData.push(editsFormatted ? `"${editsFormatted}"` : '-');
+
+            rows.push(rowData.join(','));
+        });
         
         // Create download with today's date
         const csvContent = rows.join('\n');
@@ -1990,11 +2446,13 @@ class ProfessionalApplicationController {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `classification_results_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `classification_metadata_${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+
+        console.log('[Professional App] Exported CSV with metadata');
     }
     
     /**
@@ -2040,32 +2498,73 @@ class ProfessionalApplicationController {
      * Export results as JSON
      */
     exportResultsAsJSON() {
+        // Don't allow export during monitoring
+        if (this.monitoringActive) {
+            console.log('[Professional App] Cannot export while monitoring is active');
+            return;
+        }
+
         const tbody = document.getElementById('resultsTableBody');
         if (!tbody || tbody.querySelector('.empty-row')) {
             alert('No results to export');
             return;
         }
-        
+
         const results = [];
         const dataRows = tbody.querySelectorAll('tr:not(.empty-row)');
-        
+
         // Export exactly what's visible in the table
         dataRows.forEach(row => {
             const cells = row.querySelectorAll('td');
+            const cycleId = row.getAttribute('data-cycle-id') || 'unknown';
+
+            // Parse metadata
+            let metadata = {
+                mode: 'unknown',
+                frontend_time: null,
+                backend_time: null,
+                inference_counts: { initial: 0, detail: 0, damage: 0 },
+                edits: {}
+            };
+            try {
+                const metadataStr = row.getAttribute('data-metadata');
+                if (metadataStr) {
+                    metadata = JSON.parse(metadataStr);
+                }
+            } catch (e) {
+                console.error('[JSON Export] Error parsing metadata:', e);
+            }
+
             if (cells.length >= 12) {
                 results.push({
                     index: cells[0].textContent.trim(),
-                    type: cells[1].textContent.trim(),
-                    color: cells[2].textContent.trim(),
-                    pattern: cells[3].textContent.trim(),
-                    brand: cells[4].textContent.trim(),
-                    size: cells[5].textContent.trim(),
-                    neckline: cells[6].textContent.trim(),
-                    sleeve: cells[7].textContent.trim(),
-                    closure: cells[8].textContent.trim(),
-                    damage: cells[9].textContent.trim(),
-                    damage_type: cells[10].textContent.trim(),
-                    timestamp: cells[11].textContent.trim()
+                    cycle_id: cycleId,
+                    classification: {
+                        type: cells[1].textContent.trim(),
+                        color: cells[2].textContent.trim(),
+                        pattern: cells[3].textContent.trim(),
+                        brand: cells[4].textContent.trim(),
+                        size: cells[5].textContent.trim(),
+                        neckline: cells[6].textContent.trim(),
+                        sleeve: cells[7].textContent.trim(),
+                        closure: cells[8].textContent.trim(),
+                        damage: cells[9].textContent.trim(),
+                        damage_type: cells[10].textContent.trim(),
+                        timestamp: cells[11].textContent.trim()
+                    },
+                    metadata: {
+                        mode: metadata.mode,
+                        processing: {
+                            frontend_time_s: metadata.frontend_time,
+                            backend_time_s: metadata.backend_time
+                        },
+                        inference_counts: {
+                            initial: metadata.inference_counts?.initial || 0,
+                            detail: metadata.inference_counts?.detail || 0,
+                            damage: metadata.inference_counts?.damage || 0
+                        },
+                        edits: metadata.edits || {}
+                    }
                 });
             }
         });
@@ -2082,17 +2581,646 @@ class ProfessionalApplicationController {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `classification_results_${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `classification_complete_${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+
+        console.log('[Professional App] Exported JSON with complete data and metadata');
     }
-    
-    
-    
-    
-    
+
+    /**
+     * Delete selected rows from table
+     */
+    deleteSelectedRows() {
+        if (this.selectedRows.size === 0 || this.monitoringActive) {
+            return;
+        }
+
+        const tbody = document.getElementById('resultsTableBody');
+        if (!tbody) return;
+
+        // Capture row IDs BEFORE showing modal (same pattern as exportSelectedRows)
+        const rowsToDelete = Array.from(this.selectedRows);
+        const rowCount = rowsToDelete.length;
+
+        // Show custom confirmation modal
+        this.showConfirmModal(
+            `Are you sure you want to delete ${rowCount} selected row(s)? This action cannot be undone.`,
+            () => {
+                // User confirmed - proceed with deletion
+                let deletedCount = 0;
+
+                rowsToDelete.forEach(rowId => {
+                    const row = tbody.querySelector(`tr[data-row-id="${rowId}"]`);
+                    if (row) {
+                        // Add fade-out animation class
+                        row.classList.add('row-deleting');
+
+                        // Remove after animation completes (300ms)
+                        setTimeout(() => {
+                            row.remove();
+                            deletedCount++;
+
+                            // After all rows are removed, do renumbering
+                            if (deletedCount === rowsToDelete.length) {
+                                this.renumberTableRows();
+                            }
+                        }, 300);
+                    }
+                });
+
+                // Clear selection immediately
+                this.selectedRows.clear();
+                this.lastSelectedRowId = null;
+
+                // Update UI
+                this.updateDeleteButtonState();
+                this.updateSelectionCounter();
+
+                console.log(`[Professional App] Deleting ${rowsToDelete.length} row(s)...`);
+            }
+        );
+    }
+
+    /**
+     * Renumber table rows after deletion
+     */
+    renumberTableRows() {
+        const tbody = document.getElementById('resultsTableBody');
+        if (!tbody) return;
+
+        // Re-number remaining rows (bottom-to-top: newest at top gets highest number)
+        const remainingRows = tbody.querySelectorAll('tr:not(.empty-row)');
+        const totalRows = remainingRows.length;
+
+        if (totalRows === 0) {
+            // No rows left, show empty row
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="12">No classification results available</td></tr>';
+
+            // Disable export button
+            const exportAllBtn = document.getElementById('exportAllBtn');
+            if (exportAllBtn) exportAllBtn.disabled = true;
+        } else {
+            // Renumber with animation
+            remainingRows.forEach((row, index) => {
+                const newIndex = totalRows - index; // Reverse numbering: top row gets highest number
+                row.setAttribute('data-row-id', newIndex);
+                const firstCell = row.querySelector('td:first-child');
+                if (firstCell) {
+                    const oldNumber = firstCell.textContent.trim();
+                    firstCell.setAttribute('data-value', newIndex);
+                    firstCell.setAttribute('data-row-id', newIndex);
+                    firstCell.textContent = newIndex;
+
+                    // Add flash animation if number changed
+                    if (oldNumber !== newIndex.toString()) {
+                        firstCell.classList.add('number-updated');
+                        setTimeout(() => {
+                            firstCell.classList.remove('number-updated');
+                        }, 400);
+                    }
+                }
+            });
+
+            // Update current row index to highest number
+            this.currentRowIndex = totalRows;
+        }
+    }
+
+    /**
+     * Clear all row selections
+     */
+    clearRowSelection() {
+        const tbody = document.getElementById('resultsTableBody');
+        if (!tbody) return;
+
+        // Remove selection class from all rows
+        tbody.querySelectorAll('.row-selected').forEach(row => {
+            row.classList.remove('row-selected');
+        });
+
+        // Clear selection set
+        this.selectedRows.clear();
+        this.lastSelectedRowId = null;
+
+        // Update UI
+        this.updateDeleteButtonState();
+        this.updateSelectionCounter();
+    }
+
+    /**
+     * Update delete button enabled/disabled state
+     */
+    updateDeleteButtonState() {
+        const deleteBtn = document.getElementById('deleteSelectedBtn');
+        if (!deleteBtn) return;
+
+        // Enable only if not monitoring and has selections
+        deleteBtn.disabled = this.monitoringActive || this.selectedRows.size === 0;
+
+        // Also update export selected button
+        const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+        if (exportSelectedBtn) {
+            exportSelectedBtn.disabled = this.monitoringActive || this.selectedRows.size === 0;
+        }
+    }
+
+    /**
+     * Initialize keyboard shortcuts for table operations
+     */
+    initializeKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Delete or Backspace key: Delete selected rows
+            if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
+                // Only if not typing in an input field
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+                    return;
+                }
+
+                // Only if we have selections
+                if (this.selectedRows.size > 0 && !this.monitoringActive) {
+                    e.preventDefault();
+                    this.deleteSelectedRows();
+                }
+            }
+        });
+
+        console.log('[Professional App] Keyboard shortcuts initialized');
+    }
+
+    /**
+     * Update selection counter display
+     */
+    updateSelectionCounter() {
+        const counter = document.getElementById('selectionCounter');
+        if (!counter) return;
+
+        if (this.selectedRows.size > 0) {
+            counter.textContent = `${this.selectedRows.size} selected`;
+            counter.style.display = 'inline-block';
+        } else {
+            counter.style.display = 'none';
+        }
+    }
+
+    /**
+     * Show custom modal with consistent styling
+     * @param {Object} config - Modal configuration
+     * @param {string} config.title - Modal title
+     * @param {string} config.message - Message to display (text or HTML)
+     * @param {Array} config.buttons - Array of button configurations [{text, className, onClick}]
+     */
+    showCustomModal(config) {
+        const modal = document.getElementById('confirmDeleteModal');
+        const titleEl = modal.querySelector('.modal-title');
+        const messageEl = document.getElementById('confirmDeleteMessage');
+        const footer = modal.querySelector('.modal-footer');
+
+        if (!modal || !titleEl || !messageEl || !footer) {
+            console.error('[Professional App] Modal elements not found');
+            return;
+        }
+
+        // Set title and message
+        titleEl.textContent = config.title;
+        if (config.message.includes('<')) {
+            messageEl.innerHTML = config.message;
+        } else {
+            messageEl.textContent = config.message;
+        }
+
+        // Clear existing footer buttons
+        footer.innerHTML = '';
+
+        // Create buttons
+        const buttonHandlers = [];
+        config.buttons.forEach(btnConfig => {
+            const btn = document.createElement('button');
+            btn.className = `btn-modal ${btnConfig.className || ''}`;
+            btn.textContent = btnConfig.text;
+
+            // Add data attribute if provided
+            if (btnConfig.dataAction) {
+                btn.setAttribute('data-action', btnConfig.dataAction);
+            }
+
+            const handler = () => {
+                modal.style.display = 'none';
+                cleanup();
+                if (btnConfig.onClick) {
+                    btnConfig.onClick();
+                }
+            };
+
+            btn.addEventListener('click', handler);
+            buttonHandlers.push({ btn, handler });
+            footer.appendChild(btn);
+        });
+
+        // Show modal
+        modal.style.display = 'flex';
+
+        // Cleanup listeners
+        const cleanup = () => {
+            buttonHandlers.forEach(({ btn, handler }) => {
+                btn.removeEventListener('click', handler);
+            });
+            modal.removeEventListener('click', handleBackdropClick);
+            document.removeEventListener('keydown', handleEscape);
+        };
+
+        // Close on backdrop click
+        const handleBackdropClick = (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+                cleanup();
+            }
+        };
+
+        // Close on Escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                modal.style.display = 'none';
+                cleanup();
+            }
+        };
+
+        // Add event listeners
+        modal.addEventListener('click', handleBackdropClick);
+        document.addEventListener('keydown', handleEscape);
+    }
+
+    /**
+     * Show confirmation modal (convenience wrapper)
+     * @param {string} message - Message to display
+     * @param {Function} onConfirm - Callback when user confirms
+     */
+    showConfirmModal(message, onConfirm) {
+        this.showCustomModal({
+            title: 'Confirm Deletion',
+            message: message,
+            buttons: [
+                {
+                    text: 'Cancel',
+                    className: 'btn-cancel',
+                    onClick: null
+                },
+                {
+                    text: 'Delete',
+                    className: 'btn-confirm',
+                    dataAction: 'delete',
+                    onClick: onConfirm
+                }
+            ]
+        });
+    }
+
+    /**
+     * Toggle select all rows
+     */
+    toggleSelectAll() {
+        const tbody = document.getElementById('resultsTableBody');
+        if (!tbody || this.monitoringActive) return;
+
+        const rows = tbody.querySelectorAll('tr:not(.empty-row)');
+        if (rows.length === 0) return;
+
+        // If all rows are selected, deselect all; otherwise select all
+        const allSelected = rows.length === this.selectedRows.size;
+
+        rows.forEach(row => {
+            const rowId = row.getAttribute('data-row-id');
+            if (!rowId) return;
+
+            if (allSelected) {
+                // Deselect all
+                this.selectedRows.delete(rowId);
+                row.classList.remove('row-selected');
+            } else {
+                // Select all
+                this.selectedRows.add(rowId);
+                row.classList.add('row-selected');
+            }
+        });
+
+        // Update last selected for shift-click
+        if (!allSelected && rows.length > 0) {
+            const lastRow = rows[rows.length - 1];
+            this.lastSelectedRowId = lastRow.getAttribute('data-row-id');
+        } else {
+            this.lastSelectedRowId = null;
+        }
+
+        // Update UI
+        this.updateDeleteButtonState();
+        this.updateSelectionCounter();
+
+        console.log(`[Professional App] ${allSelected ? 'Deselected' : 'Selected'} all ${rows.length} rows`);
+    }
+
+    /**
+     * Select range of rows between two IDs (for shift-click)
+     * @param {string} startId - Start row ID
+     * @param {string} endId - End row ID
+     */
+    selectRowRange(startId, endId) {
+        const tbody = document.getElementById('resultsTableBody');
+        if (!tbody) return;
+
+        const rows = Array.from(tbody.querySelectorAll('tr:not(.empty-row)'));
+
+        // Find indices of start and end rows
+        let startIdx = -1;
+        let endIdx = -1;
+
+        rows.forEach((row, idx) => {
+            const rowId = row.getAttribute('data-row-id');
+            if (rowId === startId) startIdx = idx;
+            if (rowId === endId) endIdx = idx;
+        });
+
+        if (startIdx === -1 || endIdx === -1) return;
+
+        // Ensure startIdx < endIdx
+        if (startIdx > endIdx) {
+            [startIdx, endIdx] = [endIdx, startIdx];
+        }
+
+        // Select all rows in range
+        for (let i = startIdx; i <= endIdx; i++) {
+            const row = rows[i];
+            const rowId = row.getAttribute('data-row-id');
+            if (rowId) {
+                this.selectedRows.add(rowId);
+                row.classList.add('row-selected');
+            }
+        }
+
+        // Update last selected
+        this.lastSelectedRowId = endId;
+
+        // Update UI
+        this.updateDeleteButtonState();
+        this.updateSelectionCounter();
+
+        console.log(`[Professional App] Selected range from ${startId} to ${endId}`);
+    }
+
+    /**
+     * Export selected rows only
+     */
+    exportSelectedRows() {
+        // Don't allow export during monitoring
+        if (this.monitoringActive) {
+            console.log('[Professional App] Cannot export while monitoring is active');
+            return;
+        }
+
+        if (this.selectedRows.size === 0) {
+            console.log('[Professional App] No rows selected for export');
+            return;
+        }
+
+        const tbody = document.getElementById('resultsTableBody');
+        if (!tbody) return;
+
+        // Collect selected row data BEFORE showing modal
+        const selectedData = [];
+        this.selectedRows.forEach(rowId => {
+            const row = tbody.querySelector(`tr[data-row-id="${rowId}"]`);
+            if (!row || row.classList.contains('empty-row')) return;
+
+            const cells = row.querySelectorAll('td');
+            const cycleId = row.getAttribute('data-cycle-id') || 'unknown';
+
+            // Parse metadata
+            let metadata = {
+                mode: 'unknown',
+                frontend_time: null,
+                backend_time: null,
+                inference_counts: { initial: 0, detail: 0, damage: 0 },
+                edits: {}
+            };
+            try {
+                const metadataStr = row.getAttribute('data-metadata');
+                if (metadataStr) {
+                    metadata = JSON.parse(metadataStr);
+                }
+            } catch (e) {
+                console.error('[Export Selected] Error parsing metadata:', e);
+            }
+
+            const rowData = {
+                number: cells[0]?.textContent.trim() || '',
+                cycle_id: cycleId,
+                mode: metadata.mode,
+                type: cells[1]?.textContent.trim() || '',
+                color: cells[2]?.textContent.trim() || '',
+                pattern: cells[3]?.textContent.trim() || '',
+                brand: cells[4]?.textContent.trim() || '',
+                size: cells[5]?.textContent.trim() || '',
+                neckline: cells[6]?.textContent.trim() || '',
+                sleeve: cells[7]?.textContent.trim() || '',
+                closure: cells[8]?.textContent.trim() || '',
+                damage: cells[9]?.textContent.trim() || '',
+                damage_type: cells[10]?.textContent.trim() || '',
+                timestamp: cells[11]?.textContent.trim() || '',
+                frontend_time: metadata.frontend_time,
+                backend_time: metadata.backend_time,
+                inference_counts: metadata.inference_counts,
+                edits: metadata.edits
+            };
+            selectedData.push(rowData);
+        });
+
+        // Show export format selection modal
+        this.showCustomModal({
+            title: 'Export Selected Rows',
+            message: `Choose export format for ${selectedData.length} selected row(s):`,
+            buttons: [
+                {
+                    text: 'Cancel',
+                    className: 'btn-cancel',
+                    onClick: null
+                },
+                {
+                    text: 'CSV (Data Only)',
+                    className: 'btn-confirm',
+                    onClick: () => this.exportSelectedAsCleanCSV(selectedData)
+                },
+                {
+                    text: 'CSV (with Metadata)',
+                    className: 'btn-confirm',
+                    onClick: () => this.exportSelectedAsCSV(selectedData)
+                },
+                {
+                    text: 'JSON',
+                    className: 'btn-confirm',
+                    onClick: () => this.exportSelectedAsJSON(selectedData)
+                }
+            ]
+        });
+    }
+
+    /**
+     * Export selected rows as clean CSV (data only, no metadata)
+     * @param {Array} data - Selected row data
+     */
+    exportSelectedAsCleanCSV(data) {
+        const headers = ['#', 'Type', 'Color', 'Pattern', 'Brand', 'Size', 'Neckline', 'Sleeve', 'Closure', 'Damaged', 'Defect', 'Time'];
+
+        let csv = headers.join(',') + '\n';
+
+        data.forEach(row => {
+            const rowData = [
+                row.number,
+                row.type,
+                row.color,
+                row.pattern,
+                row.brand,
+                row.size,
+                row.neckline,
+                row.sleeve,
+                row.closure,
+                row.damage,
+                row.damage_type,
+                row.timestamp
+            ].map(value => `"${value}"`);
+
+            csv += rowData.join(',') + '\n';
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `selected_data_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        console.log(`[Professional App] Exported ${data.length} selected rows as clean CSV (data only)`);
+    }
+
+    /**
+     * Export selected rows as CSV with metadata
+     * @param {Array} data - Selected row data
+     */
+    exportSelectedAsCSV(data) {
+        const headers = [
+            '#', 'Cycle ID', 'Mode', 'Type', 'Color', 'Pattern', 'Brand', 'Size',
+            'Neckline', 'Sleeve', 'Closure', 'Damage', 'Damage Type', 'Timestamp',
+            'Frontend Time (s)', 'Backend Time (s)', 'Initial Inferences', 'Detail Inferences',
+            'Damage Inferences', 'Edited Cells'
+        ];
+
+        let csv = headers.join(',') + '\n';
+
+        data.forEach(row => {
+            // Format edits as: "Color(Blue to Red); Size(M to L)"
+            const editsFormatted = Object.entries(row.edits || {})
+                .map(([col, edit]) => `${col}(${edit.original} to ${edit.final})`)
+                .join('; ');
+
+            const rowData = [
+                row.number,
+                row.cycle_id,
+                row.mode,
+                row.type,
+                row.color,
+                row.pattern,
+                row.brand,
+                row.size,
+                row.neckline,
+                row.sleeve,
+                row.closure,
+                row.damage,
+                row.damage_type,
+                row.timestamp,
+                row.frontend_time?.toFixed(2) || '-',
+                row.backend_time?.toFixed(2) || '-',
+                row.inference_counts?.initial || 0,
+                row.inference_counts?.detail || 0,
+                row.inference_counts?.damage || 0,
+                editsFormatted || '-'
+            ].map(value => `"${value}"`);
+
+            csv += rowData.join(',') + '\n';
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `selected_metadata_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        console.log(`[Professional App] Exported ${data.length} selected rows as CSV with metadata`);
+    }
+
+    /**
+     * Export selected rows as JSON
+     * @param {Array} data - Selected row data
+     */
+    exportSelectedAsJSON(data) {
+        // Structure data with metadata
+        const structured = data.map(row => ({
+            index: row.number,
+            cycle_id: row.cycle_id,
+            classification: {
+                type: row.type,
+                color: row.color,
+                pattern: row.pattern,
+                brand: row.brand,
+                size: row.size,
+                neckline: row.neckline,
+                sleeve: row.sleeve,
+                closure: row.closure,
+                damage: row.damage,
+                damage_type: row.damage_type,
+                timestamp: row.timestamp
+            },
+            metadata: {
+                mode: row.mode,
+                processing: {
+                    frontend_time_s: row.frontend_time,
+                    backend_time_s: row.backend_time
+                },
+                inference_counts: {
+                    initial: row.inference_counts?.initial || 0,
+                    detail: row.inference_counts?.detail || 0,
+                    damage: row.inference_counts?.damage || 0
+                },
+                edits: row.edits || {}
+            }
+        }));
+
+        const exportData = {
+            export_date: new Date().toISOString(),
+            total_items: structured.length,
+            items: structured
+        };
+
+        const json = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `selected_complete_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        console.log(`[Professional App] Exported ${data.length} selected rows as JSON with complete data and metadata`);
+    }
+
     /**
      * Handle mode toggle between auto and manual
      */
@@ -2205,13 +3333,13 @@ class ProfessionalApplicationController {
             console.log('[Professional App] Cannot send manual command - no active session');
             return;
         }
-        
+
         const command = {
             type: 'manual_next',
             session_id: this.sessionId,
             timestamp: Date.now()
         };
-        
+
         console.log('[Professional App] Sending manual next command with session:', this.sessionId);
         this.sendDataChannelMessage(command);
     }
@@ -2316,6 +3444,16 @@ class ProfessionalApplicationController {
             nextDesc.textContent = 'Capture a clear image of the garment\'s brand and size tag for verification';
             if (actionHint) {
                 actionHint.textContent = 'Ready';
+            }
+            return;
+        }
+
+        // Special display when nodes are clickable in manual mode
+        if (this.monitoringActive && this.manualModeEnabled && this.nodeClickingEnabled) {
+            currentDesc.textContent = 'All agents completed - click any node to jump and rerun';
+            nextDesc.textContent = 'Click Save to finalize or select a node to refine results';
+            if (actionHint) {
+                actionHint.textContent = 'Node Selection Active';
             }
             return;
         }

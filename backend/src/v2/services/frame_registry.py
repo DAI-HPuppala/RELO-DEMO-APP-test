@@ -132,14 +132,20 @@ class FrameRegistry:
     
     async def register_initial_first_frame(self, frame_data: np.ndarray) -> str:
         """Special method to register and share initial classifier's first frame"""
+        # If key already exists, release old frame first to prevent memory leak
+        if "initial_first" in self.shared_frames:
+            old_frame_id = self.shared_frames["initial_first"]
+            logger.warning(f"Replacing existing initial_first frame {old_frame_id}")
+            await self.release_frame(old_frame_id)
+
         frame_id = await self.register_frame(frame_data, "initial_classifier", 1)
         await self.share_frame(frame_id, "initial_first")
-        
+
         # Mark it as shared with damage_detector
         async with self._lock:
             if frame_id in self.frames:
                 self.frames[frame_id].share_with("damage_detector")
-        
+
         logger.info(f"Registered initial first frame: {frame_id} for damage detector sharing")
         return frame_id
     

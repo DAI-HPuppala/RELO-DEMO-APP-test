@@ -232,6 +232,12 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
 
         # Clean up orchestrators
         if session_id in orchestrators:
+            orchestrator = orchestrators[session_id]
+            try:
+                await orchestrator.cleanup()
+                logger.info(f"Orchestrator cleanup completed for {session_id}")
+            except Exception as e:
+                logger.error(f"Error during orchestrator cleanup: {e}")
             del orchestrators[session_id]
 
         # Clean up manual mode handlers and sessions
@@ -562,22 +568,31 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
             }
     
     elif msg_type == "pause_flow":
-        # Pause the monitoring flow
+        # Pause the monitoring flow using orchestrator
         session_id = message.get("session_id")
-        
-        if session_id in monitoring_controls:
+
+        if session_id in monitoring_controls and session_id in orchestrators:
+            # Set monitoring control flags
             monitoring_controls[session_id]['paused'] = True
             monitoring_controls[session_id]['should_interrupt'] = True  # Signal to interrupt current agent
             current_agent = monitoring_controls[session_id].get('current_agent', 'unknown')
-            logger.info(f"Paused monitoring flow for session {session_id} at agent {current_agent}")
-            
+            current_agent_full = monitoring_controls[session_id].get('current_agent_full', None)
+
             # Store which agent to restart when resumed
             monitoring_controls[session_id]['paused_at_agent'] = current_agent
-            
+
+            # Call orchestrator's pause_flow with the FULL agent name to handle state cleanup
+            orchestrator = orchestrators[session_id]
+            orchestrator_response = await orchestrator.pause_flow(current_agent=current_agent_full)
+
+            logger.info(f"Paused monitoring flow for session {session_id} - state cleared")
+
             return {
                 "type": "flow_paused",
                 "session_id": session_id,
-                "paused_agent": current_agent
+                "paused_agent": current_agent,
+                "state_cleared": orchestrator_response.get("state_cleared", False),
+                "had_partial_results": orchestrator_response.get("had_partial_results", False)
             }
         else:
             return {
@@ -586,22 +601,29 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
             }
     
     elif msg_type == "resume_flow":
-        # Resume the monitoring flow
+        # Resume the monitoring flow using orchestrator
         session_id = message.get("session_id")
         restart_agent = message.get("restart_agent", False)
-        
-        if session_id in monitoring_controls:
+
+        if session_id in monitoring_controls and session_id in orchestrators:
+            # Update monitoring control flags
             monitoring_controls[session_id]['paused'] = False
             monitoring_controls[session_id]['should_interrupt'] = False
             monitoring_controls[session_id]['restart_agent'] = True  # Signal to restart the paused agent
             current_agent = monitoring_controls[session_id].get('paused_at_agent', monitoring_controls[session_id].get('current_agent', 'unknown'))
-            logger.info(f"Resumed monitoring flow for session {session_id}, will restart agent {current_agent}")
-            
+
+            # Call orchestrator's resume_flow (state already cleared during pause)
+            orchestrator = orchestrators[session_id]
+            orchestrator_response = await orchestrator.resume_flow(restart_agent)
+
+            logger.info(f"Resumed monitoring flow for session {session_id} - agent {current_agent} will start fresh")
+
             return {
                 "type": "flow_resumed",
                 "session_id": session_id,
                 "resuming_agent": current_agent,
-                "restart_agent": True
+                "fresh_start": orchestrator_response.get("fresh_start", True),
+                "timer_seconds": orchestrator_response.get("timer_seconds", 4.0)
             }
         else:
             return {
@@ -842,10 +864,29 @@ async def translate_v2_to_v1_message(v2_msg: Dict) -> Dict:
             "cycle_number": v2_msg.get("cycle_number", 1)
         }
         
+    elif msg_type == "agent_paused_with_results":
+        # V2: {"type": "agent_paused_with_results", "agent": "initial_classifier", "attributes": {...}, "is_partial": true}
+        # V1: {"type": "progress_update", "agent": "initial", "partial_results": {...}, "is_partial": true}
+
+        # Normalize attributes before sending to frontend
+        raw_attributes = v2_msg.get("attributes", {})
+        normalized_attributes = KeyNormalizer.normalize_agent_attributes(agent, raw_attributes)
+
+        return {
+            "type": "progress_update",
+            "agent": short_agent,  # Use short name for frontend
+            "session_id": v2_msg.get("session_id"),
+            "partial_results": normalized_attributes,
+            "confidence": v2_msg.get("confidence", 0),
+            "is_partial": True,  # Mark as partial/deprecated
+            "total_inferences": v2_msg.get("total_inferences", 0),
+            "reason": "paused"  # Tell frontend why these are partial
+        }
+
     elif msg_type == "error":
         # Pass through errors
         return v2_msg
-        
+
     # Unknown message types - pass through
     return v2_msg
 
@@ -973,9 +1014,10 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
                     cycle_paused_time += time.time() - pause_start
                     pause_start = None
                 
-                # Update current agent in control
+                # Update current agent in control (store both short and full names)
                 short_name = agent_name.replace('_classifier', '').replace('_extractor', '').replace('_detector', '')
                 monitoring_control['current_agent'] = short_name
+                monitoring_control['current_agent_full'] = agent_name  # Store full name for pause_flow
                 
                 # Check if monitoring should stop
                 if not monitoring_control.get('running', True):
@@ -1058,7 +1100,23 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
                         })
                     # Skip to next agent
                     current_agent_index += 1
-            
+
+            # Wait if paused before final_compiler
+            pause_start = None
+            while monitoring_control.get('paused', False):
+                if pause_start is None:
+                    pause_start = time.time()
+                    logger.debug(f"Final compiler paused for session {cycle_session_id}")
+                await asyncio.sleep(0.5)
+                if not monitoring_control.get('running', True):
+                    logger.info(f"Monitoring stopped during pause before final_compiler for session {cycle_session_id}")
+                    return
+
+            # Add pause time if we just resumed
+            if pause_start:
+                cycle_paused_time += time.time() - pause_start
+                pause_start = None
+
             # Now run final_compiler to aggregate all results
             if not monitoring_control.get('running', True):
                 logger.info("Monitoring stopped before final_compiler")

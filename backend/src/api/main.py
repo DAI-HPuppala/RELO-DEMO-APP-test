@@ -20,7 +20,6 @@ import uvicorn
 
 from api.routes import session, health
 from api.websocket import websocket_endpoint
-from api.websocket_v2 import websocket_v2_endpoint
 from services import SessionManager, WebRTCManager
 from services.vlm_singleton import vlm_singleton, get_vlm_status
 from services.ollama_optimizer import optimize_ollama_at_startup
@@ -44,11 +43,12 @@ logging.getLogger('services.webrtc_manager').setLevel(logging.INFO)
 logging.getLogger('services.cv60_camera').setLevel(logging.INFO)
 logging.getLogger('services.vlm_singleton').setLevel(logging.INFO)
 
-# Enable aiortc debug logging for offline WebRTC troubleshooting
-logging.getLogger('aiortc').setLevel(logging.DEBUG)
-logging.getLogger('aioice').setLevel(logging.DEBUG)
-logging.getLogger('aiortc.rtcpeerconnection').setLevel(logging.DEBUG)
-logging.getLogger('aiortc.rtcdatachannel').setLevel(logging.INFO)  # INFO for data channel (less verbose)
+# Enable aiortc logging for offline WebRTC troubleshooting
+logging.getLogger('aiortc').setLevel(logging.INFO)  # INFO instead of DEBUG to avoid packet spam
+logging.getLogger('aioice').setLevel(logging.INFO)  # INFO for ICE connection logs
+logging.getLogger('aiortc.rtcpeerconnection').setLevel(logging.INFO)  # INFO for connection state
+logging.getLogger('aiortc.rtcdatachannel').setLevel(logging.INFO)
+logging.getLogger('aiortc.rtcrtpsender').setLevel(logging.WARNING)  # Suppress RTP packet logs
 
 # Global service instances
 session_manager = None
@@ -152,8 +152,6 @@ app.include_router(health.router, prefix="/api", tags=["health"])
 
 # WebSocket endpoint
 app.add_websocket_route("/ws/stream", websocket_endpoint)
-# V2 WebSocket endpoint with stateful orchestration
-app.add_websocket_route("/ws/v2/stream", websocket_v2_endpoint)
 
 # Root endpoint
 @app.get("/")

@@ -309,12 +309,16 @@
                 <div class="panel-header">
                     <h3 class="panel-title">Final Classification Results</h3>
                     <div class="export-controls">
-                        <button class="btn-small btn-export" id="exportCsvBtn" disabled>
-                            Export CSV
+                        <button class="btn-small btn-export" id="exportAllBtn" disabled title="Export all results">
+                            Export All
                         </button>
-                        <button class="btn-small btn-export" id="exportJsonBtn" disabled>
-                            Export JSON
+                        <button class="btn-small btn-export" id="exportSelectedBtn" disabled title="Export selected rows">
+                            Export Selected
                         </button>
+                        <button class="btn-small btn-delete" id="deleteSelectedBtn" disabled title="Delete selected rows (Delete key)">
+                            🗑 Delete
+                        </button>
+                        <span class="selection-counter" id="selectionCounter" style="display:none;">0 selected</span>
                     </div>
                 </div>
                 <div class="results-table-container-scrollable">
@@ -322,7 +326,7 @@
                         <table class="classification-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 5%">#</th>
+                                    <th style="width: 5%" class="select-all-header" id="selectAllHeader" title="Click to select/deselect all">#</th>
                                     <th style="width: 9%">Type</th>
                                     <th style="width: 7%">Color</th>
                                     <th style="width: 7%">Pattern</th>
@@ -425,10 +429,26 @@
     <script src="src/services/session-manager.js"></script>
     
     <!-- Load original components for compatibility -->
+    <!-- Custom Confirmation Modal -->
+    <div class="modal-backdrop" id="confirmDeleteModal" style="display:none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <span class="modal-title">Confirm Deletion</span>
+            </div>
+            <div class="modal-body" id="confirmDeleteMessage">
+                Are you sure you want to delete the selected rows?
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-cancel" id="modalCancelBtn">Cancel</button>
+                <button class="btn-modal btn-confirm" id="modalConfirmBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <script src="src/components/stream-viewer.js"></script>
     <script src="src/components/status-monitor.js"></script>
     <script src="src/components/agent-monitor.js"></script>
-    
+
     <!-- Load professional components -->
     <script src="src/components/csv-exporter.js"></script>
     <script src="src/components/progress-monitor.js"></script>

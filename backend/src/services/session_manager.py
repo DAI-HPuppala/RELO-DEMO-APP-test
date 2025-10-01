@@ -7,10 +7,9 @@ from pathlib import Path
 import logging
 
 from models import (
-    ClassificationSession, 
-    SessionStatus, 
+    ClassificationSession,
+    SessionStatus,
     SessionMode,
-    ClothingItem,
     ProcessingStatus
 )
 

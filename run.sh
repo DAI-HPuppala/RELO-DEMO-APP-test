@@ -129,7 +129,7 @@ touch backend.log frontend.log ngrok.log
 # Start Backend
 echo -e "${GREEN}Starting Backend Server...${NC}"
 cd backend
-python run_backend.py > ../backend.log 2>&1 &
+python3 run_backend.py > ../backend.log 2>&1 &
 BACKEND_PID=$!
 cd ..
 
@@ -145,7 +145,7 @@ done
 
 # Start Frontend HTTP Server
 echo -e "${GREEN}Starting Frontend Server...${NC}"
-python -m http.server 8080 --directory frontend > /dev/null 2>&1 &
+python3 -m http.server 8080 --directory frontend > /dev/null 2>&1 &
 FRONTEND_PID=$!
 
 # IMPORTANT: Wait for frontend to be fully ready before starting ngrok

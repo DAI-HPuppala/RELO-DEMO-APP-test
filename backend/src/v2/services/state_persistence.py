@@ -36,15 +36,19 @@ class StatePersistence:
     def _start_checkpoint_writer(self):
         """Start background task for async checkpointing"""
         async def writer_loop():
-            while True:
-                try:
-                    state_data = await self.checkpoint_queue.get()
-                    if state_data is None:  # Shutdown signal
-                        break
-                    await self._write_checkpoint(state_data)
-                except Exception as e:
-                    logger.error(f"Checkpoint writer error: {e}")
-        
+            try:
+                while True:
+                    try:
+                        state_data = await self.checkpoint_queue.get()
+                        if state_data is None:  # Shutdown signal
+                            break
+                        await self._write_checkpoint(state_data)
+                    except Exception as e:
+                        logger.error(f"Checkpoint writer error: {e}")
+            except asyncio.CancelledError:
+                logger.debug(f"Checkpoint writer cancelled for session {self.session_id}")
+                raise  # Re-raise to properly handle cancellation
+
         self.checkpoint_task = asyncio.create_task(writer_loop())
     
     async def save_checkpoint(self, session_state: SessionState) -> None:
@@ -160,11 +164,19 @@ class StatePersistence:
         # Signal checkpoint writer to stop
         if self.checkpoint_queue:
             await self.checkpoint_queue.put(None)
-        
-        # Wait for writer to finish
-        if self.checkpoint_task:
-            await self.checkpoint_task
-        
+
+        # Wait for writer to finish (with timeout)
+        if self.checkpoint_task and not self.checkpoint_task.done():
+            try:
+                await asyncio.wait_for(self.checkpoint_task, timeout=2.0)
+            except asyncio.TimeoutError:
+                logger.warning(f"Checkpoint writer timeout for session {self.session_id}, cancelling task")
+                self.checkpoint_task.cancel()
+                try:
+                    await self.checkpoint_task
+                except asyncio.CancelledError:
+                    pass
+
         logger.info(f"StatePersistence cleaned up for session {self.session_id}")
     
     async def get_checkpoint_info(self) -> Dict[str, Any]:

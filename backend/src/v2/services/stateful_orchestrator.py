@@ -165,7 +165,21 @@ class StatefulOrchestrator:
                 timer_seconds=timer_seconds
             )
         else:
-            logger.warning(f"Agent state for {agent_name} already exists with inference_count={self.session_state.agent_states[agent_name].inference_count}")
+            # DEFENSIVE: In manual mode, agent state should have been reset!
+            # If it exists with completed inferences, previous results could contaminate new run
+            old_state = self.session_state.agent_states[agent_name]
+            if self.manual_mode and old_state.inference_count > 0:
+                logger.error(f"⚠️ CONTAMINATION RISK: Agent {agent_name} has existing state with {old_state.inference_count} inferences in manual mode!")
+                logger.error(f"   Old inference contexts could contaminate new run. Forcing reset...")
+                # Force reset to prevent contamination
+                del self.session_state.agent_states[agent_name]
+                self.session_state.agent_states[agent_name] = AgentState(
+                    agent_name=agent_name,
+                    timer_seconds=timer_seconds
+                )
+                logger.info(f"✅ Forced fresh state for {agent_name} - preventing context contamination")
+            else:
+                logger.warning(f"Agent state for {agent_name} already exists with inference_count={old_state.inference_count} (auto mode continuation)")
 
         agent_state = self.session_state.agent_states[agent_name]
         logger.info(f"Starting timer for {agent_name} - inference_count={agent_state.inference_count}")
@@ -350,70 +364,121 @@ class StatefulOrchestrator:
         # This ensures consistent single frame capture regardless of time or inference number
         return 1
     
-    async def pause_flow(self) -> Dict[str, Any]:
-        """Pause the current flow"""
-        current_agent = self.session_state.current_agent
-        
+    async def pause_flow(self, current_agent: Optional[str] = None) -> Dict[str, Any]:
+        """Pause the current flow and send partial results
+
+        Args:
+            current_agent: The agent to pause (if None, uses session_state.current_agent)
+        """
+        if current_agent is None:
+            current_agent = self.session_state.current_agent
+            logger.debug(f"pause_flow: No agent specified, using session_state.current_agent = {current_agent}")
+        else:
+            logger.debug(f"pause_flow: Using specified agent = {current_agent}")
+
         if not current_agent:
+            logger.warning("pause_flow: No agent currently running")
             return {"type": "error", "message": "No agent currently running"}
-        
+
         if current_agent == "final_compiler":
             return {"type": "error", "message": "Cannot pause during final_compiler"}
-        
+
         agent_state = self.session_state.agent_states.get(current_agent)
-        if agent_state:
-            agent_state.pause()
-        
+
+        if not agent_state:
+            logger.warning(f"pause_flow: Agent {current_agent} has no state (may have already completed)")
+            # Still proceed to set pause status
+            self.session_state.pause(current_agent)
+            return {
+                "type": "flow_paused",
+                "session_id": self.session_id,
+                "paused_agent": current_agent,
+                "had_partial_results": False,
+                "state_cleared": False,
+                "status": "PAUSED"
+            }
+
+        # If agent has partial results, aggregate and send to frontend
+        partial_results = None
+        if agent_state and agent_state.inference_results:
+            logger.info(f"Agent {current_agent} paused with {agent_state.inference_count} partial inferences - aggregating...")
+
+            # Aggregate partial results
+            aggregated = await self.frame_aggregator.aggregate(
+                current_agent, agent_state.inference_results
+            )
+
+            partial_results = {
+                "agent": current_agent,
+                "attributes": aggregated.attributes,
+                "confidence": aggregated.overall_confidence,
+                "total_inferences": agent_state.inference_count,
+                "aggregation_method": aggregated.aggregation_method,
+                "is_partial": True  # Mark as partial/deprecated
+            }
+
+            # Send partial results to frontend for progressive updates
+            if self.send_message:
+                await self.send_message({
+                    "type": "agent_paused_with_results",
+                    "session_id": self.session_id,
+                    **partial_results
+                })
+
+            logger.info(f"Sent partial results from {current_agent} to frontend")
+
+        # Clear agent state NOW (save 10ms on resume)
+        self.reset_agent_state(current_agent)
+        logger.info(f"Cleared {current_agent} state on pause - will restart fresh on resume")
+
         self.session_state.pause(current_agent)
-        
+
         # Save checkpoint when paused
         await self.state_persistence.save_checkpoint(self.session_state)
-        
+
         response = {
             "type": "flow_paused",
             "session_id": self.session_id,
             "paused_agent": current_agent,
-            "timer_remaining": agent_state.timer_remaining if agent_state else 0,
-            "inference_count": agent_state.inference_count if agent_state else 0,
+            "had_partial_results": partial_results is not None,
+            "state_cleared": True,
             "status": "PAUSED"
         }
-        
-        logger.info(f"Flow paused at agent {current_agent}")
+
+        logger.info(f"Flow paused - {current_agent} state cleared, ready for fresh resume")
         return response
     
     async def resume_flow(self, restart_agent: bool = False) -> Dict[str, Any]:
-        """Resume the paused flow"""
+        """Resume the paused flow (state already cleared on pause)"""
         if self.session_state.status != SessionStatus.PAUSED:
             return {"type": "error", "message": "Session not paused"}
-        
+
         paused_agent = self.session_state.paused_agent
         if not paused_agent:
             return {"type": "error", "message": "No paused agent found"}
-        
-        agent_state = self.session_state.agent_states.get(paused_agent)
-        if agent_state:
-            agent_state.resume(restart=restart_agent)
-        
+
+        # State already cleared in pause_flow() - resume immediately!
         self.session_state.resume(restart_agent)
-        
+
         # Save checkpoint when resumed
         await self.state_persistence.save_checkpoint(self.session_state)
-        
+
+        # Get full timer for fresh start
+        timer_seconds = self.get_agent_timer(paused_agent)
+
         response = {
             "type": "flow_resumed",
             "session_id": self.session_id,
             "resuming_agent": paused_agent,
-            "timer_seconds": agent_state.timer_seconds if agent_state else 0,
-            "restarted": restart_agent,
-            "inference_count_before_pause": agent_state.inference_count if agent_state else 0
+            "timer_seconds": timer_seconds,
+            "fresh_start": True
         }
-        
-        # Send agent_started for resumed agent with optimization info
-        if agent_state:
-            opt_info = self.inference_engine.get_optimization_status()
-            await self._send_agent_started(paused_agent, agent_state.timer_remaining, opt_info)
-        
-        logger.info(f"Flow resumed at agent {paused_agent} (restart={restart_agent})")
+
+        # Send agent_started with full timer for fresh start
+        opt_info = self.inference_engine.get_optimization_status()
+        await self._send_agent_started(paused_agent, timer_seconds, opt_info)
+
+        logger.info(f"Flow resumed - {paused_agent} starting fresh with {timer_seconds}s timer (state pre-cleared)")
         return response
     
     async def _send_agent_started(self, agent: str, timer: float, optimization_info: Dict[str, Any] = None) -> None:
@@ -499,8 +564,9 @@ class StatefulOrchestrator:
             # Clear the old shared frame key
             if "initial_first" in self.frame_registry.shared_frames:
                 old_frame_id = self.frame_registry.shared_frames["initial_first"]
+                # release_frame() automatically removes from shared_frames (frame_registry.py:161-163)
+                # No need to delete manually - doing so causes KeyError
                 await self.frame_registry.release_frame(old_frame_id)
-                del self.frame_registry.shared_frames["initial_first"]
                 logger.info("Cleared old initial_first shared frame for new capture")
         except Exception as e:
             logger.error(f"Error updating initial shared frame: {e}")
