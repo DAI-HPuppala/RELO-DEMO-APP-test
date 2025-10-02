@@ -23,22 +23,27 @@ check_oakd_ping() {
 
 # Function to find OAK-D camera interface using ARP
 find_oakd_interface() {
+    echo "Scanning network interfaces for OAK-D camera..."
     # Try to trigger ARP entries by pinging on each interface
     for iface in $(ip link show | grep -E "^[0-9]+: enp" | cut -d: -f2 | tr -d ' '); do
         # Skip interfaces that are down
         if ! ip link show "$iface" | grep -q "state UP"; then
+            echo "  Skipping $iface (down)"
             continue
         fi
 
-        # Try to ping from this interface
-        ping -c 1 -W 1 -I "$iface" "$OAKD_IP" > /dev/null 2>&1
+        echo "  Checking $iface..."
+        # Try to ping from this interface (with strict timeout)
+        timeout 2 ping -c 1 -W 1 -I "$iface" "$OAKD_IP" > /dev/null 2>&1
 
         # Check ARP table for the MAC address on this interface
         if arp -i "$iface" -a 2>/dev/null | grep -iq "$OAKD_MAC"; then
+            echo "  Found camera on $iface!"
             echo "$iface"
             return 0
         fi
     done
+    echo "  No interface found with camera MAC"
     return 1
 }
 
@@ -88,15 +93,21 @@ if [ -f "$INTERFACE_CACHE" ]; then
     CACHED_IFACE=$(cat "$INTERFACE_CACHE")
     echo "Trying cached interface: $CACHED_IFACE"
 
-    # Configure the cached interface
-    configure_interface "$CACHED_IFACE"
+    # Verify the interface exists and is up
+    if ip link show "$CACHED_IFACE" 2>/dev/null | grep -q "state UP"; then
+        # Configure the cached interface
+        configure_interface "$CACHED_IFACE"
 
-    # Test if it works
-    if check_oakd_ping; then
-        echo -e "${GREEN}✓ OAK-D camera configured on $CACHED_IFACE${NC}"
-        return 0 2>/dev/null || exit 0
+        # Test if it works
+        if check_oakd_ping; then
+            echo -e "${GREEN}✓ OAK-D camera configured on $CACHED_IFACE${NC}"
+            return 0 2>/dev/null || exit 0
+        else
+            echo "Cached interface didn't work, will rescan..."
+            rm -f "$INTERFACE_CACHE"
+        fi
     else
-        echo "Cached interface didn't work, scanning all interfaces..."
+        echo "Cached interface $CACHED_IFACE not available, will rescan..."
         rm -f "$INTERFACE_CACHE"
     fi
 fi
