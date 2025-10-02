@@ -98,19 +98,19 @@ class VLMGPULoader:
                 'contrast_beta': int(os.getenv('PREPROCESSING_DETAIL_CONTRAST_BETA', '0'))
             },
             'damage_detector': {
-                'enabled': os.getenv('PREPROCESSING_DAMAGE_ENABLED', 'true').lower() == 'true' and self.preprocessing_enabled,
-                'type': os.getenv('PREPROCESSING_DAMAGE_TYPE', 'sharpen'),
-                'level': os.getenv('PREPROCESSING_DAMAGE_LEVEL', 'low'),
-                # Sharpen parameters
-                'sharpen_amount': float(os.getenv('PREPROCESSING_DAMAGE_SHARPEN_AMOUNT', '1.5')),
+                'enabled': os.getenv('PREPROCESSING_DAMAGE_ENABLED', 'false').lower() == 'true' and self.preprocessing_enabled,
+                'type': os.getenv('PREPROCESSING_DAMAGE_TYPE', 'none'),
+                'level': os.getenv('PREPROCESSING_DAMAGE_LEVEL', 'none'),
+                # Sharpen parameters - DISABLED to avoid masking real damage
+                'sharpen_amount': float(os.getenv('PREPROCESSING_DAMAGE_SHARPEN_AMOUNT', '1.0')),
                 'sharpen_sigma': float(os.getenv('PREPROCESSING_DAMAGE_SHARPEN_SIGMA', '1.0')),
                 'blur_size': int(os.getenv('PREPROCESSING_DAMAGE_BLUR_SIZE', '5')),
                 # Edge parameters
                 'edge_kernel': int(os.getenv('PREPROCESSING_DAMAGE_EDGE_KERNEL_SIZE', '3')),
-                'edge_strength': float(os.getenv('PREPROCESSING_DAMAGE_EDGE_STRENGTH', '1.5')),
-                # Contrast parameters
-                'contrast_alpha': float(os.getenv('PREPROCESSING_DAMAGE_CONTRAST_ALPHA', '1.3')),
-                'contrast_beta': int(os.getenv('PREPROCESSING_DAMAGE_CONTRAST_BETA', '10'))
+                'edge_strength': float(os.getenv('PREPROCESSING_DAMAGE_EDGE_STRENGTH', '1.0')),
+                # Contrast parameters - DISABLED to show raw damage
+                'contrast_alpha': float(os.getenv('PREPROCESSING_DAMAGE_CONTRAST_ALPHA', '1.0')),
+                'contrast_beta': int(os.getenv('PREPROCESSING_DAMAGE_CONTRAST_BETA', '0'))
             }
         }
 
@@ -402,10 +402,10 @@ class VLMGPULoader:
                     top_k = 1         # Only best choice for OCR accuracy
                     repeat_penalty = 1.0  # No penalty needed for OCR
                 elif agent_name == "damage_detector":
-                    # Damage detection needs consistency but some flexibility
-                    temperature = 0.2  # Low randomness for consistent detection
-                    top_p = 0.3       # Moderate sampling for damage descriptions
-                    top_k = 5       # Limited choices for consistency
+                    # Damage detection - balanced for accuracy
+                    temperature = 0.3  # Balanced temperature for consistent yet accurate detection
+                    top_p = 0.4       # Focused sampling for reliable results
+                    top_k = 8         # Moderate choices for balanced detection
                     repeat_penalty = 1.0  # No penalty for damage descriptions
                 elif agent_name == "initial_classifier":
                     # Classification needs slight variety for attributes

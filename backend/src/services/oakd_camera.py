@@ -50,56 +50,78 @@ class OakDVideoTrack(VideoStreamTrack):
         self._initialize_oakd()
 
     def _initialize_oakd(self):
-        """Initialize OAK-D Pro camera using DepthAI."""
+        """Initialize OAK-D Pro camera using DepthAI with retry logic."""
         if not DEPTHAI_AVAILABLE:
             logger.error("DepthAI SDK not available, using test pattern")
             self.is_initialized = False
             self._start_capture_thread()
             return False
 
-        try:
-            logger.info("Initializing OAK-D Pro camera...")
+        max_retries = 3
+        retry_delay = 1.5  # seconds
 
-            # Create pipeline (exactly like reference)
-            self._pipeline = self._create_pipeline()
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Initializing OAK-D Pro camera (attempt {attempt + 1}/{max_retries})...")
 
-            # Connect to device and start pipeline
-            # Try dynamic discovery first, then fall back to static IP
-            device_info = None
-            devices = dai.Device.getAllAvailableDevices()
+                # Create pipeline (exactly like reference)
+                self._pipeline = self._create_pipeline()
 
-            # Look for PoE device via auto-discovery
-            for dev in devices:
-                if dev.protocol == dai.XLinkProtocol.X_LINK_TCP_IP:
-                    logger.info(f"✓ Dynamically discovered PoE device: {dev.name}")
-                    device_info = dev
-                    break
+                # Connect to device and start pipeline
+                # Try dynamic discovery first, then fall back to static IP
+                device_info = None
+                devices = dai.Device.getAllAvailableDevices()
+                logger.info(f"Found {len(devices)} device(s) via discovery")
 
-            # Fall back to static IP if no device found via discovery
-            if device_info is None:
-                logger.info(f"No PoE device found via auto-discovery, falling back to static IP: {OAKD_POE_FALLBACK_IP}")
-                device_info = dai.DeviceInfo(OAKD_POE_FALLBACK_IP)
+                # Look for PoE device via auto-discovery
+                for dev in devices:
+                    if dev.protocol == dai.XLinkProtocol.X_LINK_TCP_IP:
+                        logger.info(f"✓ Dynamically discovered PoE device: {dev.name}")
+                        device_info = dev
+                        break
 
-            # Connect to the device
-            self._device = dai.Device(self._pipeline, device_info)
-            if device_info:
-                logger.info(f"✓ Connected to OAK-D Pro camera successfully")
-            else:
-                logger.info(f"✓ Connected to OAK-D Pro camera at fallback IP: {OAKD_POE_FALLBACK_IP}")
+                # Fall back to static IP if no device found via discovery
+                if device_info is None:
+                    logger.info(f"No PoE device found via auto-discovery, falling back to static IP: {OAKD_POE_FALLBACK_IP}")
+                    device_info = dai.DeviceInfo(OAKD_POE_FALLBACK_IP)
 
-            # Get output queue (exactly like reference)
-            self._q_rgb = self._device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+                # Connect to the device
+                self._device = dai.Device(self._pipeline, device_info)
+                if device_info:
+                    logger.info(f"✓ Connected to OAK-D Pro camera successfully")
+                else:
+                    logger.info(f"✓ Connected to OAK-D Pro camera at fallback IP: {OAKD_POE_FALLBACK_IP}")
 
-            self.is_initialized = True
-            logger.info("OAK-D Pro camera initialized successfully")
-            self._start_capture_thread()
-            return True
+                # Get output queue (exactly like reference)
+                self._q_rgb = self._device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
 
-        except Exception as e:
-            logger.error(f"Failed to initialize OAK-D Pro camera: {e}")
-            self.is_initialized = False
-            self._start_capture_thread()
-            return False
+                self.is_initialized = True
+                logger.info(f"OAK-D Pro camera initialized successfully (attempt {attempt + 1}/{max_retries})")
+                self._start_capture_thread()
+                return True
+
+            except Exception as e:
+                logger.error(f"Initialization attempt {attempt + 1}/{max_retries} failed: {e}")
+
+                # Cleanup partial initialization
+                if self._device:
+                    try:
+                        self._device.close()
+                    except:
+                        pass
+                    self._device = None
+                self._q_rgb = None
+                self._pipeline = None
+
+                if attempt < max_retries - 1:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    logger.error(f"All {max_retries} attempts failed - falling back to test pattern")
+                    self.is_initialized = False
+                    self._start_capture_thread()
+                    return False
 
     def _create_pipeline(self):
         """Create DepthAI pipeline for RGB camera with full ISP optimization."""

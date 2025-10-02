@@ -107,6 +107,9 @@ find . -type f -name "*.pyc" -delete 2>/dev/null || true
 # Create new log files
 touch backend.log frontend.log
 
+# Setup OAK-D camera network if needed
+source ./setup_oakd_network.sh
+
 # Start Backend
 echo -e "${GREEN}Starting Backend Server...${NC}"
 cd backend
