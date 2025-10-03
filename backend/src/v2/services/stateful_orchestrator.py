@@ -310,19 +310,7 @@ class StatefulOrchestrator:
                             inference_num: int) -> List[Any]:
         """Collect frames for inference"""
         frames = []
-        
-        # Special case: damage_detector first inference includes shared frame
-        if agent_name == "damage_detector" and inference_num == 1:
-            shared_frame = await self.frame_registry.get_frame_for_damage_detector()
-            if shared_frame is not None:
-                frames.append(shared_frame)
-                batch_size -= 1  # Reduce new frames needed
-                logger.info(f"✅ Successfully retrieved shared frame from initial_classifier for damage_detector")
-                logger.debug(f"Shared frame shape: {shared_frame.shape}, dtype: {shared_frame.dtype}")
-            else:
-                logger.error("❌ Failed to retrieve shared frame for damage_detector - will capture 2 new frames instead")
-                # Don't reduce batch_size, capture 2 new frames as fallback
-        
+
         # Collect new frames
         if self.frame_provider:
             for i in range(batch_size):
@@ -359,10 +347,7 @@ class StatefulOrchestrator:
         if len(frames) == 0:
             logger.warning(f"No frames collected for {agent_name} inference #{inference_num}")
         else:
-            # Special logging for damage_detector's first inference
-            if agent_name == "damage_detector" and inference_num == 1 and len(frames) == 2:
-                logger.info(f"Collected {len(frames)} frames for {agent_name} inference #{inference_num}: 1 shared + 1 new")
-            elif inference_num > 1:
+            if inference_num > 1:
                 logger.info(f"Collected {len(frames)} frame{'s' if len(frames) > 1 else ''} for {agent_name} inference #{inference_num} (with context)")
             else:
                 logger.info(f"Collected {len(frames)} frame{'s' if len(frames) > 1 else ''} for {agent_name} inference #{inference_num}")
@@ -372,11 +357,7 @@ class StatefulOrchestrator:
     def _get_batch_size(self, agent_name: str, inference_num: int,
                        timer_remaining: float) -> int:
         """Determine batch size for inference - always 1 frame for consistency"""
-        # Special case: damage_detector's first inference gets shared frame + 1 new
-        if agent_name == "damage_detector" and inference_num == 1:
-            return 2  # Will get 1 shared + 1 new
-
-        # All other cases: always capture exactly 1 frame per inference
+        # All agents: always capture exactly 1 frame per inference
         # This ensures consistent single frame capture regardless of time or inference number
         return 1
     

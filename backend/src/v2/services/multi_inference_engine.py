@@ -103,12 +103,7 @@ class MultiInferenceEngine:
         logger.info(f"🎯 INFERENCE START: {agent_name.upper()} - Inference #{inference_num}")
         logger.info("="*80)
 
-        # Special logging for damage_detector's first inference with frame sharing
-        if agent_name.lower() == "damage_detector" and inference_num == 1 and len(frames) == 2:
-            logger.info(f"📸 FRAME SOURCES: 2 frames total for damage detector first inference")
-            logger.info(f"  🔄 1 SHARED frame from initial_classifier (reused)")
-            logger.info(f"  📷 1 NEW frame captured from camera")
-        elif inference_num == 1:
+        if inference_num == 1:
             logger.info(f"📸 FRAME CAPTURED: {len(frames)} {'frame' if len(frames) == 1 else 'frames'} captured from camera (first inference)")
         else:
             logger.info(f"📸 FRAME CAPTURED: 1 new frame captured for inference #{inference_num}")
@@ -182,14 +177,9 @@ class MultiInferenceEngine:
                     agent_name, frames, inference_num, cycle_num=cycle_num, redo_attempt=redo_attempt, mode=mode
                 )
 
-                # Log saved frames with proper labeling for damage_detector
-                if agent_name.lower() == "damage_detector" and inference_num == 1 and len(saved_frame_paths) == 2:
-                    # First frame is shared, second is new
-                    logger.info(f"  📁 SHARED Frame SAVED TO: {saved_frame_paths[0]} (from initial_classifier)")
-                    logger.info(f"  📁 NEW Frame SAVED TO: {saved_frame_paths[1]} (captured by damage_detector)")
-                else:
-                    for i, path in enumerate(saved_frame_paths, 1):
-                        logger.info(f"  📁 NEW Frame SAVED TO: {path}")
+                # Log saved frames
+                for i, path in enumerate(saved_frame_paths, 1):
+                    logger.info(f"  📁 Frame SAVED TO: {path}")
 
                 return result
                 
@@ -365,7 +355,7 @@ class MultiInferenceEngine:
         prompts = {
             "initial_classifier": "Analyze this garment and identify: type (e.g., T-shirt, Dress, Pants, Shoes, Shirt, Shorts, Jacket, Sweatshirt, Sweater, Hoodie, Bag), color, pattern, neckline style, sleeve length, and closure type. Neckline, closure type, and sleeve length are optional or could be null for Shoes. Return null for unrecognizable attributes.",
             "detail_extractor": "Search for brand name/logo and size on this garment. Return brand and size, or null if not visible.",
-            "damage_detector": "You are inspecting a garment/item for damage. Study the item surface carefully.\n\nIGNORE (not damage): (1) shadows from overhead lights or hand, (2) clean table/background, (3) normal fabric wrinkles/folds that aren't tears.\n\nDETECT and REPORT these damages:\n- Dirty/Stains: Look for brown/gray/black marks, dirt, mud, scuff marks ON the item surface. Example: brown dirt marks on white shoes, coffee stains on fabric, mud on sole.\n- Discoloration: Yellowing, color fading, permanent color changes in fabric. Example: yellow stains on white collar, faded areas.\n- Hole: Clear opening or puncture through the fabric. Example: torn fabric with visible gap.\n- Cut/Tear: Fabric separation, rips, frayed edges. Example: split seam, torn fabric edge.\n- Abrasion/Scratch: Surface wear, scuffing, rough patches on material. Example: worn leather, scratched surface.\n- Bodily fluids: Sweat marks, blood, food stains.\n- Damaged hardware: Broken buttons, damaged zippers, missing fasteners.\n- Hair/Fuzz/Lint: Visible fibers, hair, lint stuck on garment.\n\nIMPORTANT: Look CLOSELY at the actual item surface. Brown/gray/black marks on white items = dirt/stains. Worn areas on soles = damage. If you see ANY visible dirt, stains, discoloration, or wear ON THE ITEM, you MUST report it as damage with specific type and location.\n\nReturn JSON: 'damaged': 'yes' with damage_type and location if damage found. Return 'damaged': 'no' and 'damage_type': null ONLY if the item is genuinely clean and undamaged.",
+            "damage_detector": "Examine this garment for any physical damage or defects. Analyze the fabric surface, structure, and overall condition. Determine if damage is present and identify its nature based on visual characteristics. Consider: material integrity (tears, holes, cuts), surface condition (stains, discoloration, soiling), structural components (fasteners, buttons, zippers), and foreign matter (hair, lint, fluids). Balance precision with practical judgment - flag only clear, observable damage. Return JSON with 'damaged' (boolean) and 'damage_type' (specific category description or null).",
             "final_compiler": "Compile final classification based on all attributes."
         }
 
