@@ -42,7 +42,7 @@ except ImportError as e:
     eb = None
 
 # Constants
-BUFFER_COUNT = 32  # Increased buffer count to reduce flickering
+BUFFER_COUNT = 16  # Match working test script buffer count
 CV60_IP = "192.168.1.21"  # CV60 camera IP
 
 
@@ -134,32 +134,53 @@ class CV60VideoTrack(VideoStreamTrack):
 
                     # Configure packet size for GigE
                     if isinstance(device, eb.PvDeviceGEV):
-                        system = eb.PvSystem()
-                        system.Find()
-                        for k in range(system.GetInterfaceCount()):
-                            iface = system.GetInterface(k)
-                            try:
-                                ip = str(iface.GetIPAddress(0))
-                            except:
-                                continue
-                            if ip.startswith(('169.254', '192.168')):
-                                device.NegotiatePacketSize()
-                                device.SetStreamDestination(ip, stream.GetLocalPort())
-                                break
+                        # Use SDK's deterministic method to get the actual stream IP (CRITICAL FIX)
+                        stream_ip = stream.GetLocalIPAddress()
+                        stream_port = stream.GetLocalPort()
 
-                    # Allocate buffers
+                        logger.info(f"Configuring stream destination: {stream_ip}:{stream_port}")
+                        logger.info(f"Camera IP: {self.connection_id}")
+
+                        # Validate that stream IP is on same subnet as camera (basic check)
+                        camera_subnet = '.'.join(self.connection_id.split('.')[:3])
+                        stream_subnet = '.'.join(str(stream_ip).split('.')[:3])
+
+                        if camera_subnet != stream_subnet:
+                            logger.warning(f"⚠️  Stream IP {stream_ip} is not on same subnet as camera {self.connection_id}")
+                            logger.warning(f"   Camera subnet: {camera_subnet}.x, Stream subnet: {stream_subnet}.x")
+                            logger.warning(f"   This may cause frame retrieval issues!")
+                        else:
+                            logger.info(f"✅ Subnet validation passed: {camera_subnet}.x")
+
+                        device.NegotiatePacketSize()
+                        device.SetStreamDestination(stream_ip, stream_port)
+
+                        logger.info(f"✅ Stream destination configured: {stream_ip}:{stream_port}")
+
+                    # Allocate buffers (match working test script exactly)
                     size = device.GetPayloadSize()
-                    buf_count = min(stream.GetQueuedBufferMaximum(), BUFFER_COUNT)
+                    logger.info(f"Payload size: {size} bytes ({size/1024/1024:.2f} MB)")
                     buffers = []
-                    for _ in range(buf_count):
+                    for i in range(BUFFER_COUNT):
                         buf = eb.PvBuffer()
                         buf.Alloc(size)
                         buffers.append(buf)
                         stream.QueueBuffer(buf)
+                    logger.info(f"Allocated and queued {BUFFER_COUNT} buffers")
 
                     # Start acquisition
                     device.StreamEnable()
-                    device.GetParameters().Get("AcquisitionStart").Execute()
+
+                    # Execute AcquisitionStart with error checking
+                    acq_start = device.GetParameters().Get("AcquisitionStart")
+                    if acq_start:
+                        result = acq_start.Execute()
+                        logger.info(f"AcquisitionStart executed: {result}")
+                    else:
+                        logger.warning("AcquisitionStart parameter not available")
+
+                    # Give camera time to start streaming (CV60 needs 1s minimum)
+                    time.sleep(1.0)
 
                     # Store context
                     ctx = {
@@ -274,8 +295,8 @@ class CV60VideoTrack(VideoStreamTrack):
                 device = ctx["device"]
                 stream = ctx["stream"]
 
-                # Retrieve buffer from stream
-                result, buf, op = stream.RetrieveBuffer(500)  # 500ms timeout
+                # Retrieve buffer from stream (CV60 needs 5s timeout like eBUSPlayer)
+                result, buf, op = stream.RetrieveBuffer(5000)  # 5000ms timeout matching working test script
 
                 if result.IsOK() and op and op.IsOK() and buf.GetPayloadType() == eb.PvPayloadTypeImage:
                     img = buf.GetImage()
@@ -375,8 +396,14 @@ class CV60VideoTrack(VideoStreamTrack):
                     if buf:
                         stream.QueueBuffer(buf)
                     consecutive_errors += 1
+
+                    # Log the actual error
+                    error_msg = f"RetrieveBuffer failed - result: {result.GetCodeString() if result else 'None'}"
+                    if consecutive_errors == 1 or consecutive_errors % 5 == 0:
+                        logger.warning(f"Frame grab error #{consecutive_errors}: {error_msg}")
+
                     if consecutive_errors >= max_consecutive_errors:
-                        logger.error(f"Too many consecutive errors ({consecutive_errors}), resetting camera")
+                        logger.error(f"Too many consecutive errors ({consecutive_errors}), resetting camera. Last error: {error_msg}")
                         self._reset_camera_context()
                         consecutive_errors = 0
                     time.sleep(0.05)

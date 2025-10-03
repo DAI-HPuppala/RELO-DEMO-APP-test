@@ -392,20 +392,26 @@ class WebRTCManager:
                 # Frontend log message
                 logger.info(f"Client log [{session_id}]: {data.get('message')}")
             elif msg_type in ["stop_session", "pause_flow", "resume_flow"]:
-                # Forward control messages to websocket handler
+                # Forward control messages to websocket handler and send response back
                 logger.info(f"Forwarding control message {msg_type} to websocket handler")
                 if self.control_message_handler:
-                    await self.control_message_handler(session_id, data)
+                    response = await self.control_message_handler(session_id, data)
+                    # Send response back through data channel
+                    if response:
+                        await self.send_data_channel_message(session_id, response)
                 else:
                     logger.warning(f"No control message handler set for {msg_type}")
-            elif msg_type in ["manual_previous", "manual_next", "manual_redo", 
+            elif msg_type in ["manual_previous", "manual_next", "manual_redo",
                             "manual_select_agent", "manual_confirm_final"]:
-                # Forward manual mode commands to websocket handler
+                # Forward manual mode commands to websocket handler and send response back
                 logger.info(f"Forwarding manual command {msg_type} to websocket handler")
                 if self.control_message_handler:
                     # Add session_id to the message if not present
                     data["session_id"] = session_id
-                    await self.control_message_handler(session_id, data)
+                    response = await self.control_message_handler(session_id, data)
+                    # Send response back through data channel
+                    if response:
+                        await self.send_data_channel_message(session_id, response)
                 else:
                     logger.warning(f"No control message handler set for manual command {msg_type}")
             else:

@@ -1,6 +1,7 @@
 """WebSocket endpoint for real-time communication."""
 import json
 import logging
+import os
 import time
 from typing import Dict, Any
 from fastapi import WebSocket, WebSocketDisconnect
@@ -34,6 +35,9 @@ _control_handler_setup = False
 
 # Global VLM service instance
 _vlm_service = None
+
+# Global cycle counter - persists across sessions, resets only on backend restart
+_global_cycle_counter = 0
 
 async def initialize_vlm_service():
     """Initialize VLM service if not already done"""
@@ -200,12 +204,16 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
         )
         
         logger.info(f"Created new session {session.session_id} in {mode} mode")
-        
+
+        # Get table row limit from environment for frontend tracking
+        table_row_limit = int(os.getenv('TABLE_ROW_LIMIT_WARNING', '200'))
+
         return {
             "type": "session_created",
             "session_id": session.session_id,
             "mode": session.mode,
-            "status": session.status
+            "status": session.status,
+            "table_row_limit": table_row_limit
         }
     
     elif msg_type == "stop_session":
@@ -219,16 +227,14 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
             # Stop base session and any cycle sessions
             if key == session_id or key.startswith(f"{session_id}_"):
                 keys_to_stop.append(key)
-        
+
         for key in keys_to_stop:
             logger.info(f"Stopping monitoring for {key}")
             monitoring_controls[key]['running'] = False
             monitoring_controls[key]['paused'] = False
-        
-        # Clean up monitoring controls
-        for key in keys_to_stop:
-            if key in monitoring_controls:
-                del monitoring_controls[key]
+
+        # Keep monitoring_controls for potential session resumption
+        logger.info(f"Session {session_id} stopped but monitoring controls preserved")
 
         # Clean up orchestrators
         if session_id in orchestrators:
@@ -526,13 +532,14 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
     elif msg_type == "stop_monitoring" or msg_type == "stop_automatic":
         # Stop automatic monitoring
         session_id = message.get("session_id")
-        
+
         if session_id in monitoring_controls:
             logger.info(f"Stopping monitoring for session {session_id}")
             monitoring_controls[session_id]['running'] = False
-            # Clean up the control entry
-            del monitoring_controls[session_id]
-            
+            # Keep monitoring_controls for potential session resumption
+            # Will be cleaned up on stop_session or backend restart
+            logger.info(f"Session {session_id} preserved for potential resumption")
+
             return {
                 "type": "monitoring_stopped",
                 "session_id": session_id
@@ -548,10 +555,10 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
         # Export results request
         session_id = message.get("session_id")
         format = message.get("format", "json")
-        
+
         try:
             export_info = await session_manager.export_session(session_id, format)
-            
+
             return {
                 "type": "export_ready",
                 "session_id": session_id,
@@ -566,7 +573,7 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
                 "message": str(e),
                 "recoverable": False
             }
-    
+
     elif msg_type == "pause_flow":
         # Pause the monitoring flow using orchestrator
         session_id = message.get("session_id")
@@ -578,11 +585,28 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
             current_agent = monitoring_controls[session_id].get('current_agent', 'unknown')
             current_agent_full = monitoring_controls[session_id].get('current_agent_full', None)
 
-            # Store which agent to restart when resumed
-            monitoring_controls[session_id]['paused_at_agent'] = current_agent
+            # Detect if pausing between cycles (no active agent)
+            orchestrator = orchestrators[session_id]
+
+            if current_agent_full is None:
+                # Pausing between cycles - no specific agent to restart
+                monitoring_controls[session_id]['paused_at_agent'] = None
+                monitoring_controls[session_id]['paused_between_cycles'] = True
+                monitoring_controls[session_id]['agent_had_inferences'] = False
+                logger.info(f"Paused between cycles for session {session_id} (no active agent)")
+            else:
+                # Pausing during an agent - check if agent had inferences BEFORE state is cleared
+                agent_state = orchestrator.session_state.agent_states.get(current_agent_full)
+                had_inferences = agent_state and agent_state.inference_count > 0
+
+                # Store pause information
+                monitoring_controls[session_id]['paused_at_agent'] = current_agent_full
+                monitoring_controls[session_id]['paused_between_cycles'] = False
+                monitoring_controls[session_id]['agent_had_inferences'] = had_inferences
+
+                logger.info(f"Paused during agent {current_agent_full} for session {session_id} (had {agent_state.inference_count if agent_state else 0} inferences)")
 
             # Call orchestrator's pause_flow with the FULL agent name to handle state cleanup
-            orchestrator = orchestrators[session_id]
             orchestrator_response = await orchestrator.pause_flow(current_agent=current_agent_full)
 
             logger.info(f"Paused monitoring flow for session {session_id} - state cleared")
@@ -609,22 +633,56 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
             # Update monitoring control flags
             monitoring_controls[session_id]['paused'] = False
             monitoring_controls[session_id]['should_interrupt'] = False
-            monitoring_controls[session_id]['restart_agent'] = True  # Signal to restart the paused agent
+
+            # Check if paused between cycles or during an agent
+            paused_between_cycles = monitoring_controls[session_id].get('paused_between_cycles', False)
             current_agent = monitoring_controls[session_id].get('paused_at_agent', monitoring_controls[session_id].get('current_agent', 'unknown'))
 
-            # Call orchestrator's resume_flow (state already cleared during pause)
             orchestrator = orchestrators[session_id]
-            orchestrator_response = await orchestrator.resume_flow(restart_agent)
 
-            logger.info(f"Resumed monitoring flow for session {session_id} - agent {current_agent} will start fresh")
+            if paused_between_cycles:
+                # Paused between cycles - just continue to next cycle (no agent to restart)
+                monitoring_controls[session_id]['restart_agent'] = False
+                monitoring_controls[session_id]['paused_between_cycles'] = False  # Clear flag
+                logger.info(f"Resume from inter-cycle pause for session {session_id} - continuing to next cycle")
 
-            return {
-                "type": "flow_resumed",
-                "session_id": session_id,
-                "resuming_agent": current_agent,
-                "fresh_start": orchestrator_response.get("fresh_start", True),
-                "timer_seconds": orchestrator_response.get("timer_seconds", 4.0)
-            }
+                return {
+                    "type": "flow_resumed",
+                    "session_id": session_id,
+                    "resuming_agent": None,
+                    "fresh_start": True,
+                    "between_cycles": True
+                }
+            else:
+                # Paused during an agent - restart that specific agent
+                monitoring_controls[session_id]['restart_agent'] = True  # Signal to restart the paused agent
+
+                # Use the stored value from pause (agent state is already cleared)
+                agent_had_inferences = monitoring_controls[session_id].get('agent_had_inferences', False)
+
+                # Increment redo counter ONLY if agent had completed at least one inference before pause
+                if agent_had_inferences:
+                    # This is a redo - agent was paused AFTER starting inferences
+                    if current_agent not in orchestrator.redo_counts:
+                        orchestrator.redo_counts[current_agent] = 0
+                    orchestrator.redo_counts[current_agent] += 1
+                    logger.info(f"Resume (auto mode) - Rerun attempt #{orchestrator.redo_counts[current_agent]} for {current_agent} (was paused after inferences)")
+                else:
+                    # This is the FIRST run - agent was paused BEFORE completing any inference
+                    logger.info(f"Resume (auto mode) - First run for {current_agent} (was paused before first inference)")
+
+                # Call orchestrator's resume_flow (state already cleared during pause)
+                orchestrator_response = await orchestrator.resume_flow(restart_agent)
+
+                logger.info(f"Resumed monitoring flow for session {session_id} - agent {current_agent} will start fresh")
+
+                return {
+                    "type": "flow_resumed",
+                    "session_id": session_id,
+                    "resuming_agent": current_agent,
+                    "fresh_start": orchestrator_response.get("fresh_start", True),
+                    "timer_seconds": orchestrator_response.get("timer_seconds", 4.0)
+                }
         else:
             return {
                 "type": "error",
@@ -705,17 +763,34 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
             
             if action in ["navigate_next", "navigate_previous", "select_agent", "redo_agent"]:
                 # We're ready to run the agent
-                if action == "redo_agent":
-                    # For redo, use the agent specified in the result
+                if action == "redo_agent" or action == "select_agent":
+                    # For redo or select_agent (jumping back), use the agent specified
                     agent_name = result.get("agent", handler.get_current_agent())
+
+                    # Increment redo counter for this agent in orchestrator
+                    if session_id in orchestrators:
+                        orchestrator = orchestrators[session_id]
+                        orchestrator.is_redo = True
+
+                        # Increment redo count for this agent
+                        if agent_name not in orchestrator.redo_counts:
+                            orchestrator.redo_counts[agent_name] = 0
+                        orchestrator.redo_counts[agent_name] += 1
+
+                        action_label = "Redo" if action == "redo_agent" else "Rerun (node click)"
+                        logger.info(f"{action_label} attempt #{orchestrator.redo_counts[agent_name]} for {agent_name} in {session_id}")
                 else:
-                    # For navigation, use the current agent
+                    # For normal forward navigation (next/previous), use the current agent
                     agent_name = handler.get_current_agent()
-                
+
+                    # Clear redo flag for normal navigation (but keep redo counts)
+                    if session_id in orchestrators:
+                        orchestrators[session_id].is_redo = False
+
                 # Mark in monitoring controls for manual mode flow
                 if session_id not in monitoring_controls:
                     monitoring_controls[session_id] = {'running': True, 'manual_mode': True}
-                
+
                 monitoring_controls[session_id]['manual_agent'] = agent_name
                 monitoring_controls[session_id]['waiting_for_manual_agent'] = True
                 
@@ -861,7 +936,10 @@ async def translate_v2_to_v1_message(v2_msg: Dict) -> Dict:
             "results": final_result,  # Frontend expects "results", not "classification"
             "processing_time": v2_msg.get("processing_time", 0),
             "agents_completed": v2_msg.get("agents_completed", 4),
-            "cycle_number": v2_msg.get("cycle_number", 1)
+            "cycle_number": v2_msg.get("cycle_number", 1),
+            "saved_images": v2_msg.get("saved_images", {}),
+            "final_images": v2_msg.get("final_images", {}),
+            "inference_counts": v2_msg.get("inference_counts", {})
         }
         
     elif msg_type == "agent_paused_with_results":
@@ -893,9 +971,11 @@ async def translate_v2_to_v1_message(v2_msg: Dict) -> Dict:
 
 async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring_control):
     """Run V2 monitoring flow adapted for V1 frontend - runs continuously until stopped"""
+    global _global_cycle_counter
+
     try:
         logger.info(f"Starting continuous V1-to-V2 monitoring flow for session {session_id}")
-        cycle_count = 0
+        # Use global cycle counter instead of local counter (persists across sessions)
         
         # Ensure VLM is initialized before starting
         if not orchestrator.is_vlm_configured():
@@ -936,11 +1016,14 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
         
         # Run continuously until stop signal
         while monitoring_control.get('running', True):
-            cycle_count += 1
-            
+            _global_cycle_counter += 1
+
+            # Update orchestrator cycle number for image tracking
+            orchestrator.current_cycle = _global_cycle_counter
+
             # Create a new session ID for each cycle (keeps base session ID with cycle suffix)
-            cycle_session_id = f"{session_id}_cycle_{cycle_count}"
-            logger.info(f"Starting monitoring cycle {cycle_count} with session {cycle_session_id}")
+            cycle_session_id = f"{session_id}_cycle_{_global_cycle_counter}"
+            logger.info(f"Starting monitoring cycle {_global_cycle_counter} with session {cycle_session_id}")
             
             # Track cycle timing
             cycle_start_time = time.time()
@@ -952,7 +1035,7 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
                     "type": "monitoring_cycle_started",
                     "session_id": session_id,
                     "cycle_session_id": cycle_session_id,
-                    "cycle_number": cycle_count
+                    "cycle_number": _global_cycle_counter
                 })
             
             # Initialize V2 agents fresh for each cycle
@@ -1163,27 +1246,53 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
                 # Send final classification complete message
                 if orchestrator.send_message:
                     final_dict = final_result.to_dict() if hasattr(final_result, 'to_dict') else final_result
+
+                    # Get saved images for this cycle from inference engine
+                    saved_images = orchestrator.inference_engine.get_saved_images_for_cycle(_global_cycle_counter)
+                    final_images = orchestrator.inference_engine.get_final_images_for_cycle(_global_cycle_counter)
+
+                    # Collect per-agent inference counts for frontend metadata
+                    inference_counts = {}
+                    for agent_name, agent_state in results.items():
+                        if agent_state:
+                            inference_counts[agent_name] = agent_state.inference_count
+
                     await orchestrator.send_message({
                         "type": "classification_complete",
                         "session_id": cycle_session_id,
-                        "cycle_number": cycle_count,
+                        "cycle_number": _global_cycle_counter,
                         "final_result": final_dict,
                         "processing_time": actual_cycle_duration,  # Use actual measured time
-                        "agents_completed": len(results) + 1  # Include final_compiler
+                        "agents_completed": len(results) + 1,  # Include final_compiler
+                        "saved_images": saved_images,  # All images (including retries/redos)
+                        "final_images": final_images,   # Final successful image per agent
+                        "inference_counts": inference_counts  # Per-agent inference counts for CSV metadata
                     })
-                
+
                 # Log cycle timing details
-                logger.info(f"Cycle {cycle_count} completed: {actual_cycle_duration:.1f}s (paused: {cycle_paused_time:.1f}s)")
-            
-            logger.info(f"Monitoring cycle {cycle_count} completed for session {cycle_session_id}")
-            
+                logger.info(f"Cycle {_global_cycle_counter} completed: {actual_cycle_duration:.1f}s (paused: {cycle_paused_time:.1f}s)")
+
+            logger.info(f"Monitoring cycle {_global_cycle_counter} completed for session {cycle_session_id}")
+
             # Clear orchestrator state for next cycle
             orchestrator.session_state.reset_for_new_cycle()
-            
-            # Small delay between cycles
-            await asyncio.sleep(4)
-        
-        logger.info(f"V1-to-V2 monitoring flow stopped after {cycle_count} cycles")
+
+            # Reset redo counters for new cycle (auto mode doesn't use redo, but reset for consistency)
+            orchestrator.redo_counts = {}
+
+            # Clear current agent tracking (we're between cycles now, no active agent)
+            if session_id in monitoring_controls:
+                monitoring_controls[session_id]['current_agent'] = None
+                monitoring_controls[session_id]['current_agent_full'] = None
+                logger.debug(f"Cleared current_agent tracking for inter-cycle period")
+
+            # ============================================================
+            # INTER-CYCLE DELAY
+            # ============================================================
+            TARGET_DELAY = 3.0  # Fixed 3-second cycle delay
+            await asyncio.sleep(TARGET_DELAY)
+
+        logger.info(f"V1-to-V2 monitoring flow stopped after {_global_cycle_counter} cycles")
         
     except Exception as e:
         logger.error(f"Error in V1-to-V2 monitoring flow: {e}", exc_info=True)
@@ -1198,10 +1307,10 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
         logger.info(f"Cleaning up monitoring flow for session {session_id}")
         monitoring_control['running'] = False
         monitoring_control['paused'] = False
-        
-        # Clean up any cycle-specific session data
-        if session_id in monitoring_controls:
-            del monitoring_controls[session_id]
+
+        # Keep monitoring_controls for potential session resumption
+        # Note: Export is now global/session-independent
+        logger.info(f"Monitoring flow stopped, session {session_id} controls preserved")
         
         # Clean up any associated data channels that might be stuck
         from api import main
@@ -1211,9 +1320,11 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
 
 async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control, manual_handler: ManualModeHandler):
     """Run manual mode monitoring flow with timer-based processing and command waiting"""
+    global _global_cycle_counter
+
     try:
         logger.info(f"Starting manual mode flow for session {session_id}")
-        
+
         # Ensure VLM is initialized
         if not orchestrator.is_vlm_configured():
             logger.info("Initializing GPU optimization for manual mode...")
@@ -1222,8 +1333,9 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                 logger.error("Failed to initialize VLM for manual mode")
                 monitoring_control['running'] = False
                 return
-        
-        cycle_count = 0
+
+        # Track if this is first cycle for this manual session
+        session_first_cycle = True
         cycle_session_id = None  # Will be set when cycle actually starts
 
         # Run until stopped
@@ -1254,15 +1366,19 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                     agent.set_inference_engine(orchestrator.inference_engine)
             
             # Skip reset here - already done by reset_after_final_compiler()
-            # Only reset if this is the very first cycle
-            if cycle_count == 0:
-                # First cycle - increment counter and send message
-                cycle_count += 1
-                manual_handler.current_cycle = cycle_count
+            # Only reset if this is the very first cycle for this session
+            if session_first_cycle:
+                # First cycle - increment global counter and send message
+                _global_cycle_counter += 1
+                manual_handler.current_cycle = _global_cycle_counter
+
+                # Update orchestrator cycle number for image tracking
+                orchestrator.current_cycle = _global_cycle_counter
 
                 # Create cycle session ID
-                cycle_session_id = f"{session_id}_manual_cycle_{cycle_count}"
-                logger.info(f"Starting manual mode cycle {cycle_count}")
+                cycle_session_id = f"{session_id}_manual_cycle_{_global_cycle_counter}"
+                logger.info(f"Starting manual mode cycle {_global_cycle_counter}")
+                session_first_cycle = False
 
                 # Send cycle started message to frontend
                 if orchestrator.send_message:
@@ -1270,7 +1386,7 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                         "type": "monitoring_cycle_started",
                         "session_id": session_id,
                         "cycle_session_id": cycle_session_id,
-                        "cycle_number": cycle_count
+                        "cycle_number": _global_cycle_counter
                     })
 
                 manual_handler.reset()
@@ -1401,14 +1517,28 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                 
                 # Send final results
                 if orchestrator.send_message:
+                    # Get saved images for this cycle from inference engine
+                    saved_images = orchestrator.inference_engine.get_saved_images_for_cycle(_global_cycle_counter)
+                    final_images = orchestrator.inference_engine.get_final_images_for_cycle(_global_cycle_counter)
+
+                    # Collect per-agent inference counts for frontend metadata
+                    inference_counts = {}
+                    for agent_name in manual_handler.agent_sequence:
+                        agent_state = orchestrator.session_state.agent_states.get(agent_name)
+                        if agent_state:
+                            inference_counts[agent_name] = agent_state.inference_count
+
                     await orchestrator.send_message({
                         "type": "classification_complete",
                         "session_id": cycle_session_id,
-                        "cycle_number": cycle_count,
+                        "cycle_number": _global_cycle_counter,
                         "final_result": final_result.to_dict() if hasattr(final_result, 'to_dict') else final_result,
-                        "mode": "manual"
+                        "mode": "manual",
+                        "saved_images": saved_images,  # All images (including retries/redos)
+                        "final_images": final_images,   # Final successful image per agent
+                        "inference_counts": inference_counts  # Per-agent inference counts for CSV metadata
                     })
-                
+
                 # Record in session state
                 if session_id in manual_mode_sessions:
                     manual_mode_sessions[session_id].record_final_compilation(
@@ -1418,13 +1548,21 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                 # Start new cycle - use the new reset method
                 manual_handler.reset_after_final_compiler()
 
-                # Increment cycle counter for next cycle
-                cycle_count += 1
-                manual_handler.current_cycle = cycle_count
+                # Reset redo counters for new cycle
+                if session_id in orchestrators:
+                    orchestrators[session_id].redo_counts = {}
+                    logger.info(f"Reset redo counters for new cycle {_global_cycle_counter + 1}")
+
+                # Increment global cycle counter for next cycle
+                _global_cycle_counter += 1
+                manual_handler.current_cycle = _global_cycle_counter
+
+                # Update orchestrator cycle number for image tracking
+                orchestrator.current_cycle = _global_cycle_counter
 
                 # Create new cycle session ID
-                cycle_session_id = f"{session_id}_manual_cycle_{cycle_count}"
-                logger.info(f"Starting manual mode cycle {cycle_count} after final_compiler")
+                cycle_session_id = f"{session_id}_manual_cycle_{_global_cycle_counter}"
+                logger.info(f"Starting manual mode cycle {_global_cycle_counter} after final_compiler")
 
                 # Send cycle started message to frontend
                 if orchestrator.send_message:
@@ -1432,7 +1570,7 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                         "type": "monitoring_cycle_started",
                         "session_id": session_id,
                         "cycle_session_id": cycle_session_id,
-                        "cycle_number": cycle_count
+                        "cycle_number": _global_cycle_counter
                     })
 
                 # Set flag to run first agent of new cycle
@@ -1442,7 +1580,7 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                 monitoring_control['waiting_for_manual_agent'] = False
                 monitoring_control['manual_agent'] = None
                 logger.info("Cleared monitoring control flags for new cycle")
-                
+
             # Brief delay before next cycle
             await asyncio.sleep(1.0)
             

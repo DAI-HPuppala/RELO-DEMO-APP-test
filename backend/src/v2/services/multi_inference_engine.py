@@ -15,6 +15,7 @@ from pathlib import Path
 
 from ..models.inference_result import InferenceResult
 from config.gpu_config import gpu_config
+from config.frame_config import frame_config
 from services.vlm_singleton import vlm_singleton
 
 logger = logging.getLogger(__name__)
@@ -24,18 +25,25 @@ class MultiInferenceEngine:
     
     def __init__(self):
         self.gpu_config = gpu_config
-        
+        self.frame_config = frame_config
+
         # Use VLM singleton instead of creating new instance
         self.vlm_singleton = vlm_singleton
-        
+
         # Error handling settings
         self.max_retries = 2
         self.retry_delay = 1.0  # seconds
-        
+
         # Performance tracking
         self.inference_history = []
         self.total_inferences = 0
         self.successful_inferences = 0
+
+        # Frame counter for sequential numbering (legacy, kept for backwards compatibility)
+        self.frame_counter = 0
+
+        # Track image paths per cycle and agent for export
+        self.saved_images = {}  # {cycle_num: {agent_name: [paths]}}
     
     async def initialize_gpu_optimization(self, progress_callback=None) -> bool:
         """Initialize GPU optimization for VLM inference"""
@@ -66,9 +74,9 @@ class MultiInferenceEngine:
         logger.debug(f"VLM singleton ready status: {is_ready}")
         return is_ready
     
-    async def run_inference(self, agent_name: str, frames: List[np.ndarray], inference_num: int, previous_context: Dict[str, Any] = None) -> InferenceResult:
+    async def run_inference(self, agent_name: str, frames: List[np.ndarray], inference_num: int, previous_context: Dict[str, Any] = None, cycle_num: int = 1, redo_attempt: int = 0, mode: str = "auto") -> InferenceResult:
         """Run GPU-accelerated inference for multiple frames"""
-        
+
         if not self.vlm_singleton.is_ready():
             logger.warning(f"VLM singleton not ready for {agent_name}, attempting initialization...")
             # Initialize VLM singleton if not ready (will only init once)
@@ -80,20 +88,8 @@ class MultiInferenceEngine:
             except Exception as e:
                 logger.error(f"VLM initialization error: {e}")
                 raise RuntimeError(f"VLM singleton not initialized: {str(e)}")
-        
-        # Save frames for debugging
-        saved_frame_paths = await self._save_debug_frames(agent_name, frames, inference_num)
 
-        # Also save the previous frame if being used for batch processing
-        if inference_num > 1 and previous_context and previous_context.get('frame_data') is not None:
-            prev_frame_paths = await self._save_debug_frames(
-                agent_name,
-                [previous_context.get('frame_data')],
-                inference_num,
-                is_previous=True
-            )
-
-        # Prepare frames for batch processing
+        # Prepare frames for batch processing (save to disk AFTER inference to not waste timer)
         frames_to_process = frames.copy()
 
         # For inference #2 and beyond, include previous frame for batch processing
@@ -128,15 +124,6 @@ class MultiInferenceEngine:
                 if previous_context.get('reasoning'):
                     logger.info(f"Previous Reasoning: {previous_context.get('reasoning')}")
                 logger.info("*" * 69)
-
-        # Log saved frames with proper labeling for damage_detector
-        if agent_name.lower() == "damage_detector" and inference_num == 1 and len(saved_frame_paths) == 2:
-            # First frame is shared, second is new
-            logger.info(f"  📁 SHARED Frame SAVED TO: {saved_frame_paths[0]} (from initial_classifier)")
-            logger.info(f"  📁 NEW Frame SAVED TO: {saved_frame_paths[1]} (captured by damage_detector)")
-        else:
-            for i, path in enumerate(saved_frame_paths, 1):
-                logger.info(f"  📁 NEW Frame SAVED TO: {path}")
 
         if inference_num > 1 and previous_context and previous_context.get('frame_data') is not None:
             logger.info(f"  📁 PREVIOUS Frame: Used from inference #{previous_context.get('inference_num')} (in memory)")
@@ -185,10 +172,25 @@ class MultiInferenceEngine:
                 self.total_inferences += 1
                 self.successful_inferences += 1
                 self._record_performance(agent_name, inference_time, "success")
-                
+
                 logger.info(f"✅ GPU INFERENCE COMPLETED for {agent_name} in {inference_time:.2f}s")
                 logger.info(f"📊 Results: {len(attributes)} attributes detected")
                 logger.info("="*80)
+
+                # Save frames AFTER inference (doesn't impact timer)
+                saved_frame_paths = await self._save_debug_frames(
+                    agent_name, frames, inference_num, cycle_num=cycle_num, redo_attempt=redo_attempt, mode=mode
+                )
+
+                # Log saved frames with proper labeling for damage_detector
+                if agent_name.lower() == "damage_detector" and inference_num == 1 and len(saved_frame_paths) == 2:
+                    # First frame is shared, second is new
+                    logger.info(f"  📁 SHARED Frame SAVED TO: {saved_frame_paths[0]} (from initial_classifier)")
+                    logger.info(f"  📁 NEW Frame SAVED TO: {saved_frame_paths[1]} (captured by damage_detector)")
+                else:
+                    for i, path in enumerate(saved_frame_paths, 1):
+                        logger.info(f"  📁 NEW Frame SAVED TO: {path}")
+
                 return result
                 
             except Exception as e:
@@ -214,40 +216,68 @@ class MultiInferenceEngine:
                     return error_result
 
     async def _save_debug_frames(self, agent_name: str, frames: List[np.ndarray],
-                                inference_num: int, is_previous: bool = False) -> List[str]:
-        """Save frames to disk for debugging"""
+                                inference_num: int, cycle_num: int = 1, redo_attempt: int = 0,
+                                is_previous: bool = False, is_shared: bool = False, mode: str = "auto") -> List[str]:
+        """
+        Save frames to disk with enhanced metadata-rich filenames.
+
+        Filename format: {agent}_c{cycle:03d}_i{inf:02d}_{mode}_{suffix}.jpg
+        Examples:
+            - initial_classifier_c001_i01_auto.jpg (auto mode, main frame)
+            - initial_classifier_c001_i01_manual.jpg (manual mode, main frame)
+            - initial_classifier_c001_i01_auto_redo_1.jpg (auto mode, first redo)
+            - initial_classifier_c001_i01_manual_redo_2.jpg (manual mode, second redo)
+            - damage_detector_c001_i01_auto_shared.jpg (auto mode, shared from initial)
+        """
         saved_paths = []
 
         try:
-            # Create directory for this agent
-            base_dir = Path("/home/denaliai/RELO-CLASSIFIER-DEV/RELO-DEMO-APP-test-RELO-DEV-APP-test/captured_frames")
-            agent_dir = base_dir / agent_name
-            agent_dir.mkdir(parents=True, exist_ok=True)
+            # Use frame_config to get correct agent directory
+            agent_dir = self.frame_config.get_agent_frame_dir(agent_name)
 
-            # Generate timestamp for unique naming
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            # Initialize cycle tracking
+            if cycle_num not in self.saved_images:
+                self.saved_images[cycle_num] = {}
+            if agent_name not in self.saved_images[cycle_num]:
+                self.saved_images[cycle_num][agent_name] = []
 
             for idx, frame in enumerate(frames):
-                # Special naming for damage_detector's first inference
-                if agent_name.lower() == "damage_detector" and inference_num == 1 and len(frames) == 2:
-                    if idx == 0:
-                        # First frame is the shared frame from initial_classifier
-                        prefix = "shared_from_initial_"
-                    else:
-                        # Second frame is newly captured
-                        prefix = "new_"
-                else:
-                    # Default prefix for previous frames
-                    prefix = "prev_" if is_previous else ""
+                # Build suffix based on context
+                suffix_parts = []
 
-                filename = f"{agent_name}_inf{inference_num}_{prefix}frame{idx+1}_{timestamp}.jpg"
+                # Add mode (auto/manual) first
+                suffix_parts.append(mode)
+
+                if is_previous:
+                    suffix_parts.append("prev")
+                if redo_attempt > 0:
+                    # Add redo with attempt number: redo_1, redo_2, etc.
+                    suffix_parts.append(f"redo_{redo_attempt}")
+                if is_shared:
+                    suffix_parts.append("shared")
+
+                suffix = "_" + "_".join(suffix_parts) if suffix_parts else ""
+
+                # Generate filename: {agent}_c{cycle:03d}_i{inf:02d}_{mode}_{suffix}.jpg
+                filename = f"{agent_name}_c{cycle_num:03d}_i{inference_num:02d}{suffix}.jpg"
                 filepath = agent_dir / filename
 
-                # Save frame
-                success = cv2.imwrite(str(filepath), frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                # Save frame using JPEG quality from ENV
+                success = cv2.imwrite(
+                    str(filepath),
+                    frame,
+                    [cv2.IMWRITE_JPEG_QUALITY, self.frame_config.jpeg_quality]
+                )
 
                 if success:
-                    saved_paths.append(str(filepath))
+                    # Store relative path for CSV export
+                    relative_path = f"{agent_name}/{filename}"
+                    saved_paths.append(relative_path)
+
+                    # Track in saved_images for this cycle
+                    self.saved_images[cycle_num][agent_name].append(relative_path)
+
+                    logger.debug(f"Saved frame: {filepath}")
                 else:
                     logger.error(f"❌ Failed to save frame: {filepath}")
 
@@ -255,6 +285,80 @@ class MultiInferenceEngine:
             logger.error(f"Error saving debug frames for {agent_name}: {e}")
 
         return saved_paths
+
+    def get_saved_images_for_cycle(self, cycle_num: int) -> Dict[str, List[str]]:
+        """
+        Get all saved image paths for a specific cycle.
+
+        Returns:
+            Dict mapping agent_name to list of image paths
+            Example: {
+                "initial_classifier": ["initial_classifier/initial_classifier_c001_i01.jpg", ...],
+                "detail_extractor": ["detail_extractor/detail_extractor_c001_i01.jpg"],
+                "damage_detector": ["damage_detector/damage_detector_c001_i01.jpg"]
+            }
+        """
+        return self.saved_images.get(cycle_num, {})
+
+    def get_final_images_for_cycle(self, cycle_num: int) -> Dict[str, list]:
+        """
+        Get ALL images from the FINAL attempt for each agent in a cycle.
+
+        If redos exist, returns all images from the last redo attempt.
+        If no redos, returns all images from the original run.
+
+        Returns:
+            Dict mapping agent_name to list of final image paths
+            Example: {
+                "initial_classifier": ["initial_classifier_c001_i01_redo_2.jpg", "...i02_redo_2.jpg"],
+                "detail_extractor": ["detail_extractor_c001_i01.jpg", "...i02.jpg"]
+            }
+        """
+        cycle_images = self.saved_images.get(cycle_num, {})
+        final_images = {}
+
+        for agent_name, image_list in cycle_images.items():
+            if not image_list:
+                continue
+
+            # Filter out "_prev" images (batch processing context, not actual outputs)
+            main_images = [img for img in image_list if "_prev" not in img]
+
+            if not main_images:
+                continue
+
+            # Find the highest redo number in the images
+            import re
+            highest_redo = 0
+            for img in main_images:
+                redo_match = re.search(r'_redo_(\d+)', img)
+                if redo_match:
+                    redo_num = int(redo_match.group(1))
+                    highest_redo = max(highest_redo, redo_num)
+
+            # Filter images from the final attempt
+            if highest_redo > 0:
+                # Get all images from the last redo attempt
+                final_attempt_images = [
+                    img for img in main_images
+                    if f"_redo_{highest_redo}" in img
+                ]
+            else:
+                # No redos - get all non-redo images (original run)
+                final_attempt_images = [
+                    img for img in main_images
+                    if "_redo_" not in img
+                ]
+
+            if final_attempt_images:
+                final_images[agent_name] = final_attempt_images
+
+        return final_images
+
+    def clear_cycle_images(self, cycle_num: int):
+        """Clear tracked images for a cycle (called after export)"""
+        if cycle_num in self.saved_images:
+            del self.saved_images[cycle_num]
 
     def _get_agent_prompt(self, agent_name: str, inference_num: int, previous_context: Dict[str, Any] = None) -> str:
         """Generate appropriate prompt based on agent name and context"""

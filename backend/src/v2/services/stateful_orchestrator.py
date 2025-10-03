@@ -30,7 +30,12 @@ class StatefulOrchestrator:
         self.state_persistence = StatePersistence(session_id)
         self.inference_engine = MultiInferenceEngine()
         self.frame_aggregator = FrameAggregator()
-        
+
+        # Cycle tracking for image export
+        self.current_cycle = 1
+        self.is_redo = False  # Track if current run is a redo
+        self.redo_counts = {}  # Track redo attempts per agent: {agent_name: count}
+
         # GPU optimization state
         self.gpu_optimization_initialized = False
         self.gpu_optimization_status = "not_initialized"
@@ -241,9 +246,20 @@ class StatefulOrchestrator:
                 else:
                     logger.debug(f"No previous context available for {agent_name} inference #{inference_num}")
 
-            # Run inference with context
+            # Run inference with context and cycle metadata
+            # Get redo attempt number for this agent (0 = not a redo)
+            redo_attempt = self.redo_counts.get(agent_name, 0)
+
+            # Determine mode for filename
+            mode = "manual" if self.manual_mode else "auto"
+
             inference_task = asyncio.create_task(
-                self.inference_engine.run_inference(agent_name, frames, inference_num, previous_context)
+                self.inference_engine.run_inference(
+                    agent_name, frames, inference_num, previous_context,
+                    cycle_num=self.current_cycle,
+                    redo_attempt=redo_attempt,
+                    mode=mode
+                )
             )
             
             # Send inference update

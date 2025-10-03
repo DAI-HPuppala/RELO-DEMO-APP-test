@@ -16,7 +16,7 @@ class FrameConfig:
         # Frame storage settings
         self.save_debug_frames = os.environ.get("SAVE_DEBUG_FRAMES", "false").lower() == "true"
         self.frame_format = "jpeg"  # Format for saved frames
-        self.jpeg_quality = 85  # JPEG compression quality (1-100)
+        self.jpeg_quality = int(os.environ.get("JPEG_QUALITY", "85"))  # JPEG compression quality (1-100)
         
         # Frame dimensions (WebRTC standard)
         self.default_width = 640

@@ -8,6 +8,7 @@ class WebRTCClient {
         this.dataChannel = null;
         this.remoteStream = null;
         this.sessionId = null;
+        this.tableRowLimit = 200; // Default limit, updated from backend
         this.isConnected = false;
         this.wsUrl = 'ws://localhost:8000/ws/stream';
         // OFFLINE MODE: Empty ICE servers for local network operation without internet
@@ -102,6 +103,8 @@ class WebRTCClient {
         switch (message.type) {
             case 'session_created':
                 this.sessionId = message.session_id;
+                this.tableRowLimit = message.table_row_limit || 200;
+                console.log(`Session created with table row limit: ${this.tableRowLimit}`);
                 await this.initializeWebRTC();
                 break;
 

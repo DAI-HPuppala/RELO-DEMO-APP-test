@@ -617,6 +617,25 @@ body {
     animation: fadeOut 0.3s ease;
 }
 
+/* Bulk Clear Animation - Professional fade + scale */
+@keyframes clearFadeOut {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    50% {
+        transform: translateY(-5px) scale(0.98);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(10px) scale(0.95);
+    }
+}
+
+.row-clearing {
+    animation: clearFadeOut 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 /* Renumber Flash Animation */
 @keyframes flashNumber {
     0%, 100% {

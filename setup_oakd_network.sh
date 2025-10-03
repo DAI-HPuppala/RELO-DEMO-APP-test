@@ -23,27 +23,27 @@ check_oakd_ping() {
 
 # Function to find OAK-D camera interface using ARP
 find_oakd_interface() {
-    echo "Scanning network interfaces for OAK-D camera..."
+    echo "Scanning network interfaces for OAK-D camera..." >&2
     # Try to trigger ARP entries by pinging on each interface
     for iface in $(ip link show | grep -E "^[0-9]+: enp" | cut -d: -f2 | tr -d ' '); do
         # Skip interfaces that are down
         if ! ip link show "$iface" | grep -q "state UP"; then
-            echo "  Skipping $iface (down)"
+            echo "  Skipping $iface (down)" >&2
             continue
         fi
 
-        echo "  Checking $iface..."
+        echo "  Checking $iface..." >&2
         # Try to ping from this interface (with strict timeout)
         timeout 2 ping -c 1 -W 1 -I "$iface" "$OAKD_IP" > /dev/null 2>&1
 
         # Check ARP table for the MAC address on this interface
         if arp -i "$iface" -a 2>/dev/null | grep -iq "$OAKD_MAC"; then
-            echo "  Found camera on $iface!"
+            echo "  Found camera on $iface!" >&2
             echo "$iface"
             return 0
         fi
     done
-    echo "  No interface found with camera MAC"
+    echo "  No interface found with camera MAC" >&2
     return 1
 }
 
@@ -57,8 +57,7 @@ configure_interface() {
     fi
 
     # Configure via NetworkManager if available
-    nmcli connection show "$iface" > /dev/null 2>&1
-    if [ $? -eq 0 ]; then
+    if nmcli connection show "$iface" > /dev/null 2>&1; then
         echo "Configuring $iface with $OAKD_LINK_LOCAL_IP for OAK-D camera (via NetworkManager)..."
         # Check if address is already in configuration
         if ! nmcli connection show "$iface" | grep -q "169.254.1.1/16"; then

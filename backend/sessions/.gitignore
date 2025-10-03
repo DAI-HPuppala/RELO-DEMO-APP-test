@@ -1,6 +1,0 @@
-# Ignore all session files
-*.json
-*.checkpoint
-
-# Keep directory structure
-!.gitignore

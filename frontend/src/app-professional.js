@@ -719,6 +719,9 @@ class ProfessionalApplicationController {
             case 'monitoring_cycle_started':
                 this.handleMonitoringCycleStarted(data);
                 break;
+            case 'table_limit_warning':
+                this.handleTableLimitWarning(data);
+                break;
             default:
                 console.log('Unknown message type:', data.type);
         }
@@ -1033,11 +1036,12 @@ class ProfessionalApplicationController {
                 session_id: this.sessionId
             }));
         }
-        
-        // Clear session ID to prevent sending commands with stale session
-        console.log('[Professional App] Clearing session ID after stop');
+
+        // Clear session IDs to force new session creation on restart
+        // Backend terminates the session on stop, so we need a fresh one
         this.sessionId = null;
         this.webrtcClient.sessionId = null;
+        console.log('[Professional App] Session IDs cleared - will create new session on restart');
 
         // Keep camera feed visible when stopped (don't show overlay)
         // this.streamViewer.showOverlay('Classification stopped');
@@ -1368,6 +1372,191 @@ class ProfessionalApplicationController {
     }
 
     /**
+     * Check table row limit and trigger warning if exceeded
+     */
+    checkTableRowLimit() {
+        const limit = this.webrtcClient.tableRowLimit || 200;
+        const currentRows = this.currentRowIndex;
+
+        console.log(`[Professional App] Table row check: ${currentRows}/${limit} rows`);
+
+        if (currentRows >= limit) {
+            console.log('[Professional App] ⚠️ Table row limit reached, triggering warning');
+
+            // Stop monitoring immediately - user must manually restart after handling warning
+            this.stopMonitoring();
+
+            // Show warning modal with export options
+            this.showCustomModal({
+                title: '⚠️ Table Memory Warning',
+                message: `Your classification table has <strong>${currentRows} rows</strong> (limit: ${limit}).<br><br>
+                          To maintain optimal performance, please export your data and clear the table.<br><br>
+                          <strong>Choose an export format:</strong>`,
+                buttons: [
+                    {
+                        text: 'Cancel',
+                        className: 'btn-cancel',
+                        onClick: null
+                    },
+                    {
+                        text: 'Export CSV (Data Only) & Clear',
+                        className: 'btn-confirm',
+                        onClick: () => this.exportAndClearTable('clean_csv')
+                    },
+                    {
+                        text: 'Export CSV (Metadata) & Clear',
+                        className: 'btn-confirm',
+                        onClick: () => this.exportAndClearTable('csv_metadata')
+                    },
+                    {
+                        text: 'Export Both & Clear',
+                        className: 'btn-confirm',
+                        onClick: () => this.exportAndClearTable('both')
+                    }
+                ]
+            });
+        }
+    }
+
+    /**
+     * Handle table row limit warning (legacy handler for backend messages)
+     */
+    handleTableLimitWarning(data) {
+        console.log('[Professional App] Table limit warning from backend (legacy):', data);
+
+        const currentRows = data.current_rows || 0;
+        const limit = data.limit || 200;
+
+        // Stop monitoring immediately - user must manually restart after handling warning
+        console.log('[Professional App] Stopping monitoring due to table limit warning');
+        this.stopMonitoring();
+
+        // Show warning modal with export options
+        this.showCustomModal({
+            title: '⚠️ Table Memory Warning',
+            message: `Your classification table has <strong>${currentRows} rows</strong> (limit: ${limit}).<br><br>
+                      To maintain optimal performance, please export your data and clear the table.<br><br>
+                      <strong>Choose an export format:</strong>`,
+            buttons: [
+                {
+                    text: 'Cancel',
+                    className: 'btn-cancel',
+                    onClick: null
+                },
+                {
+                    text: 'Export CSV (Data Only) & Clear',
+                    className: 'btn-confirm',
+                    onClick: () => this.exportAndClearTable('clean_csv')
+                },
+                {
+                    text: 'Export CSV (Metadata) & Clear',
+                    className: 'btn-confirm',
+                    onClick: () => this.exportAndClearTable('csv_metadata')
+                },
+                {
+                    text: 'Export Both & Clear',
+                    className: 'btn-confirm',
+                    onClick: () => this.exportAndClearTable('both')
+                }
+            ]
+        });
+    }
+
+    /**
+     * Export data and clear table (triggered by table limit warning)
+     * @param {string} format - 'clean_csv', 'csv_metadata', or 'both'
+     */
+    exportAndClearTable(format) {
+        console.log(`[Professional App] Exporting (${format}) and clearing table...`);
+
+        // Perform export(s) based on format
+        if (format === 'clean_csv') {
+            this.exportResultsAsCleanCSV();
+        } else if (format === 'csv_metadata') {
+            this.exportResultsAsCSV();
+        } else if (format === 'both') {
+            this.exportResultsAsCleanCSV();
+            // Small delay between exports to avoid race condition
+            setTimeout(() => this.exportResultsAsCSV(), 100);
+        }
+
+        // Delay to ensure export completes
+        setTimeout(() => {
+            this.clearAllTableData();
+        }, 500);
+    }
+
+    /**
+     * Clear all table data and reset memory with professional animation
+     */
+    clearAllTableData() {
+        console.log('[Professional App] Clearing all table data...');
+
+        const tbody = document.getElementById('resultsTableBody');
+        if (!tbody) {
+            console.error('[Professional App] Table body not found');
+            return;
+        }
+
+        // Get all non-empty rows
+        const rows = Array.from(tbody.querySelectorAll('tr:not(.empty-row)'));
+
+        if (rows.length === 0) {
+            console.log('[Professional App] No rows to clear');
+            return;
+        }
+
+        // Apply staggered animation to each row
+        const staggerDelay = 30; // ms between each row animation start
+        const animationDuration = 400; // matches CSS animation duration
+
+        rows.forEach((row, index) => {
+            setTimeout(() => {
+                row.classList.add('row-clearing');
+            }, index * staggerDelay);
+        });
+
+        // Calculate total animation time
+        const totalAnimationTime = (rows.length * staggerDelay) + animationDuration;
+
+        // Wait for all animations to complete, then clean up
+        setTimeout(() => {
+            // Clear all rows
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="12">No classification results available</td></tr>';
+
+            // Clear selection tracking
+            this.selectedRows.clear();
+            this.lastSelectedRowId = null;
+
+            // Reset row counter
+            this.currentRowIndex = 0;
+
+            // Clear edit history
+            this.editHistory.clear();
+            this.currentEditCell = null;
+
+            // Update UI state
+            this.updateDeleteButtonState();
+            this.updateSelectionCounter();
+
+            // Disable export buttons
+            const exportAllBtn = document.getElementById('exportAllBtn');
+            if (exportAllBtn) exportAllBtn.disabled = true;
+
+            const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+            if (exportSelectedBtn) exportSelectedBtn.disabled = true;
+
+            // Force garbage collection hint (browser will decide)
+            if (window.gc) {
+                window.gc();
+            }
+
+            console.log('[Professional App] ✅ Table cleared successfully');
+            this.updateSystemStatus('Table cleared - ready for new classifications');
+        }, totalAnimationTime);
+    }
+
+    /**
      * Handle agent completed
      */
     handleAgentCompleted(data) {
@@ -1491,8 +1680,11 @@ class ProfessionalApplicationController {
         // Display final results
         this.resultsDisplay.displayFinalResults(data.results);
 
-        // Update the results table with final data
-        this.updateResultsTable(data.results);
+        // Update the results table with final data (pass complete data for metadata)
+        this.updateResultsTable(data);
+
+        // Check table row limit and trigger warning if exceeded
+        this.checkTableRowLimit();
 
         this.updateSystemStatus('Classification Complete');
 
@@ -2056,24 +2248,27 @@ class ProfessionalApplicationController {
     /**
      * Update final results table
      */
-    updateResultsTable(results) {
+    updateResultsTable(data) {
+        // Extract results from data (handle both {results: {...}} and direct results object)
+        const results = data.results || data;
+
         const tbody = document.getElementById('resultsTableBody');
         if (!tbody) return;
-        
+
         // Use backend processing time if available, otherwise calculate from frontend
-        const duration = this.backendProcessingTime !== null ? 
-            this.backendProcessingTime.toFixed(1) : 
-            (this.cycleStartTime ? 
+        const duration = this.backendProcessingTime !== null ?
+            this.backendProcessingTime.toFixed(1) :
+            (this.cycleStartTime ?
                 ((Date.now() - this.cycleStartTime) / 1000).toFixed(1) : '0.0');
-        
-        const timestamp = new Date().toLocaleTimeString('en-US', { 
+
+        const timestamp = new Date().toLocaleTimeString('en-US', {
             hour12: true,
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit'
         });
         const timestampWithDuration = `${timestamp} (${duration}s)`;
-        
+
         // Update the current row's timestamp if it exists
         const currentRow = document.getElementById('current-classification-row');
         if (currentRow) {
@@ -2090,13 +2285,26 @@ class ProfessionalApplicationController {
                     metadata.frontend_time = parseFloat(duration);
                     metadata.backend_time = this.backendProcessingTime;
 
-                    // Update inference counts if available from results
-                    if (results.inference_counts) {
+                    // Update inference counts from top-level data field
+                    if (data.inference_counts) {
                         metadata.inference_counts = {
-                            initial: results.inference_counts.initial_classifier || 0,
-                            detail: results.inference_counts.detail_extractor || 0,
-                            damage: results.inference_counts.damage_detector || 0
+                            initial: data.inference_counts.initial_classifier || 0,
+                            detail: data.inference_counts.detail_extractor || 0,
+                            damage: data.inference_counts.damage_detector || 0
                         };
+                    }
+
+                    // Add image path tracking from backend (includes all attempts, redos, etc.)
+                    if (data.saved_images) {
+                        // saved_images: all images including retries/redos
+                        // Format: {initial_classifier: ["path1.jpg", "path2.jpg"], ...}
+                        metadata.saved_images = data.saved_images;
+                    }
+
+                    if (data.final_images) {
+                        // final_images: all images from last attempt per agent
+                        // Format: {initial_classifier: ["path1.jpg", "path2.jpg"], ...}
+                        metadata.final_images = data.final_images;
                     }
 
                     currentRow.setAttribute('data-metadata', JSON.stringify(metadata));
@@ -2256,7 +2464,7 @@ class ProfessionalApplicationController {
     /**
      * Export all results - show modal to choose format
      */
-    exportAllResults() {
+    async exportAllResults() {
         // Don't allow export during monitoring
         if (this.monitoringActive) {
             console.log('[Professional App] Cannot export while monitoring is active');
@@ -2297,6 +2505,11 @@ class ProfessionalApplicationController {
                     text: 'JSON',
                     className: 'btn-confirm',
                     onClick: () => this.exportResultsAsJSON()
+                },
+                {
+                    text: 'Export Both & Clear',
+                    className: 'btn-confirm',
+                    onClick: () => this.exportAndClearTable('both')
                 }
             ]
         });
@@ -2318,14 +2531,14 @@ class ProfessionalApplicationController {
             return;
         }
 
-        // Create CSV content with visible table headers only
-        const headers = ['#', 'Type', 'Color', 'Pattern', 'Brand', 'Size', 'Neckline', 'Sleeve', 'Closure', 'Damaged', 'Defect', 'Time'];
+        // Create CSV content with visible table headers only + final images
+        const headers = ['#', 'Type', 'Color', 'Pattern', 'Brand', 'Size', 'Neckline', 'Sleeve', 'Closure', 'Damaged', 'Defect', 'Time', 'Initial Images', 'Detail Images', 'Damage Images'];
         const rows = [];
 
         // Add headers
         rows.push(headers.join(','));
 
-        // Add data rows - export exactly what's visible in the table
+        // Add data rows - export exactly what's visible in the table + final images
         const dataRows = tbody.querySelectorAll('tr:not(.empty-row)');
         dataRows.forEach(row => {
             const cells = row.querySelectorAll('td');
@@ -2338,6 +2551,30 @@ class ProfessionalApplicationController {
                 }
                 return content;
             });
+
+            // Add final images from metadata (all images from last attempt)
+            try {
+                const metadataStr = row.getAttribute('data-metadata');
+                let metadata = {};
+                if (metadataStr) {
+                    metadata = JSON.parse(metadataStr);
+                }
+
+                // Get final images (list of images from last attempt)
+                const formatImageList = (images) => {
+                    if (!images || !Array.isArray(images) || images.length === 0) return '-';
+                    // Join multiple images with semicolon
+                    return `"${images.join('; ')}"`;
+                };
+
+                rowData.push(formatImageList(metadata.final_images?.initial_classifier));
+                rowData.push(formatImageList(metadata.final_images?.detail_extractor));
+                rowData.push(formatImageList(metadata.final_images?.damage_detector));
+            } catch (e) {
+                console.error('[Clean CSV Export] Error parsing metadata:', e);
+                rowData.push('-', '-', '-');
+            }
+
             rows.push(rowData.join(','));
         });
 
@@ -2372,12 +2609,13 @@ class ProfessionalApplicationController {
             return;
         }
 
-        // Create CSV content with exact table headers + Cycle ID + Metadata
+        // Create CSV content with exact table headers + Cycle ID + Metadata + Image Paths
         const headers = [
             '#', 'Cycle ID', 'Mode', 'Type', 'Color', 'Pattern', 'Brand', 'Size',
             'Neckline', 'Sleeve', 'Closure', 'Damage', 'Damage Type', 'Timestamp',
-            'Frontend Time (s)', 'Backend Time (s)', 'Initial Inferences', 'Detail Inferences',
-            'Damage Inferences', 'Edited Cells'
+            'Initial Inferences', 'Detail Inferences', 'Damage Inferences', 'Edited Cells',
+            'Final Initial Image', 'Final Detail Image', 'Final Damage Image',
+            'All Initial Images', 'All Detail Images', 'All Damage Images'
         ];
         const rows = [];
 
@@ -2424,9 +2662,7 @@ class ProfessionalApplicationController {
                 rowData.push(content);
             }
 
-            // Add metadata columns
-            rowData.push(metadata.frontend_time?.toFixed(2) || '-');
-            rowData.push(metadata.backend_time?.toFixed(2) || '-');
+            // Add metadata columns (skip frontend/backend timer - not needed)
             rowData.push(metadata.inference_counts?.initial || 0);
             rowData.push(metadata.inference_counts?.detail || 0);
             rowData.push(metadata.inference_counts?.damage || 0);
@@ -2436,6 +2672,30 @@ class ProfessionalApplicationController {
                 .map(([col, edit]) => `${col}(${edit.original} to ${edit.final})`)
                 .join('; ');
             rowData.push(editsFormatted ? `"${editsFormatted}"` : '-');
+
+            // Helper to format image arrays (final_images is now an array per agent)
+            const formatImageArray = (images) => {
+                if (!images) return '-';
+                if (Array.isArray(images)) {
+                    if (images.length === 0) return '-';
+                    return `"${images.join('; ')}"`;
+                }
+                return `"${images}"`; // Legacy: single string
+            };
+
+            // Add final image paths (all images from last attempt per agent)
+            rowData.push(formatImageArray(metadata.final_images?.initial_classifier));
+            rowData.push(formatImageArray(metadata.final_images?.detail_extractor));
+            rowData.push(formatImageArray(metadata.final_images?.damage_detector));
+
+            // Add all saved images (includes retries, redos, previous frames)
+            const formatAllImages = (images) => {
+                if (!images || !Array.isArray(images) || images.length === 0) return '-';
+                return `"[${images.join(', ')}]"`;
+            };
+            rowData.push(formatAllImages(metadata.saved_images?.initial_classifier));
+            rowData.push(formatAllImages(metadata.saved_images?.detail_extractor));
+            rowData.push(formatAllImages(metadata.saved_images?.damage_detector));
 
             rows.push(rowData.join(','));
         });
@@ -2563,7 +2823,19 @@ class ProfessionalApplicationController {
                             detail: metadata.inference_counts?.detail || 0,
                             damage: metadata.inference_counts?.damage || 0
                         },
-                        edits: metadata.edits || {}
+                        edits: metadata.edits || {},
+                        images: {
+                            final: {
+                                initial_classifier: metadata.final_images?.initial_classifier || null,
+                                detail_extractor: metadata.final_images?.detail_extractor || null,
+                                damage_detector: metadata.final_images?.damage_detector || null
+                            },
+                            all_saved: {
+                                initial_classifier: metadata.saved_images?.initial_classifier || [],
+                                detail_extractor: metadata.saved_images?.detail_extractor || [],
+                                damage_detector: metadata.saved_images?.damage_detector || []
+                            }
+                        }
                     }
                 });
             }

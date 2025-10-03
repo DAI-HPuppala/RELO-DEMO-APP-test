@@ -38,6 +38,7 @@ frontend.log
 # Session data
 **/sessions/
 *.json
+**/backend/exports/
 
 # Python
 *.py[cod]

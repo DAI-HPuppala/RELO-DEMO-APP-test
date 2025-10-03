@@ -66,10 +66,10 @@ class FrameManager:
         try:
             # Get save directory
             agent_dir = self.frame_config.get_agent_frame_dir(agent_name)
-            
-            # Generate filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{timestamp}_{frame_id}.jpg"
+
+            # Generate filename with consistent numbering (for CSV path mapping)
+            # Format: frame_0001.jpg, frame_0002.jpg, etc.
+            filename = f"frame_{self.frame_count:04d}.jpg"
             filepath = agent_dir / filename
             
             # Save frame as JPEG
