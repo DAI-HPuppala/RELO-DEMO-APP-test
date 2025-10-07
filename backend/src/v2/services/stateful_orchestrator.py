@@ -13,7 +13,6 @@ from .frame_registry import FrameRegistry
 from .frame_manager import FrameManager
 from .multi_inference_engine import MultiInferenceEngine
 from .frame_aggregator import FrameAggregator
-from .state_persistence import StatePersistence
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,6 @@ class StatefulOrchestrator:
         self.session_state = SessionState(session_id=session_id)
         self.frame_registry = FrameRegistry(session_id)
         self.frame_manager = FrameManager(session_id)
-        self.state_persistence = StatePersistence(session_id)
         self.inference_engine = MultiInferenceEngine()
         self.frame_aggregator = FrameAggregator()
 
@@ -300,10 +298,7 @@ class StatefulOrchestrator:
         
         agent_state.complete()
         logger.info(f"Agent {agent_name} completed with {agent_state.inference_count} inferences")
-        
-        # Save checkpoint after agent completion
-        await self.state_persistence.save_checkpoint(self.session_state)
-        
+
         return agent_state
     
     async def _collect_frames(self, agent_name: str, batch_size: int, 
@@ -332,11 +327,6 @@ class StatefulOrchestrator:
                             frames.append(frame)
                             logger.debug(f"Collected non-numpy frame {i+1}/{batch_size}")
                         
-                        # Register first frame from initial_classifier
-                        if agent_name == "initial_classifier" and inference_num == 1 and len(frames) == 1:
-                            frame_id = await self.frame_registry.register_initial_first_frame(frame)
-                            logger.info(f"✅ Registered initial_classifier first frame for sharing with damage_detector: {frame_id}")
-                            logger.debug(f"Frame shape: {frame.shape}, dtype: {frame.dtype}")
                     else:
                         logger.warning(f"Frame provider returned None for frame {i+1}/{batch_size}")
                 except Exception as e:
@@ -430,9 +420,6 @@ class StatefulOrchestrator:
 
         self.session_state.pause(current_agent)
 
-        # Save checkpoint when paused
-        await self.state_persistence.save_checkpoint(self.session_state)
-
         response = {
             "type": "flow_paused",
             "session_id": self.session_id,
@@ -456,9 +443,6 @@ class StatefulOrchestrator:
 
         # State already cleared in pause_flow() - resume immediately!
         self.session_state.resume(restart_agent)
-
-        # Save checkpoint when resumed
-        await self.state_persistence.save_checkpoint(self.session_state)
 
         # Get full timer for fresh start
         timer_seconds = self.get_agent_timer(paused_agent)
@@ -550,24 +534,6 @@ class StatefulOrchestrator:
             else:
                 logger.info(f"Confirmed: Agent {agent_name} deleted from session_state.agent_states")
 
-            # If resetting initial_classifier, update frame registry
-            if agent_name == "initial_classifier" and self.frame_registry:
-                # Clear the previous shared frame
-                asyncio.create_task(self._update_initial_shared_frame())
-
-    async def _update_initial_shared_frame(self) -> None:
-        """Clear old and prepare for new initial shared frame"""
-        try:
-            # Clear the old shared frame key
-            if "initial_first" in self.frame_registry.shared_frames:
-                old_frame_id = self.frame_registry.shared_frames["initial_first"]
-                # release_frame() automatically removes from shared_frames (frame_registry.py:161-163)
-                # No need to delete manually - doing so causes KeyError
-                await self.frame_registry.release_frame(old_frame_id)
-                logger.info("Cleared old initial_first shared frame for new capture")
-        except Exception as e:
-            logger.error(f"Error updating initial shared frame: {e}")
-
     def reset_all_agent_states(self) -> None:
         """Reset all agent states for new cycle (manual mode only)"""
         if self.manual_mode:
@@ -577,23 +543,6 @@ class StatefulOrchestrator:
             # Clean up frame registry
             if self.frame_registry:
                 asyncio.create_task(self.frame_registry.cleanup())
-    
-    async def load_from_checkpoint(self) -> bool:
-        """Load session state from checkpoint if it exists"""
-        try:
-            saved_state = await self.state_persistence.load_checkpoint()
-            if saved_state:
-                self.session_state = saved_state
-                logger.info(f"Session {self.session_id} restored from checkpoint")
-                return True
-            return False
-        except Exception as e:
-            logger.error(f"Failed to load checkpoint: {e}")
-            return False
-    
-    async def get_checkpoint_info(self) -> Dict[str, Any]:
-        """Get information about existing checkpoint"""
-        return await self.state_persistence.get_checkpoint_info()
     
     async def get_performance_metrics(self) -> Dict[str, Any]:
         """Get comprehensive performance metrics"""
@@ -637,6 +586,5 @@ class StatefulOrchestrator:
         # Cleanup other resources
         await self.frame_registry.cleanup()
         await self.frame_manager.cleanup()
-        await self.state_persistence.cleanup()
-        
+
         logger.info(f"Orchestrator cleaned up for session {self.session_id}")

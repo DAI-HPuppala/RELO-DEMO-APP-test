@@ -11,7 +11,6 @@ class FrameConfig:
         # Base directories
         self.base_dir = Path(__file__).parent.parent.parent  # backend/
         self.captured_frames_dir = self.base_dir / "captured_frames"
-        self.sessions_dir = self.base_dir / "sessions"
         
         # Frame storage settings
         self.save_debug_frames = os.environ.get("SAVE_DEBUG_FRAMES", "false").lower() == "true"
@@ -31,22 +30,12 @@ class FrameConfig:
         agent_dir = self.captured_frames_dir / agent_name
         agent_dir.mkdir(parents=True, exist_ok=True)
         return agent_dir
-        
-    def get_session_dir(self, session_id: str) -> Path:
-        """Get directory for session state storage"""
-        session_dir = self.sessions_dir / session_id
-        session_dir.mkdir(parents=True, exist_ok=True)
-        return session_dir
-        
+
     def get_frame_path(self, agent_name: str, frame_id: str) -> Path:
         """Get full path for a frame file"""
         agent_dir = self.get_agent_frame_dir(agent_name)
         return agent_dir / f"{frame_id}.{self.frame_format}"
-        
-    def get_session_state_path(self, session_id: str) -> Path:
-        """Get path for session state JSON file"""
-        return self.sessions_dir / f"{session_id}.json"
-        
+
     def should_save_frame(self, inference_num: int = 1) -> bool:
         """Determine if frame should be saved for debugging"""
         if not self.save_debug_frames:

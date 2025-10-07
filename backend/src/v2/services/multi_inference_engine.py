@@ -354,8 +354,8 @@ class MultiInferenceEngine:
         """Generate appropriate prompt based on agent name and context"""
         prompts = {
             "initial_classifier": "Analyze this garment and identify: type (e.g., T-shirt, Dress, Pants, Shoes, Shirt, Shorts, Jacket, Sweatshirt, Sweater, Hoodie, Bag), color, pattern, neckline style, sleeve length, and closure type. Neckline, closure type, and sleeve length are optional or could be null for Shoes. Return null for unrecognizable attributes.",
-            "detail_extractor": "Search for brand name/logo and size on this garment. Return brand and size, or null if not visible.",
-            "damage_detector": "Examine this garment for any physical damage or defects. Analyze the fabric surface, structure, and overall condition. Determine if damage is present and identify its nature based on visual characteristics. Consider: material integrity (tears, holes, cuts), surface condition (stains, discoloration, soiling), structural components (fasteners, buttons, zippers), and foreign matter (hair, lint, fluids). Balance precision with practical judgment - flag only clear, observable damage. Return JSON with 'damaged' (boolean) and 'damage_type' (specific category description or null).",
+            "detail_extractor": "Analyze this garment and Search for brand name/logo and size on this garment. Return brand and size, or null if not visible.",
+            "damage_detector": "Examine this garment for physical damage. Possible damages: Cut/Tear, Abrasion/Scratch, Bodily fluids, Damaged Button/Fastener/Zipper, Dirty/Stains, Discoloration, Hair/Fuzz/Lint, Hole. CRITICAL: Fabric texture, shadows, natural wrinkles, and folds are NOT damage. Only report actual visible defects. If the garment is clean and structurally intact, set damaged=false. Return 'damaged' (true/false) and 'damage_type' (comma-separated specific names from list, or null if pristine).",
             "final_compiler": "Compile final classification based on all attributes."
         }
 

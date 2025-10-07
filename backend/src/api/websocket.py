@@ -1467,7 +1467,7 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                         if orchestrator.send_message:
                             await orchestrator.send_message({
                                 "type": "agent_completed",
-                                "session_id": cycle_session_id,
+                                "session_id": session_id,
                                 "agent": agent_name,
                                 "results": agent_state.finalized_attributes,
                                 "waiting_for_command": True

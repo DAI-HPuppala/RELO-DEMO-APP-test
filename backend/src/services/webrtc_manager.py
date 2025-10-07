@@ -6,6 +6,7 @@ import socket
 import os
 from typing import Dict, Optional, Any
 from datetime import datetime, timedelta
+from collections import deque
 import time
 
 from aiortc import (
@@ -39,9 +40,9 @@ class WebRTCManager:
         self.media_relay = MediaRelay()
         # OFFLINE MODE: Empty ICE servers for local network operation without internet
         self.ice_servers = []
-        # Frame buffer for each session - stores latest frames
-        self.frame_buffers: Dict[str, list] = {}
-        self.max_buffer_size = 10  # Keep moderate buffer to avoid starvation
+        # Frame buffer for each session - stores latest frames with automatic eviction
+        self.frame_buffers: Dict[str, deque] = {}
+        self.max_buffer_size = 10  # Automatic FIFO eviction when full
         # Callback for handling control messages from data channel
         self.control_message_handler = None
 
@@ -636,60 +637,56 @@ class WebRTCManager:
         return len(stale_sessions)
     
     def add_frame_to_buffer(self, session_id: str, frame):
-        """Add a frame to the session's buffer.
-        
+        """Add a frame to the session's buffer with automatic FIFO eviction.
+
         Args:
             session_id: Session identifier
             frame: Video frame (numpy array)
         """
         import numpy as np
-        
+
         if session_id not in self.frame_buffers:
-            self.frame_buffers[session_id] = []
-        
-        buffer = self.frame_buffers[session_id]
-        # Create a copy of the frame to prevent interference with live stream
-        frame_copy = np.copy(frame) if isinstance(frame, np.ndarray) else frame
-        buffer.append(frame_copy)
-        
-        # Keep only the latest frames
-        if len(buffer) > self.max_buffer_size:
-            self.frame_buffers[session_id] = buffer[-self.max_buffer_size:]
+            # Initialize deque with maxlen for automatic eviction
+            self.frame_buffers[session_id] = deque(maxlen=self.max_buffer_size)
+
+        # Frame is already independent copy from camera hardware (cv60_camera.py:304)
+        # No need to copy again - just store reference
+        self.frame_buffers[session_id].append(frame)
     
     def get_latest_frame(self, session_id: str):
         """Get the latest frame for a session.
-        
+
         Args:
             session_id: Session identifier
-            
+
         Returns:
-            Copy of latest frame or None if no frames available
+            Latest frame from buffer (already independent copy) or None if no frames available
         """
         import numpy as np
-        
+
         if session_id in self.frame_buffers and self.frame_buffers[session_id]:
-            frame = self.frame_buffers[session_id][-1]
-            # Return a copy to prevent modification
-            return np.copy(frame) if isinstance(frame, np.ndarray) else frame
+            # Buffer stores independent frames from camera hardware
+            # No additional copy needed (agents read-only, no concurrent modification)
+            return self.frame_buffers[session_id][-1]
         return None
     
     def get_frame_buffer(self, session_id: str, count: int = 5) -> list:
         """Get the latest frames from the buffer.
-        
+
         Args:
             session_id: Session identifier
             count: Number of frames to return
-            
+
         Returns:
-            List of frame copies (up to count)
+            List of frames from buffer (already independent copies, up to count)
         """
         import numpy as np
-        
+
         if session_id in self.frame_buffers:
             buffer = self.frame_buffers[session_id]
-            frames = buffer[-count:] if len(buffer) > count else buffer
-            # Return copies of frames to prevent modification
-            return [np.copy(f) if isinstance(f, np.ndarray) else f for f in frames]
+            # Return frames from buffer (already independent from hardware)
+            # No additional copies needed (agents read-only, no concurrent modification)
+            return list(buffer[-count:] if len(buffer) > count else buffer)
         return []
     
     def clear_frame_buffer(self, session_id: str):
@@ -728,19 +725,18 @@ class WebRTCManager:
                         # Call recv() to get a fresh frame from camera
                         av_frame = await video_track.recv()
                         if av_frame:
-                            # Convert to numpy array
+                            # Convert to numpy array (creates fresh memory automatically)
                             # Use BGR format to match OpenCV/aiortc convention
                             frame_data = av_frame.to_ndarray(format="bgr24")
-                            # Add to buffer
-                            self.add_frame_to_buffer(session_id, frame_data)
-                            # Return a copy
-                            return np.copy(frame_data)
+                            # Note: Camera's recv() already added frame to buffer (cv60_camera.py:478)
+                            # to_ndarray() creates fresh numpy array - no additional copy needed
+                            return frame_data
                     except Exception as e:
                         logger.debug(f"Could not get fresh frame from video track: {e}")
 
             # Fallback to buffer if video track not available
             frame = self.get_latest_frame(session_id)
-            return frame  # Already a copy from get_latest_frame
+            return frame  # Frame from buffer (already independent from hardware)
 
         return provider
 

@@ -330,7 +330,7 @@ class VLMGPULoader:
                     if agent_name in ["initial_classifier"]:
                         target_resolution = (448, 448)
                     elif agent_name in ["damage_detector"]:
-                        target_resolution = (768, 768) if frame_idx == 0 else (640, 640)
+                        target_resolution = (896, 896) if frame_idx == 0 else (896, 896)
                     elif agent_name == "detail_extractor":
                         target_resolution = (780, 780)
                     else:
@@ -402,10 +402,10 @@ class VLMGPULoader:
                     top_k = 1         # Only best choice for OCR accuracy
                     repeat_penalty = 1.0  # No penalty needed for OCR
                 elif agent_name == "damage_detector":
-                    # Damage detection - balanced for accuracy
-                    temperature = 0.3  # Balanced temperature for consistent yet accurate detection
-                    top_p = 0.4       # Focused sampling for reliable results
-                    top_k = 8         # Moderate choices for balanced detection
+                    # Damage detection - balanced to avoid false positives
+                    temperature = 0.4  # Higher temperature to reduce over-confident false detections
+                    top_p = 0.5       # Moderate sampling for balanced results
+                    top_k = 15        # More choices to avoid getting stuck on "tear"
                     repeat_penalty = 1.0  # No penalty for damage descriptions
                 elif agent_name == "initial_classifier":
                     # Classification needs slight variety for attributes

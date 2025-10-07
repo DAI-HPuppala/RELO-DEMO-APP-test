@@ -101,17 +101,7 @@ class FrameManager:
                 
         except Exception as e:
             logger.error(f"Error saving debug frame: {e}")
-    
-    async def setup_frame_sharing(self, initial_frame: np.ndarray) -> str:
-        """Setup frame sharing from initial classifier to damage detector"""
-        frame_id = await self.frame_registry.register_initial_first_frame(initial_frame)
-        logger.info(f"Frame sharing setup complete: {frame_id}")
-        return frame_id
-    
-    async def get_shared_frame_for_damage(self) -> Optional[np.ndarray]:
-        """Get the shared frame for damage detector"""
-        return await self.frame_registry.get_frame_for_damage_detector()
-    
+
     def _start_cleanup_task(self):
         """Start background cleanup task"""
         async def cleanup_loop():
