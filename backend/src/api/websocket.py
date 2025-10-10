@@ -1163,9 +1163,23 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
                         init_success = await orchestrator.initialize_gpu_optimization()
                         if not init_success:
                             raise RuntimeError("VLM engine not available")
-                    
+
+                    # Extract initial classifier context for damage detector (auto mode)
+                    initial_classifier_context = None
+                    if agent_name == "damage_detector" and "initial_classifier" in results:
+                        initial_classifier_state = results["initial_classifier"]
+                        if initial_classifier_state and initial_classifier_state.finalized_attributes:
+                            initial_classifier_context = initial_classifier_state.finalized_attributes
+                            logger.info(f"Auto mode: Extracted initial classifier context for damage_detector: {initial_classifier_context}")
+
                     # Create a task for the agent
-                    agent_task = asyncio.create_task(orchestrator.run_agent_with_timer(agent_name, timer_seconds))
+                    agent_task = asyncio.create_task(
+                        orchestrator.run_agent_with_timer(
+                            agent_name,
+                            timer_seconds,
+                            initial_classifier_context=initial_classifier_context
+                        )
+                    )
                     
                     # Wait for agent to complete or interruption signal
                     while not agent_task.done():
@@ -1480,10 +1494,20 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                 # Mark agent as started in manual session
                 if session_id in manual_mode_sessions:
                     manual_mode_sessions[session_id].record_agent_start(agent_name, timer_seconds)
-                
+
+                # Extract initial classifier context for damage detector (manual mode)
+                initial_classifier_context = None
+                if agent_name == "damage_detector" and "initial_classifier" in manual_handler.agent_results:
+                    initial_classifier_context = manual_handler.agent_results["initial_classifier"]
+                    logger.info(f"Manual mode: Extracted initial classifier context for damage_detector: {initial_classifier_context}")
+
                 # Run agent with timer
                 try:
-                    agent_state = await orchestrator.run_agent_with_timer(agent_name, timer_seconds)
+                    agent_state = await orchestrator.run_agent_with_timer(
+                        agent_name,
+                        timer_seconds,
+                        initial_classifier_context=initial_classifier_context
+                    )
                     
                     if agent_state:
                         # Mark agent as completed

@@ -143,8 +143,9 @@ class StatefulOrchestrator:
             return self.custom_timers[agent_name]
         return self.agent_timers.get(agent_name, 4.0)
     
-    async def run_agent_with_timer(self, agent_name: str, 
-                                  timer_seconds: Optional[float] = None) -> AgentState:
+    async def run_agent_with_timer(self, agent_name: str,
+                                  timer_seconds: Optional[float] = None,
+                                  initial_classifier_context: Optional[Dict[str, Any]] = None) -> AgentState:
         """Run an agent with timer-based multi-inference"""
         
         # Ensure VLM is ready before processing
@@ -256,7 +257,8 @@ class StatefulOrchestrator:
                     agent_name, frames, inference_num, previous_context,
                     cycle_num=self.current_cycle,
                     redo_attempt=redo_attempt,
-                    mode=mode
+                    mode=mode,
+                    initial_classifier_context=initial_classifier_context
                 )
             )
             
