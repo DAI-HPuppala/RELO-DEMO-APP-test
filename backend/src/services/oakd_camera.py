@@ -31,6 +31,10 @@ class OakDVideoTrack(VideoStreamTrack):
 
     kind = "video"
 
+    # Camera resolution configuration (change here to update everywhere)
+    CAMERA_WIDTH = 2400
+    CAMERA_HEIGHT = 2160
+
     def __init__(self, session_id: str = None):
         super().__init__()
         self.session_id = session_id
@@ -45,6 +49,7 @@ class OakDVideoTrack(VideoStreamTrack):
         self._device = None
         self._pipeline = None
         self._q_rgb = None
+        self._q_control = None
 
         logger.info(f"OakDVideoTrack initialized for session: {session_id}")
         self._initialize_oakd()
@@ -95,6 +100,9 @@ class OakDVideoTrack(VideoStreamTrack):
                 # Get output queue (exactly like reference)
                 self._q_rgb = self._device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
 
+                # Get control input queue for tap-to-focus
+                self._q_control = self._device.getInputQueue(name="control", maxSize=8, blocking=False)
+
                 self.is_initialized = True
                 logger.info(f"OAK-D Pro camera initialized successfully (attempt {attempt + 1}/{max_retries})")
                 self._start_capture_thread()
@@ -129,7 +137,7 @@ class OakDVideoTrack(VideoStreamTrack):
 
         # Define source - RGB camera with ISP enhancements
         cam_rgb = pipeline.create(dai.node.ColorCamera)
-        cam_rgb.setVideoSize(1796, 2160)  # True 4K resolution
+        cam_rgb.setVideoSize(self.CAMERA_WIDTH, self.CAMERA_HEIGHT)  # Configurable resolution
         cam_rgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_4_K)
         cam_rgb.setInterleaved(False)
         cam_rgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
@@ -143,23 +151,28 @@ class OakDVideoTrack(VideoStreamTrack):
         cam_rgb.initialControl.setSharpness(1)         # Slight sharpening for fabric texture (0-4)
         cam_rgb.initialControl.setLumaDenoise(1)       # Reduce brightness noise (0-4)
         cam_rgb.initialControl.setChromaDenoise(4)     # Reduce color noise - max recommended (0-4)
-
+        cam_rgb.initialControl.setSaturation(1)        # Slight boost for vibrant colors (0-4)
         # 3A (Auto-Exposure, Auto-White Balance) controls
         cam_rgb.initialControl.setAutoExposureEnable()  # Enable auto-exposure
         cam_rgb.initialControl.setAutoWhiteBalanceMode(
             dai.CameraControl.AutoWhiteBalanceMode.AUTO
         )  # Auto white balance for natural colors
-        cam_rgb.initialControl.setAutoExposureLimit(33000)  # 33ms max (prevents motion blur at 30fps)
+        cam_rgb.initialControl.setAutoExposureLimit(22000)  # 33ms max (prevents motion blur at 30fps)
         cam_rgb.initialControl.setAntiBandingMode(
-            dai.CameraControl.AntiBandingMode.MAINS_50_HZ
+            dai.CameraControl.AntiBandingMode.MAINS_60_HZ
         )  # Reduce 50Hz flicker (change to MAINS_60_HZ for US/Canada)
-        cam_rgb.initialControl.setAutoExposureCompensation(0)  # Neutral exposure
+        cam_rgb.initialControl.setAutoExposureCompensation(-2)  # Neutral exposure
 
 
         # Create output (exactly like reference)
         xout = pipeline.create(dai.node.XLinkOut)
         xout.setStreamName("rgb")
         cam_rgb.video.link(xout.input)
+
+        # Create control input for tap-to-focus
+        xin_control = pipeline.create(dai.node.XLinkIn)
+        xin_control.setStreamName("control")
+        xin_control.out.link(cam_rgb.inputControl)
 
         return pipeline
 
@@ -214,10 +227,10 @@ class OakDVideoTrack(VideoStreamTrack):
 
     def _generate_test_pattern(self):
         """Generate test pattern when camera is not available."""
-        frame = np.zeros((2160, 1796, 3), dtype=np.uint8)
+        frame = np.zeros((self.CAMERA_HEIGHT, self.CAMERA_WIDTH, 3), dtype=np.uint8)
 
         # Add gradient background
-        for i in range(2160):
+        for i in range(self.CAMERA_HEIGHT):
             frame[i, :] = [(i//8) % 256, 100, (255 - i//8) % 256]
 
         # Add text to indicate test mode (scaled for 4K)
@@ -263,6 +276,51 @@ class OakDVideoTrack(VideoStreamTrack):
 
         return av_frame
 
+    def set_focus_point(self, x: float, y: float):
+        """
+        Set manual focus point via tap-to-focus.
+
+        Args:
+            x: Normalized x coordinate (0-1)
+            y: Normalized y coordinate (0-1)
+        """
+        if not self.is_initialized or not self._device:
+            logger.warning("Cannot set focus point - camera not initialized")
+            return
+
+        try:
+            # Convert normalized coordinates to pixel coordinates
+            pixel_x = int(x * self.CAMERA_WIDTH)
+            pixel_y = int(y * self.CAMERA_HEIGHT)
+
+            # Calculate focus region around tap point (200x200 pixel region)
+            region_width = 200
+            region_height = 200
+            start_x = max(0, pixel_x - region_width // 2)
+            start_y = max(0, pixel_y - region_height // 2)
+
+            # Ensure region doesn't exceed camera bounds
+            if start_x + region_width > self.CAMERA_WIDTH:
+                start_x = self.CAMERA_WIDTH - region_width
+            if start_y + region_height > self.CAMERA_HEIGHT:
+                start_y = self.CAMERA_HEIGHT - region_height
+
+            # Create and send camera control command
+            ctrl = dai.CameraControl()
+            ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.AUTO)
+            ctrl.setAutoFocusRegion(startX=start_x, startY=start_y, width=region_width, height=region_height)
+            ctrl.setAutoFocusTrigger()
+
+            # Send control to camera via control queue
+            if self._q_control:
+                self._q_control.send(ctrl)
+                logger.info(f"✓ Tap-to-focus: ({pixel_x}, {pixel_y}), region ({start_x}, {start_y}, {region_width}x{region_height})")
+            else:
+                logger.warning("Camera control queue not available")
+
+        except Exception as e:
+            logger.error(f"Error setting focus point: {e}")
+
     def stop(self):
         """Stop the video track and cleanup resources."""
         logger.info("Stopping OAK-D Pro video track")
@@ -291,6 +349,15 @@ class OakDCameraService:
         self.initialized = False
         logger.info("OakDCameraService initialized")
 
+    @staticmethod
+    def get_camera_resolution() -> Dict[str, int]:
+        """Get the configured camera resolution."""
+        return {
+            "width": OakDVideoTrack.CAMERA_WIDTH,
+            "height": OakDVideoTrack.CAMERA_HEIGHT,
+            "aspect_ratio": round(OakDVideoTrack.CAMERA_WIDTH / OakDVideoTrack.CAMERA_HEIGHT, 4)
+        }
+
     def initialize_camera(self, camera_source: str = "oakd"):
         """Initialize camera (compatibility method)."""
         self.initialized = True
@@ -300,6 +367,75 @@ class OakDCameraService:
     def get_video_track(self, session_id: str = None):
         """Get a new video track."""
         return OakDVideoTrack(session_id=session_id)
+
+    def capture_depth_frame(self):
+        """
+        Capture a single depth frame for height measurement.
+        Creates a temporary pipeline with stereo depth.
+
+        Returns:
+            numpy.ndarray: Depth map in millimeters, or None on failure
+        """
+        if not DEPTHAI_AVAILABLE:
+            logger.error("DepthAI not available for depth capture")
+            return None
+
+        try:
+            logger.info("Creating stereo depth pipeline for height measurement...")
+
+            # Create pipeline with stereo depth
+            pipeline = dai.Pipeline()
+
+            # Mono cameras for stereo depth
+            mono_left = pipeline.create(dai.node.MonoCamera)
+            mono_right = pipeline.create(dai.node.MonoCamera)
+            stereo = pipeline.create(dai.node.StereoDepth)
+
+            # Configure mono cameras
+            mono_left.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+            mono_right.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+            mono_left.setBoardSocket(dai.CameraBoardSocket.LEFT)
+            mono_right.setBoardSocket(dai.CameraBoardSocket.RIGHT)
+            mono_left.setFps(30)
+            mono_right.setFps(30)
+
+            # Configure stereo depth
+            stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_ACCURACY)
+            stereo.initialConfig.setMedianFilter(dai.MedianFilter.KERNEL_7x7)
+            stereo.setLeftRightCheck(True)
+            stereo.setExtendedDisparity(False)
+            stereo.setSubpixel(True)
+
+            # Link mono cameras to stereo
+            mono_left.out.link(stereo.left)
+            mono_right.out.link(stereo.right)
+
+            # Create output for depth
+            xout_depth = pipeline.create(dai.node.XLinkOut)
+            xout_depth.setStreamName("depth")
+            stereo.depth.link(xout_depth.input)
+
+            # Connect to device
+            with dai.Device(pipeline) as device:
+                logger.info("✅ Connected to OAK-D for depth capture")
+
+                # Get depth queue
+                q_depth = device.getOutputQueue(name="depth", maxSize=4, blocking=False)
+
+                # Wait a moment for auto-exposure to stabilize
+                import time
+                time.sleep(0.5)
+
+                # Capture depth frame
+                depth_frame = q_depth.get()
+                depth_array = depth_frame.getFrame()
+
+                logger.info(f"📏 Captured depth frame: {depth_array.shape}")
+                return depth_array
+
+        except Exception as e:
+            logger.error(f"Error capturing depth frame: {e}")
+            return None
 
     @staticmethod
     def get_camera_status() -> Dict[str, Any]:

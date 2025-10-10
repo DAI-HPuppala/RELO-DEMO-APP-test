@@ -585,7 +585,17 @@ class WebRTCClient {
     manualConfirmFinal() {
         this.sendManualCommand('manual_confirm_final');
     }
-    
+
+    /**
+     * Tap-to-focus: Send focus coordinates to camera
+     * @param {number} x - Normalized x coordinate (0-1)
+     * @param {number} y - Normalized y coordinate (0-1)
+     */
+    tapToFocus(x, y) {
+        this.sendManualCommand('tap_to_focus', { x, y });
+        console.log(`[WebRTC Client] Tap-to-focus at (${x.toFixed(3)}, ${y.toFixed(3)})`);
+    }
+
     /**
      * Export results
      */

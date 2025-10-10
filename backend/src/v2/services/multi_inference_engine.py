@@ -22,7 +22,18 @@ logger = logging.getLogger(__name__)
 
 class MultiInferenceEngine:
     """GPU-accelerated multi-image inference engine using VLM Singleton"""
-    
+
+    # O(1) lookup set for non-damaging issues (cosmetic only, don't affect resale value)
+    NON_DAMAGING_ISSUES = frozenset({
+        'wrinkle', 'wrinkles', 'wrinkled', 'crease', 'creases', 'creased', 'creasing',
+        'fold', 'folds', 'folded', 'folding',
+        'pilling', 'pills',
+        'dust', 'dusty',
+        'minor dirt', 'light dirt',
+        'minor fading',
+        'wrinkled fabric'
+    })
+
     def __init__(self):
         self.gpu_config = gpu_config
         self.frame_config = frame_config
@@ -159,7 +170,19 @@ class MultiInferenceEngine:
                 attributes = result_data.get("attributes", {})
                 confidence = result_data.get("confidence", 0.8)
                 reasoning = result_data.get("reasoning", "")
-                
+
+                # Filter out non-damaging issues for damage_detector agent
+                if agent_name == "damage_detector":
+                    # Step 1: Filter cosmetic issues (wrinkles, folds, etc.)
+                    attributes = self._filter_non_damaging_issues(attributes)
+
+                    # Step 2: Only check bounding box if damage still exists after Step 1
+                    if attributes.get('damaged') == True and attributes.get('damage_location'):
+                        # Also filter vague detections with oversized bounding boxes
+                        # Pass frame shape to get actual resolution dynamically
+                        frame_shape = frames[0].shape if frames else None
+                        attributes = self._filter_vague_damage_detections(attributes, frame_shape)
+
                 result.complete(attributes, confidence, reasoning)
                 
                 # Track performance
@@ -180,6 +203,12 @@ class MultiInferenceEngine:
                 # Log saved frames
                 for i, path in enumerate(saved_frame_paths, 1):
                     logger.info(f"  📁 Frame SAVED TO: {path}")
+
+                # Save annotated version for damage_detector ONLY if damage passed filters (bbox < 60%)
+                if agent_name == "damage_detector" and attributes.get('damaged') == True and attributes.get('damage_location'):
+                    await self._save_annotated_damage_frames(
+                        frames, saved_frame_paths, attributes, cycle_num, inference_num, mode, redo_attempt
+                    )
 
                 return result
                 
@@ -350,12 +379,239 @@ class MultiInferenceEngine:
         if cycle_num in self.saved_images:
             del self.saved_images[cycle_num]
 
+    async def _save_annotated_damage_frames(self, frames: List[np.ndarray], saved_paths: List[str],
+                                            attributes: Dict[str, Any], cycle_num: int, inference_num: int,
+                                            mode: str, redo_attempt: int):
+        """
+        Save annotated versions of damage detector frames with bounding boxes drawn.
+
+        Args:
+            frames: Original frame data
+            saved_paths: Paths where original frames were saved
+            attributes: Damage detection attributes including damage_location
+            cycle_num: Cycle number
+            inference_num: Inference number
+            mode: Mode (auto/manual)
+            redo_attempt: Redo attempt number
+        """
+        try:
+            damage_location = attributes.get('damage_location')
+            damage_type = attributes.get('damage_type', 'damage')
+
+            if not damage_location:
+                return
+
+            # Parse damage location
+            if isinstance(damage_location, str):
+                import re
+                numbers = re.findall(r'[\d.]+', damage_location)
+                if len(numbers) >= 4:
+                    bbox = [float(n) for n in numbers[:4]]
+                else:
+                    return
+            elif isinstance(damage_location, list) and len(damage_location) >= 4:
+                bbox = damage_location
+            else:
+                return
+
+            # Get agent directory
+            agent_dir = self.frame_config.get_agent_frame_dir("damage_detector")
+
+            for idx, (frame, saved_path) in enumerate(zip(frames, saved_paths)):
+                # Read the saved original frame
+                import cv2
+                from PIL import Image, ImageDraw, ImageFont
+
+                # Build filename for annotated version
+                # Original: damage_detector_c001_i01_auto.jpg
+                # Annotated: damage_detector_c001_i01_auto_annotated.jpg
+                original_filename = saved_path.split('/')[-1]  # Get filename from path
+                base_name = original_filename.rsplit('.', 1)[0]  # Remove extension
+                annotated_filename = f"{base_name}_annotated.jpg"
+                annotated_filepath = agent_dir / annotated_filename
+
+                # Convert frame to PIL Image for drawing
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                pil_img = Image.fromarray(frame_rgb)
+                draw = ImageDraw.Draw(pil_img)
+
+                # Get image dimensions
+                img_width, img_height = pil_img.size
+
+                # Parse bounding box coordinates
+                x1, y1, x2, y2 = bbox[:4]
+
+                # Convert normalized coords to pixels if needed
+                if all(0 <= v <= 1 for v in bbox):
+                    # Normalized coordinates
+                    x1 = int(x1 * img_width)
+                    y1 = int(y1 * img_height)
+                    x2 = int(x2 * img_width)
+                    y2 = int(y2 * img_height)
+                else:
+                    # Already pixel coordinates
+                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+
+                # Draw bounding box
+                draw.rectangle([x1, y1, x2, y2], outline='red', width=4)
+
+                # Add label with damage type
+                label_text = f"{damage_type}"
+                draw.text((x1 + 5, y1 + 5), label_text, fill='red')
+
+                # Convert back to BGR for OpenCV saving
+                annotated_frame = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+
+                # Save annotated frame
+                success = cv2.imwrite(
+                    str(annotated_filepath),
+                    annotated_frame,
+                    [cv2.IMWRITE_JPEG_QUALITY, self.frame_config.jpeg_quality]
+                )
+
+                if success:
+                    logger.info(f"  🎨 Annotated frame SAVED TO: damage_detector/{annotated_filename}")
+                else:
+                    logger.error(f"❌ Failed to save annotated frame: {annotated_filepath}")
+
+        except Exception as e:
+            logger.error(f"Error saving annotated damage frames: {e}")
+
+    def _filter_non_damaging_issues(self, attributes: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Filter out non-damaging cosmetic issues from damage detection results.
+        Uses O(1) set lookup for efficiency.
+
+        Args:
+            attributes: Damage detector attributes with 'damaged' and 'damage_type' keys
+
+        Returns:
+            Filtered attributes with non-damaging issues removed
+        """
+        if not attributes or 'damage_type' not in attributes:
+            return attributes
+
+        damage_type = attributes.get('damage_type')
+
+        # If no damage detected, return as-is
+        if not damage_type or damage_type == 'null' or damage_type == 'NULL':
+            return attributes
+
+        # Handle both list and string formats
+        if isinstance(damage_type, list):
+            # Already a list - convert each item to lowercase and strip
+            damage_list = [str(d).strip().lower() for d in damage_type if d]
+        else:
+            # String format - convert to lowercase and parse comma-separated
+            damage_type_lower = str(damage_type).lower()
+            damage_list = [d.strip() for d in damage_type_lower.split(',') if d.strip()]
+
+        # Filter out non-damaging issues using O(1) set lookup
+        real_damages = [d for d in damage_list if d not in self.NON_DAMAGING_ISSUES]
+
+        # Update attributes based on filtered results
+        filtered_attrs = attributes.copy()
+
+        if not real_damages:
+            # All damages were cosmetic - mark as undamaged
+            filtered_attrs['damaged'] = False
+            filtered_attrs['damage_type'] = None
+            filtered_attrs['damage_location'] = None  # Clear bbox to prevent annotation
+            logger.info(f"🧹 Filtered out cosmetic issues: {damage_type} → No damage")
+        else:
+            # Real damages remain - preserve original format (list or string)
+            if isinstance(damage_type, list):
+                filtered_attrs['damage_type'] = real_damages
+            else:
+                filtered_attrs['damage_type'] = ', '.join(real_damages)
+            logger.info(f"🔍 Filtered damage types: {damage_type} → {filtered_attrs['damage_type']}")
+
+        return filtered_attrs
+
+    def _filter_vague_damage_detections(self, attributes: Dict[str, Any], frame_shape: tuple = None) -> Dict[str, Any]:
+        """
+        Filter out vague damage detections with overly large bounding boxes.
+        If a bounding box covers >60% of the image, it's likely a false positive.
+
+        Args:
+            attributes: Damage detector attributes with 'damage_location' key
+            frame_shape: Optional numpy array shape (height, width, channels) for dynamic resolution
+
+        Returns:
+            Filtered attributes with vague detections removed
+        """
+        if not attributes or 'damage_location' not in attributes:
+            return attributes
+
+        damage_location = attributes.get('damage_location')
+
+        # If no damage location, return as-is
+        if not damage_location:
+            return attributes
+
+        # Parse damage_location - handle string or list format
+        if isinstance(damage_location, str):
+            # Parse string format like "[0.0, 0.0, 0.822, 0.984]"
+            import re
+            numbers = re.findall(r'[\d.]+', damage_location)
+            if len(numbers) >= 4:
+                bbox = [float(n) for n in numbers[:4]]
+            else:
+                return attributes
+        elif isinstance(damage_location, list) and len(damage_location) >= 4:
+            bbox = damage_location
+        else:
+            return attributes
+
+        # Calculate bounding box coverage
+        # bbox format: [x1, y1, x2, y2] - can be normalized (0-1) or pixel coords
+        x1, y1, x2, y2 = bbox[:4]
+
+        # Determine if normalized (0-1) or pixel coordinates
+        if all(0 <= v <= 1 for v in bbox):
+            # Normalized coordinates
+            width = x2 - x1
+            height = y2 - y1
+        else:
+            # Pixel coordinates - get actual image dimensions dynamically
+            if frame_shape is not None:
+                # frame_shape is (height, width, channels) from numpy array
+                img_height, img_width = frame_shape[0], frame_shape[1]
+            else:
+                # Fallback to common resolution if frame shape not provided
+                img_width, img_height = 768, 691
+                logger.warning(f"Frame shape not provided, using fallback resolution: {img_width}x{img_height}")
+
+            width = (x2 - x1) / img_width
+            height = (y2 - y1) / img_height
+
+        # Calculate area coverage as percentage
+        area_coverage = width * height
+
+        # Threshold: Reject if bbox covers >60% of image
+        VAGUE_DETECTION_THRESHOLD = 0.60
+
+        filtered_attrs = attributes.copy()
+
+        if area_coverage > VAGUE_DETECTION_THRESHOLD:
+            # Bounding box too large - likely a false positive
+            filtered_attrs['damaged'] = False
+            filtered_attrs['damage_type'] = None
+            filtered_attrs['damage_location'] = None
+            resolution_info = f"{img_width}x{img_height}" if 'img_width' in locals() else "normalized"
+            logger.info(f"🚫 Rejected vague damage detection: bbox covers {area_coverage*100:.1f}% of {resolution_info} image (threshold: {VAGUE_DETECTION_THRESHOLD*100:.0f}%)")
+        else:
+            resolution_info = f"{img_width}x{img_height}" if 'img_width' in locals() else "normalized"
+            logger.debug(f"✅ Accepted damage detection: bbox covers {area_coverage*100:.1f}% of {resolution_info} image")
+
+        return filtered_attrs
+
     def _get_agent_prompt(self, agent_name: str, inference_num: int, previous_context: Dict[str, Any] = None) -> str:
         """Generate appropriate prompt based on agent name and context"""
         prompts = {
-            "initial_classifier": "Analyze this garment and identify: type (e.g., T-shirt, Dress, Pants, Shoes, Shirt, Shorts, Jacket, Sweatshirt, Sweater, Hoodie, Bag), color, pattern, neckline style, sleeve length, and closure type. Neckline, closure type, and sleeve length are optional or could be null for Shoes. Return null for unrecognizable attributes.",
+            "initial_classifier": "Analyze this garment and identify: type (e.g., T-shirt, Dress, Pants, Shoes, Shirt, Shorts, Jacket, Sweatshirt, Sweater, Hoodie, Bag), color, pattern (max 3 words - only if necessary), neckline style, sleeve length, and closure type. Neckline, closure type, and sleeve length are optional or could be null for Shoes. Return null for unrecognizable attributes.",
             "detail_extractor": "Analyze this garment and Search for brand name/logo and size on this garment. Return brand and size, or null if not visible.",
-            "damage_detector": "Examine this garment for physical damage. Possible damages: Cut/Tear, Abrasion/Scratch, Bodily fluids, Damaged Button/Fastener/Zipper, Dirty/Stains, Discoloration, Hair/Fuzz/Lint, Hole. CRITICAL: Fabric texture, shadows, natural wrinkles, and folds are NOT damage. Only report actual visible defects. If the garment is clean and structurally intact, set damaged=false. Return 'damaged' (true/false) and 'damage_type' (comma-separated specific names from list, or null if pristine).",
+            "damage_detector": """Analyze this garment and identify: damaged (true/false), damage_type (comma-separated words/small-description or NULL if no damages found), and damage_location (bounding box coordinates or null if no damage found). Only consider damages on the garment and not on the background/other objects.""",
             "final_compiler": "Compile final classification based on all attributes."
         }
 

@@ -20,6 +20,7 @@ __pycache__/
 # Capture frames and media
 **/captured_frames/
 **/capture_frames/
+**/roi_finder/
 **/frames/
 *.png
 *.jpg

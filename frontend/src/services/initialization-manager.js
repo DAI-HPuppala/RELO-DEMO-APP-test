@@ -52,6 +52,7 @@ class InitializationManager {
             // Frontend Step 2: "Camera Initialization" (25-50%)
             this.updateStepStatus('camera', 'active', 'Initializing camera...');
             await this.initializeCamera();
+            await applyCameraResolution();  // Apply dynamic camera resolution to CSS
             this.updateStepStatus('camera', 'completed', 'Camera ready');
             this.updateProgress(50);
 
@@ -148,6 +149,31 @@ class InitializationManager {
         try {
             // Create WebRTC client (which includes WebSocket)
             this.webrtcClient = new WebRTCClient();
+
+            // Create VideoDisplay and wire up tap-to-focus
+            if (typeof VideoDisplay !== 'undefined') {
+                window.videoDisplay = new VideoDisplay();
+                window.videoDisplay.setWebRTCClient(this.webrtcClient);
+
+                // Fetch camera features to check if tap-to-focus is enabled
+                try {
+                    const featuresResponse = await fetch('http://localhost:8000/api/camera/features', {
+                        method: 'GET',
+                        mode: 'cors'
+                    });
+
+                    if (featuresResponse.ok) {
+                        const features = await featuresResponse.json();
+                        window.videoDisplay.setTapToFocusEnabled(features.tap_to_focus_enabled);
+                        console.log(`✓ VideoDisplay initialized, tap-to-focus: ${features.tap_to_focus_enabled ? 'enabled' : 'disabled'}`);
+                    } else {
+                        console.log('✓ VideoDisplay initialized with tap-to-focus (default: enabled)');
+                    }
+                } catch (error) {
+                    console.warn('Failed to fetch camera features, tap-to-focus defaulting to enabled');
+                    console.log('✓ VideoDisplay initialized with tap-to-focus');
+                }
+            }
 
             // Set up stream callback to handle video early
             this.webrtcClient.on('stream', (stream) => {
@@ -736,6 +762,60 @@ window.retryInitialization = async function() {
         await manager.initialize();
     }
 };
+
+/**
+ * Apply camera resolution dynamically to CSS
+ */
+async function applyCameraResolution() {
+    try {
+        console.log('Fetching camera resolution...');
+        const response = await fetch('http://localhost:8000/api/camera/resolution', {
+            method: 'GET',
+            mode: 'cors'
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('Camera resolution:', data);
+
+            const { width, height, aspect_ratio } = data;
+
+            // Create or update dynamic style element
+            let styleElement = document.getElementById('dynamic-camera-styles');
+            if (!styleElement) {
+                styleElement = document.createElement('style');
+                styleElement.id = 'dynamic-camera-styles';
+                document.head.appendChild(styleElement);
+            }
+
+            // Calculate container widths based on aspect ratio
+            const width480 = Math.round(480 * aspect_ratio);
+            const width400 = Math.round(400 * aspect_ratio);
+
+            // Apply CSS rules
+            styleElement.textContent = `
+                /* Dynamic camera resolution styles - auto-generated from backend */
+                @media (max-width: 1024px) {
+                    .video-container {
+                        max-width: ${width480}px !important;
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    .video-container {
+                        max-width: ${width400}px !important;
+                    }
+                }
+            `;
+
+            console.log(`✓ Applied dynamic camera resolution: ${width}x${height} (${aspect_ratio}:1)`);
+        } else {
+            console.warn('Failed to fetch camera resolution, using defaults');
+        }
+    } catch (error) {
+        console.warn('Error applying camera resolution:', error);
+    }
+}
 
 // Start initialization when page loads
 document.addEventListener('DOMContentLoaded', async () => {

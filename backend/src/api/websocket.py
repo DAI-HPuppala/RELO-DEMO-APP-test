@@ -723,7 +723,40 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
             "current_agent": handler.get_current_agent()
         }
     
-    elif msg_type in ["manual_previous", "manual_next", "manual_redo", 
+    elif msg_type == "tap_to_focus":
+        # Handle tap-to-focus command
+        session_id = message.get("session_id")
+        x = message.get("x", 0.5)  # Normalized coordinates (0-1)
+        y = message.get("y", 0.5)
+
+        logger.info(f"Tap-to-focus command received for session {session_id} at ({x:.3f}, {y:.3f})")
+
+        # Get the camera service and trigger focus
+        if _webrtc_manager:
+            video_track = _webrtc_manager.get_video_track(session_id)
+            if video_track and hasattr(video_track, 'set_focus_point'):
+                video_track.set_focus_point(x, y)
+                logger.info(f"Focus set to ({x:.3f}, {y:.3f}) for session {session_id}")
+                return {
+                    "type": "tap_to_focus_ack",
+                    "status": "success",
+                    "x": x,
+                    "y": y
+                }
+            else:
+                logger.warning(f"Video track does not support tap-to-focus for session {session_id}")
+                return {
+                    "type": "tap_to_focus_ack",
+                    "status": "not_supported"
+                }
+
+        return {
+            "type": "tap_to_focus_ack",
+            "status": "error",
+            "message": "WebRTC manager not available"
+        }
+
+    elif msg_type in ["manual_previous", "manual_next", "manual_redo",
                      "manual_select_agent"]:
         # Handle manual mode commands
         session_id = message.get("session_id")

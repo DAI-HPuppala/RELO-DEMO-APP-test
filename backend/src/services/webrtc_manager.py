@@ -316,6 +316,10 @@ class WebRTCManager:
         # Just log that we received it
         logger.info(f"Received ICE candidate for session {session_id} (handled automatically by aiortc)")
     
+    def get_video_track(self, session_id: str = None):
+        """Get the video track for a session (or the singleton track)."""
+        return WebRTCManager._video_track
+
     def is_data_channel_ready(self, session_id: str) -> bool:
         """Check if data channel is ready for communication."""
         channel = self.data_channels.get(session_id)
@@ -403,9 +407,9 @@ class WebRTCManager:
                 else:
                     logger.warning(f"No control message handler set for {msg_type}")
             elif msg_type in ["manual_previous", "manual_next", "manual_redo",
-                            "manual_select_agent", "manual_confirm_final"]:
-                # Forward manual mode commands to websocket handler and send response back
-                logger.info(f"Forwarding manual command {msg_type} to websocket handler")
+                            "manual_select_agent", "manual_confirm_final", "tap_to_focus"]:
+                # Forward manual mode commands and tap-to-focus to websocket handler and send response back
+                logger.info(f"Forwarding command {msg_type} to websocket handler")
                 if self.control_message_handler:
                     # Add session_id to the message if not present
                     data["session_id"] = session_id

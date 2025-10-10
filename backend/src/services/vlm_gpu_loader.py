@@ -24,9 +24,10 @@ logger = logging.getLogger(__name__)
 class VLMGPULoader:
     """Production VLM model loader with GPU optimizations - GPU Required"""
 
-    def __init__(self, ollama_host: str = "http://localhost:11434", model_name: str = "qwen2.5vl:3b"):
+    def __init__(self, ollama_host: str = "http://localhost:11434", model_name: str = None):
         self.ollama_host = ollama_host
-        self.model_name = model_name
+        # Allow env override, fallback to parameter, then default
+        self.model_name = model_name or os.getenv("OLLAMA_MODEL", "qwen2.5vl:3b")
         self.gpu_optimizer = GPUOptimizer()
         self.gpu_config: Optional[GPUConfig] = None
         self.is_loaded = False
@@ -330,9 +331,10 @@ class VLMGPULoader:
                     if agent_name in ["initial_classifier"]:
                         target_resolution = (448, 448)
                     elif agent_name in ["damage_detector"]:
-                        target_resolution = (896, 896) if frame_idx == 0 else (896, 896)
+                        # Higher resolution for damage detection to catch small defects like holes
+                        target_resolution = (768, 768)
                     elif agent_name == "detail_extractor":
-                        target_resolution = (780, 780)
+                        target_resolution = (768, 768)
                     else:
                         target_resolution = (512, 512)
 
@@ -402,10 +404,10 @@ class VLMGPULoader:
                     top_k = 1         # Only best choice for OCR accuracy
                     repeat_penalty = 1.0  # No penalty needed for OCR
                 elif agent_name == "damage_detector":
-                    # Damage detection - balanced to avoid false positives
-                    temperature = 0.4  # Higher temperature to reduce over-confident false detections
-                    top_p = 0.5       # Moderate sampling for balanced results
-                    top_k = 15        # More choices to avoid getting stuck on "tear"
+                    # Damage detection - precise but sensitive to catch small defects
+                    temperature = 0.3  # Lower temperature for more focused, consistent damage detection
+                    top_p = 0.6       # Moderate-high sampling to consider various damage indicators
+                    top_k = 20        # More choices to recognize diverse damage types
                     repeat_penalty = 1.0  # No penalty for damage descriptions
                 elif agent_name == "initial_classifier":
                     # Classification needs slight variety for attributes

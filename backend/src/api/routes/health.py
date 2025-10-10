@@ -3,6 +3,8 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 import subprocess
 import logging
+import os
+from services.oakd_camera import OakDCameraService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -74,6 +76,37 @@ async def list_cameras():
         })
     
     return {"cameras": cameras}
+
+
+@router.get("/camera/resolution")
+async def get_camera_resolution():
+    """Get the configured camera resolution."""
+    resolution = OakDCameraService.get_camera_resolution()
+    return JSONResponse(
+        content=resolution,
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
+
+
+@router.get("/camera/features")
+async def get_camera_features():
+    """Get enabled camera features."""
+    tap_to_focus_enabled = os.getenv('TAP_TO_FOCUS_ENABLED', 'true').lower() == 'true'
+
+    return JSONResponse(
+        content={
+            "tap_to_focus_enabled": tap_to_focus_enabled
+        },
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
 
 
 def check_gpu_available() -> bool:

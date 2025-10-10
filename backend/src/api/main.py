@@ -210,6 +210,178 @@ async def camera_status():
             "timestamp": datetime.now().isoformat()
         }
 
+# Camera Configuration and Control endpoints
+@app.get("/api/camera/settings")
+async def get_camera_settings():
+    """Get current camera settings (from persistent storage)"""
+    from services.camera_settings_manager import get_camera_settings_manager
+    manager = get_camera_settings_manager()
+    return manager.get_settings()
+
+@app.post("/api/camera/settings")
+async def update_camera_settings(settings: dict, persist: bool = True):
+    """
+    Update camera settings
+
+    Args:
+        settings: Settings dictionary to update
+        persist: If True, save to disk permanently (default: True)
+    """
+    from services.camera_settings_manager import get_camera_settings_manager
+    manager = get_camera_settings_manager()
+    success = manager.save_settings(settings, make_persistent=persist)
+    return {
+        "success": success,
+        "message": "Settings saved permanently to disk" if persist else "Settings updated (session only)",
+        "settings": manager.get_settings()
+    }
+
+@app.post("/api/camera/measure-height")
+async def measure_camera_height():
+    """
+    Measure camera height using stereo depth.
+    Samples center ROI of depth map to find distance to ground/bench.
+    """
+    import numpy as np
+    from services.oakd_camera import OakDCameraService
+    from services.camera_settings_manager import get_camera_settings_manager
+
+    try:
+        logger.info("📏 Starting camera height measurement using stereo depth...")
+
+        # Create camera service and capture depth frame
+        camera_service = OakDCameraService()
+        depth_frame = camera_service.capture_depth_frame()
+
+        if depth_frame is None:
+            logger.error("Failed to capture depth frame")
+            return {
+                "success": False,
+                "error": "Failed to capture depth frame - check camera connection"
+            }
+
+        # Sample center region of depth map (40%-60% of frame)
+        # This assumes the bench/ground is roughly centered under camera
+        h, w = depth_frame.shape
+        center_roi = depth_frame[
+            int(h*0.4):int(h*0.6),
+            int(w*0.4):int(w*0.6)
+        ]
+
+        # Filter out invalid depth values (0 or NaN)
+        valid_depths = center_roi[center_roi > 0]
+
+        if len(valid_depths) == 0:
+            logger.error("No valid depth measurements found in center ROI")
+            return {
+                "success": False,
+                "error": "No valid depth measurements - ensure camera is positioned above surface"
+            }
+
+        # Calculate median depth (robust to outliers)
+        median_depth_mm = float(np.median(valid_depths))
+        height_cm = median_depth_mm / 10.0  # Convert mm to cm
+
+        logger.info(f"✅ Measured camera height: {height_cm:.1f} cm ({median_depth_mm:.0f} mm)")
+
+        # Calculate FOV coverage at this distance
+        fov_h_deg = 69  # OAK-D Pro horizontal FOV
+        fov_v_deg = 55  # OAK-D Pro vertical FOV
+
+        ground_width_cm = 2 * height_cm * np.tan(np.radians(fov_h_deg/2))
+        ground_height_cm = 2 * height_cm * np.tan(np.radians(fov_v_deg/2))
+
+        ground_coverage = {
+            "width_cm": round(ground_width_cm, 2),
+            "height_cm": round(ground_height_cm, 2)
+        }
+
+        logger.info(f"📐 Ground coverage: {ground_width_cm:.1f}cm × {ground_height_cm:.1f}cm")
+
+        # Save measurement to persistent settings
+        manager = get_camera_settings_manager()
+        manager.save_height_measurement(height_cm, ground_coverage, make_persistent=True)
+
+        logger.info("💾 Height measurement saved to persistent settings")
+
+        return {
+            "success": True,
+            "camera_height_cm": round(height_cm, 2),
+            "ground_coverage": ground_coverage,
+            "sensor_resolution": {
+                "width": 1796,
+                "height": 2160
+            },
+            "depth_stats": {
+                "median_mm": round(median_depth_mm, 2),
+                "valid_pixels": int(len(valid_depths)),
+                "roi_size": f"{center_roi.shape[0]}x{center_roi.shape[1]}"
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error measuring camera height: {e}", exc_info=True)
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/camera/roi")
+async def set_camera_roi(x_min: float, y_min: float, x_max: float, y_max: float, enabled: bool = True, persist: bool = True):
+    """
+    Set camera ROI (Region of Interest)
+
+    Args:
+        x_min, y_min, x_max, y_max: Normalized coordinates (0.0-1.0)
+        enabled: Enable/disable ROI
+        persist: Save permanently (default: True)
+    """
+    from services.camera_settings_manager import get_camera_settings_manager
+
+    # Validate coordinates
+    if not (0.0 <= x_min < x_max <= 1.0):
+        return {"success": False, "error": "Invalid x coordinates"}
+    if not (0.0 <= y_min < y_max <= 1.0):
+        return {"success": False, "error": "Invalid y coordinates"}
+
+    manager = get_camera_settings_manager()
+    success = manager.save_roi(x_min, y_min, x_max, y_max, enabled=enabled, make_persistent=persist)
+
+    return {
+        "success": success,
+        "message": "ROI saved permanently" if persist else "ROI updated (session only)",
+        "roi": manager.get_roi_settings()
+    }
+
+@app.get("/api/camera/presets")
+async def list_camera_presets():
+    """List available camera configuration presets"""
+    from services.camera_settings_manager import get_camera_settings_manager
+    manager = get_camera_settings_manager()
+    presets = manager.list_presets()
+    return {"presets": presets}
+
+@app.get("/api/camera/presets/{preset_name}")
+async def load_camera_preset(preset_name: str):
+    """Load a specific camera preset"""
+    from services.camera_settings_manager import get_camera_settings_manager
+    manager = get_camera_settings_manager()
+    preset = manager.load_preset(preset_name)
+    if preset:
+        return {"success": True, "preset": preset}
+    else:
+        return {"success": False, "error": f"Preset '{preset_name}' not found"}
+
+@app.post("/api/camera/presets/{preset_name}")
+async def save_camera_preset(preset_name: str, description: str = ""):
+    """Save current settings as a named preset"""
+    from services.camera_settings_manager import get_camera_settings_manager
+    manager = get_camera_settings_manager()
+    success = manager.save_as_preset(preset_name, description)
+    return {
+        "success": success,
+        "message": f"Preset '{preset_name}' saved" if success else "Failed to save preset"
+    }
+
 # VLM Status endpoints
 @app.get("/api/vlm/status")
 async def vlm_status():

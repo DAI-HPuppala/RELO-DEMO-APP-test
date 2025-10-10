@@ -3,12 +3,117 @@
  */
 class VideoDisplay {
     constructor() {
-        this.videoElement = document.getElementById('remoteVideo');
+        // Support both remoteVideo (simple) and videoPreview (professional) IDs
+        this.videoElement = document.getElementById('videoPreview') || document.getElementById('remoteVideo');
         this.overlayElement = document.getElementById('videoOverlay');
-        this.fpsElement = document.getElementById('fpsValue');
+        this.fpsElement = document.getElementById('fpsValue') || document.getElementById('fpsDisplay');
         this.fpsUpdateInterval = null;
         this.frameCount = 0;
         this.lastFpsUpdate = Date.now();
+        this.webrtcClient = null;
+        this.tapToFocusEnabled = true;
+
+        // Setup tap-to-focus
+        this.setupTapToFocus();
+
+        console.log('VideoDisplay initialized:', {
+            video: this.videoElement?.id,
+            overlay: this.overlayElement?.id,
+            fps: this.fpsElement?.id
+        });
+    }
+
+    /**
+     * Setup tap-to-focus click handler
+     */
+    setupTapToFocus() {
+        if (!this.videoElement) {
+            console.warn('VideoDisplay: No video element found for tap-to-focus');
+            return;
+        }
+
+        this.videoElement.addEventListener('click', (event) => {
+            console.log('Video clicked!', {
+                enabled: this.tapToFocusEnabled,
+                hasClient: !!this.webrtcClient
+            });
+
+            if (!this.tapToFocusEnabled) {
+                console.warn('Tap-to-focus is disabled');
+                return;
+            }
+
+            if (!this.webrtcClient) {
+                console.warn('No WebRTC client set for tap-to-focus');
+                return;
+            }
+
+            const rect = this.videoElement.getBoundingClientRect();
+            const x = (event.clientX - rect.left) / rect.width;
+            const y = (event.clientY - rect.top) / rect.height;
+
+            console.log('Tap-to-focus:', { x, y });
+
+            // Send normalized coordinates (0-1)
+            this.webrtcClient.tapToFocus(x, y);
+
+            // Visual feedback - show focus indicator
+            this.showFocusIndicator(event.clientX - rect.left, event.clientY - rect.top);
+        });
+
+        // Add cursor pointer to indicate clickable
+        this.videoElement.style.cursor = 'crosshair';
+        console.log('✓ Tap-to-focus setup complete on', this.videoElement.id);
+    }
+
+    /**
+     * Show visual focus indicator at tap location
+     */
+    showFocusIndicator(x, y) {
+        // Remove existing indicator
+        const existing = document.querySelector('.focus-indicator');
+        if (existing) existing.remove();
+
+        // Create new indicator
+        const indicator = document.createElement('div');
+        indicator.className = 'focus-indicator';
+        indicator.style.cssText = `
+            position: absolute;
+            left: ${x}px;
+            top: ${y}px;
+            width: 60px;
+            height: 60px;
+            margin-left: -30px;
+            margin-top: -30px;
+            border: 2px solid #00ff00;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: focus-pulse 0.6s ease-out;
+        `;
+
+        const container = this.videoElement.parentElement;
+        container.style.position = 'relative';
+        container.appendChild(indicator);
+
+        // Remove after animation
+        setTimeout(() => indicator.remove(), 600);
+    }
+
+    /**
+     * Set WebRTC client for tap-to-focus
+     */
+    setWebRTCClient(client) {
+        this.webrtcClient = client;
+    }
+
+    /**
+     * Enable/disable tap-to-focus
+     */
+    setTapToFocusEnabled(enabled) {
+        this.tapToFocusEnabled = enabled;
+        if (this.videoElement) {
+            this.videoElement.style.cursor = enabled ? 'crosshair' : 'default';
+        }
     }
 
     /**
