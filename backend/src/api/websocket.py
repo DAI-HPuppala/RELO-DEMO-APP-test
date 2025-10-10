@@ -8,7 +8,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 import asyncio
 
 from services.vlm_service_ultra import UltraVLMService as VLMService
-from v2.utils.key_normalizer import KeyNormalizer
+from orchestration.utils.key_normalizer import KeyNormalizer
 from services.manual_mode_handler import ManualModeHandler
 from models.manual_session import ManualSessionState, NavigationDirection
 
@@ -322,8 +322,8 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
         session_id = message.get("session_id")
         agent = message.get("agent")
         
-        # Import V2 stateful orchestrator
-        from src.v2.services.stateful_orchestrator import StatefulOrchestrator
+        # Import stateful orchestrator
+        from src.orchestration.services.stateful_orchestrator import StatefulOrchestrator
         orchestrator = StatefulOrchestrator(session_id)
         
         # Setup VLM integration
@@ -415,8 +415,8 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
         # Create monitoring control for this session
         monitoring_controls[session_id] = {'running': True, 'paused': False}
         
-        # Import V2 stateful orchestrator
-        from v2.services.stateful_orchestrator import StatefulOrchestrator
+        # Import stateful orchestrator
+        from orchestration.services.stateful_orchestrator import StatefulOrchestrator
         orchestrator = StatefulOrchestrator(session_id, manual_mode=is_manual_mode)
         
         # Setup VLM integration
@@ -1071,11 +1071,11 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
                     "cycle_number": _global_cycle_counter
                 })
             
-            # Initialize V2 agents fresh for each cycle
-            from src.v2.agents.initial_classifier_v2 import InitialClassifierV2
-            from src.v2.agents.detail_extractor_v2 import DetailExtractorV2  
-            from src.v2.agents.damage_detector_v2 import DamageDetectorV2
-            from src.v2.agents.final_compiler_v2 import FinalCompilerV2
+            # Initialize agents fresh for each cycle
+            from src.orchestration.agents.initial_classifier_v2 import InitialClassifierV2
+            from src.orchestration.agents.detail_extractor_v2 import DetailExtractorV2
+            from src.orchestration.agents.damage_detector_v2 import DamageDetectorV2
+            from src.orchestration.agents.final_compiler_v2 import FinalCompilerV2
             
             agents = {
                 "initial_classifier": InitialClassifierV2(),
@@ -1391,10 +1391,10 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
             # This prevents spam every second
 
             # Initialize agents for this cycle
-            from v2.agents.initial_classifier_v2 import InitialClassifierV2
-            from v2.agents.detail_extractor_v2 import DetailExtractorV2
-            from v2.agents.damage_detector_v2 import DamageDetectorV2
-            from v2.agents.final_compiler_v2 import FinalCompilerV2
+            from orchestration.agents.initial_classifier_v2 import InitialClassifierV2
+            from orchestration.agents.detail_extractor_v2 import DetailExtractorV2
+            from orchestration.agents.damage_detector_v2 import DamageDetectorV2
+            from orchestration.agents.final_compiler_v2 import FinalCompilerV2
             
             agents = {
                 "initial_classifier": InitialClassifierV2(),

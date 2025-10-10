@@ -719,7 +719,9 @@ class WebRTCManager:
                 buffer = self.frame_buffers[session_id]
                 # Keep only the last 2 frames to ensure freshness
                 if len(buffer) > 2:
-                    self.frame_buffers[session_id] = buffer[-2:]
+                    # Maintain deque type - convert list slice back to deque
+                    from collections import deque
+                    self.frame_buffers[session_id] = deque(list(buffer)[-2:], maxlen=self.max_buffer_size)
 
             # Try to get fresh frame from video track
             if hasattr(WebRTCManager, '_video_track'):

@@ -1,44 +1,464 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RELO Classifier - Denali Advanced Integration</title>
-    <meta http-equiv="refresh" content="0; url=index-professional.html">
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .loading {
-            text-align: center;
-        }
-        h1 {
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
-        p {
-            font-size: 1.2em;
-            opacity: 0.9;
-        }
-    </style>
+    <link rel="stylesheet" href="professional-styles.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="loading">
-        <h1>RELO Classifier</h1>
-        <p>Denali Advanced Integration</p>
-        <p>Loading Professional UI...</p>
+    <!-- Initialization Screen -->
+    <div id="initScreen" class="init-screen">
+        <div class="init-container">
+            <div class="brand-section" style="justify-content: center; margin-bottom: 30px;">
+                <img src="assets/denali_logo.svg" alt="Denali" class="company-logo" style="height: 60px;">
+                <div class="brand-text">
+                    <h1 class="init-title">RELO Classifier</h1>
+                    <div class="init-subtitle">Denali Advanced Integration</div>
+                </div>
+            </div>
+            
+            <div class="init-steps">
+                <div class="init-step" id="step-communication">
+                    <div class="step-icon">
+                        <svg class="spinner" viewBox="0 0 50 50">
+                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                        </svg>
+                        <svg class="checkmark" style="display:none" viewBox="0 0 52 52">
+                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    </div>
+                    <div class="step-text">
+                        <div class="step-title">Initializing Communication</div>
+                        <div class="step-status">Connecting...</div>
+                    </div>
+                </div>
+
+                <div class="init-step" id="step-camera">
+                    <div class="step-icon">
+                        <svg class="spinner" viewBox="0 0 50 50">
+                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                        </svg>
+                        <svg class="checkmark" style="display:none" viewBox="0 0 52 52">
+                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    </div>
+                    <div class="step-text">
+                        <div class="step-title">Zebra CV60 Initialization</div>
+                        <div class="step-status">Waiting...</div>
+                    </div>
+                </div>
+
+                <div class="init-step" id="step-streaming">
+                    <div class="step-icon">
+                        <svg class="spinner" viewBox="0 0 50 50">
+                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                        </svg>
+                        <svg class="checkmark" style="display:none" viewBox="0 0 52 52">
+                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    </div>
+                    <div class="step-text">
+                        <div class="step-title">Setting up Video Streaming</div>
+                        <div class="step-status">Waiting...</div>
+                    </div>
+                </div>
+
+                <div class="init-step" id="step-system">
+                    <div class="step-icon">
+                        <svg class="spinner" viewBox="0 0 50 50">
+                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                        </svg>
+                        <svg class="checkmark" style="display:none" viewBox="0 0 52 52">
+                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    </div>
+                    <div class="step-text">
+                        <div class="step-title">Warming up the System</div>
+                        <div class="step-status">Waiting...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="init-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="initProgress"></div>
+                </div>
+                <div class="progress-text" id="initProgressText">0% Complete</div>
+            </div>
+
+            <div class="init-error" id="initError" style="display:none">
+                <div class="error-message"></div>
+                <button class="retry-btn" onclick="retryInitialization()">Retry</button>
+            </div>
+        </div>
     </div>
-    <script>
-        // Fallback redirect
-        setTimeout(function() {
-            window.location.href = 'index-professional.html';
-        }, 100);
-    </script>
+
+    <!-- Main Application (hidden initially) -->
+    <div id="mainApp" class="main-app" style="display:none">
+    <!-- Professional Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-section">
+                <div class="company-branding">
+                    <img src="assets/denali_logo.svg" alt="Denali" class="company-logo">
+                </div>
+            </div>
+            <h1 class="app-title">RELO Classifier</h1>
+            <div class="header-status">
+                <div class="status-indicator" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Disconnected</span>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+
+    <!-- Main Application Container -->
+    <main class="app-container">
+
+        <!-- Main Layout Container -->
+        <div class="top-panels">
+            <!-- Left Panel: Camera Feed (40% width) -->
+            <section class="camera-panel">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Live Camera Feed</h3>
+                        <div class="camera-status" id="cameraStatus">
+                            <span class="status-dot active"></span>
+                            <span>Ready</span>
+                        </div>
+                    </div>
+                    <!-- Camera Controls -->
+                    <div class="camera-controls">
+                        <div class="control-group">
+                            <div class="mode-toggle">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="modeToggle" checked>
+                                    <span class="toggle-slider">
+                                        <span class="toggle-label auto">Auto</span>
+                                        <span class="toggle-label manual">Manual</span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="control-buttons">
+                            <button id="startBtn" class="btn btn-primary" data-tooltip="Start classification process">
+                                <span class="btn-icon">▶</span>
+                                <span class="btn-text">Start</span>
+                            </button>
+                            <button id="pauseResumeBtn" class="btn btn-warning auto-only" disabled data-tooltip="Pause agent processing">
+                                <span class="btn-icon">⏸</span>
+                                <span class="btn-text">Pause</span>
+                            </button>
+                            <button id="stopBtn" class="btn btn-danger" disabled data-tooltip="Stop classification process">
+                                <span class="btn-icon">⏹</span>
+                                <span class="btn-text">Stop</span>
+                            </button>
+                            <!-- Manual mode buttons -->
+                            <button id="prevBtn" class="btn btn-secondary manual-only" style="display:none" disabled data-tooltip="Go to previous agent">
+                                <span class="btn-icon">◀</span>
+                                <span class="btn-text">Prev</span>
+                            </button>
+                            <button id="nextBtn" class="btn btn-secondary manual-only" style="display:none" disabled data-tooltip="Go to next agent">
+                                <span class="btn-icon">▶</span>
+                                <span class="btn-text">Next</span>
+                            </button>
+                            <button id="redoBtn" class="btn btn-secondary manual-only" style="display:none" disabled data-tooltip="Redo current agent">
+                                <span class="btn-icon">↻</span>
+                                <span class="btn-text">Redo</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="video-container">
+                        <video id="videoPreview" autoplay playsinline muted></video>
+                        <div class="video-overlay" id="videoOverlay">
+                            <div class="overlay-content">
+                                <span class="overlay-icon">📹</span>
+                                <p>Camera feed will appear here</p>
+                                <p class="overlay-hint">Click "Start Classification" to begin</p>
+                            </div>
+                        </div>
+                        <!-- FPS Overlay -->
+                        <div class="fps-overlay" id="fpsOverlay">
+                            <span id="fpsDisplay">0 FPS</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel Container (60% width) -->
+            <div class="right-panel-container">
+                <!-- Top Right Section (40% height): Progressive Updates + Pipeline -->
+                <div class="top-right-section">
+                    <!-- Progressive Updates Panel -->
+                    <div class="progressive-updates-panel">
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h3 class="panel-title">Live Attributes</h3>
+                            </div>
+                            <!-- Progressive Attributes Display -->
+                            <div class="progressive-attributes-grid">
+                                <div class="attribute-item">
+                            <span class="attribute-label">Type:</span>
+                            <span class="attribute-value" id="prog-type">-</span>
+                        </div>
+                                <div class="attribute-item">
+                            <span class="attribute-label">Color:</span>
+                            <span class="attribute-value" id="prog-color">-</span>
+                        </div>
+                                <div class="attribute-item">
+                            <span class="attribute-label">Pattern:</span>
+                            <span class="attribute-value" id="prog-pattern">-</span>
+                        </div>
+                                <div class="attribute-item">
+                            <span class="attribute-label">Brand:</span>
+                            <span class="attribute-value" id="prog-brand">-</span>
+                        </div>
+                                <div class="attribute-item">
+                            <span class="attribute-label">Size:</span>
+                            <span class="attribute-value" id="prog-size">-</span>
+                        </div>
+                                <div class="attribute-item">
+                            <span class="attribute-label">Neckline:</span>
+                            <span class="attribute-value" id="prog-neckline">-</span>
+                        </div>
+                                <div class="attribute-item">
+                            <span class="attribute-label">Sleeve:</span>
+                            <span class="attribute-value" id="prog-sleeve">-</span>
+                        </div>
+                                <div class="attribute-item">
+                            <span class="attribute-label">Closure:</span>
+                            <span class="attribute-value" id="prog-closure">-</span>
+                        </div>
+                                <div class="attribute-item attribute-item-full">
+                            <span class="attribute-label">Defect:</span>
+                            <span class="attribute-value" id="prog-damage-type">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Node Graph and Instructions Panel -->
+                    <div class="node-instructions-panel">
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h3 class="panel-title">Analysis Pipeline</h3>
+                                <span class="update-counter" id="updateCounter">0 inferences</span>
+                            </div>
+                        </div>
+                        <!-- Pipeline Wrapper Container -->
+                        <div class="pipeline-wrapper">
+                            <!-- Horizontal Pipeline Status -->
+                            <div class="horizontal-pipeline">
+                                <div class="pipeline-node idle" id="node-initial" data-agent="initial_classifier">
+                                        <div class="node-circle">
+                                            <div class="node-dot"></div>
+                                        </div>
+                                        <div class="node-info">
+                                            <div class="node-label">Initial</div>
+                                            <div class="node-timer" id="initial-timer">0s/4s</div>
+                                        </div>
+                                    </div>
+                                    <div class="pipeline-connector"></div>
+                                    <div class="pipeline-node idle" id="node-detail" data-agent="detail_extractor">
+                                        <div class="node-circle">
+                                            <div class="node-dot"></div>
+                                        </div>
+                                        <div class="node-info">
+                                            <div class="node-label">Details</div>
+                                            <div class="node-timer" id="detail-timer">0s/3s</div>
+                                        </div>
+                                    </div>
+                                    <div class="pipeline-connector"></div>
+                                    <div class="pipeline-node idle" id="node-damage" data-agent="damage_detector">
+                                        <div class="node-circle">
+                                            <div class="node-dot"></div>
+                                        </div>
+                                        <div class="node-info">
+                                            <div class="node-label">Damage</div>
+                                            <div class="node-timer" id="damage-timer">0s/4s</div>
+                                        </div>
+                                    </div>
+                                </div>
+                        </div>
+                        <!-- Progressive Instructions -->
+                        <div class="instructions-wrapper">
+                            <div class="node-descriptions" id="instructionsContainer">
+                                <div class="description-header">
+                                    <span class="mode-indicator" id="modeIndicator">AUTO</span>
+                                    <span class="action-hint" id="actionHint">Processing</span>
+                                </div>
+                                <div class="description-current" id="currentDescription">Lay the garment flat on a surface, ensuring the entire piece is clearly visible in the frame.</div>
+                                <div class="description-next" id="nextDescription">Capture a clear image of the garment's brand and size tag for verification.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Right Section (60% height): Table Container -->
+                <div class="bottom-right-section">
+                    <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">Final Classification Results</h3>
+                    <div class="export-controls">
+                        <button class="btn-small btn-export" id="exportAllBtn" disabled title="Export all results">
+                            Export All
+                        </button>
+                        <button class="btn-small btn-export" id="exportSelectedBtn" disabled title="Export selected rows">
+                            Export Selected
+                        </button>
+                        <button class="btn-small btn-delete" id="deleteSelectedBtn" disabled title="Delete selected rows (Delete key)">
+                            🗑 Delete
+                        </button>
+                        <span class="selection-counter" id="selectionCounter" style="display:none;">0 selected</span>
+                    </div>
+                </div>
+                <div class="results-table-container-scrollable">
+                    <div class="table-wrapper">
+                        <table class="classification-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%" class="select-all-header" id="selectAllHeader" title="Click to select/deselect all">#</th>
+                                    <th style="width: 9%">Type</th>
+                                    <th style="width: 7%">Color</th>
+                                    <th style="width: 7%">Pattern</th>
+                                    <th style="width: 9%">Brand</th>
+                                    <th style="width: 6%">Size</th>
+                                    <th style="width: 8%">Neckline</th>
+                                    <th style="width: 8%">Sleeve</th>
+                                    <th style="width: 8%">Closure</th>
+                                    <th style="width: 8%">Damaged</th>
+                                    <th style="width: 10%">Defect</th>
+                                    <th style="width: 7%">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTableBody">
+                                <tr class="empty-row">
+                                    <td colspan="12">No classification results available</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions section removed - using progressive instructions in main UI -->
+        <!-- <section class="instructions-section" style="display:none;">
+            <div class="instructions-container" id="instructionsContainer">
+                <div class="instructions-header">
+                    <h3>RELO Classifier User Guide</h3>
+                </div>
+                <div class="instructions-content">
+                    <div class="instruction-group">
+                        <h4>Operation Modes</h4>
+                        <div class="instruction-item">
+                            <strong>Automatic Mode:</strong> Ideal for high-volume processing. System continuously analyzes garments with minimal operator intervention, maximizing throughput for busy return periods.
+                        </div>
+                        <div class="instruction-item">
+                            <strong>Manual Mode:</strong> Perfect for quality control and training. Operators can step through each analysis stage, review results, and ensure accuracy for high-value items or disputed returns.
+                        </div>
+                    </div>
+
+                    <div class="instruction-group">
+                        <h4>Control Panel</h4>
+                        <div class="instruction-item">
+                            <strong>Start:</strong> Begin classification process. Camera activates and analysis pipeline starts processing garments placed in view.
+                        </div>
+                        <div class="instruction-item">
+                            <strong>Pause/Resume:</strong> Temporarily halt processing while maintaining current session state. Useful for handling customer inquiries or equipment adjustments.
+                        </div>
+                        <div class="instruction-item">
+                            <strong>Stop:</strong> End current session and finalize all results. Use when switching operators or completing a batch of returns.
+                        </div>
+                    </div>
+
+                    <div class="instruction-group">
+                        <h4>Analysis Pipeline</h4>
+                        <div class="instruction-item">
+                            <strong>Initial Analysis:</strong> Identifies garment type, color, pattern, and basic features. Forms foundation for return eligibility assessment.
+                        </div>
+                        <div class="instruction-item">
+                            <strong>Detail Extraction:</strong> Reads brand labels and size tags for verification against customer claims and inventory records.
+                        </div>
+                        <div class="instruction-item">
+                            <strong>Damage Detection:</strong> Inspects for wear, stains, or defects that could affect resale value or return policy compliance.
+                        </div>
+                    </div>
+
+                    <div class="instruction-group">
+                        <h4>Results Management</h4>
+                        <div class="instruction-item">
+                            <strong>Classification Table:</strong> Real-time results display with newest items at top. Each row represents one processed garment with complete attribute analysis.
+                        </div>
+                        <div class="instruction-item">
+                            <strong>Export Functions:</strong> Generate CSV reports for inventory systems or JSON data for integration with existing retail management platforms.
+                        </div>
+                    </div>
+
+                    <div class="instruction-group">
+                        <h4>Best Practices</h4>
+                        <div class="instruction-item">
+                            Use Manual Mode when training new staff, handling premium items, or when return policies require human verification. Automatic Mode maximizes efficiency during peak return periods while maintaining consistent analysis standards.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section> -->
+
+    </main>
+
+    </div> <!-- End of mainApp -->
+
+    <!-- Scripts -->
+    <!-- Load configuration -->
+    <script src="src/config/agents.js"></script>
+    
+    <!-- Load services first -->
+    <script src="src/services/webrtc-client.js"></script>
+    <script src="src/services/session-manager.js"></script>
+    
+    <!-- Load original components for compatibility -->
+    <!-- Custom Confirmation Modal -->
+    <div class="modal-backdrop" id="confirmDeleteModal" style="display:none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <span class="modal-title">Confirm Deletion</span>
+            </div>
+            <div class="modal-body" id="confirmDeleteMessage">
+                Are you sure you want to delete the selected rows?
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-cancel" id="modalCancelBtn">Cancel</button>
+                <button class="btn-modal btn-confirm" id="modalConfirmBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="src/components/stream-viewer.js"></script>
+    <script src="src/components/status-monitor.js"></script>
+    <script src="src/components/agent-monitor.js"></script>
+    <script src="src/components/video-display.js"></script>
+
+    <!-- Load professional components -->
+    <script src="src/components/csv-exporter.js"></script>
+    <script src="src/components/progress-monitor.js"></script>
+    <script src="src/components/results-display-professional.js"></script>
+    
+    <!-- Load main app controller -->
+    <script src="src/app-professional.js"></script>
+    
+    <!-- Load initialization manager last (it starts the process) -->
+    <script src="src/services/initialization-manager.js"></script>
 </body>
 </html>
