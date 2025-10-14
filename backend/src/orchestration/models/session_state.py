@@ -34,7 +34,7 @@ class SessionState:
     
     # Agent tracking
     agents_sequence: List[str] = field(default_factory=lambda: [
-        "initial_classifier", "detail_extractor", "damage_detector", "final_compiler"
+        "barcode_detector", "initial_classifier", "detail_extractor", "damage_detector", "final_compiler"
     ])
     current_agent_index: int = 0  # Index in sequence (0-based)
     agents_completed: List[str] = field(default_factory=list)

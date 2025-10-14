@@ -43,7 +43,15 @@ class AgentState:
 
     # Context storage for context-aware inference
     inference_contexts: List[Dict[str, Any]] = field(default_factory=list)  # Stores frame+result pairs for context
-    
+
+    # Barcode detection fields (for barcode_detector agent)
+    barcode_data: Optional[str] = None  # Decoded barcode string
+    barcode_type: Optional[str] = None  # Barcode type (CODE128, QRCODE, etc.)
+    barcode_confidence: Optional[float] = None  # Detection confidence
+    barcode_timestamp: Optional[float] = None  # Unix timestamp when detected
+    barcode_detection_time_ms: Optional[float] = None  # Total detection time
+    barcode_manually_entered: bool = False  # True if manually entered
+
     # Error tracking
     error_message: Optional[str] = None  # Error message if status is ERROR
     
@@ -52,6 +60,14 @@ class AgentState:
     updated_at: datetime = field(default_factory=datetime.now)
     checkpointed_at: Optional[datetime] = None
     
+    @property
+    def timer_elapsed(self) -> float:
+        """Calculate elapsed time since timer started"""
+        from time import time
+        if self.timer_started_at:
+            return time() - self.timer_started_at
+        return 0.0
+
     def start_timer(self) -> None:
         """Start the agent's timer"""
         from time import time
@@ -59,7 +75,7 @@ class AgentState:
         self.timer_remaining = self.timer_seconds
         self.status = AgentStatus.RUNNING
         self.updated_at = datetime.now()
-    
+
     def update_timer(self) -> None:
         """Update remaining time on timer"""
         if self.timer_started_at and self.status == AgentStatus.RUNNING:
@@ -142,6 +158,13 @@ class AgentState:
         self.finalized_attributes.clear()
         self.aggregation_method = ""
         self.inference_contexts.clear()  # Clear context on reset
+        # Clear barcode fields
+        self.barcode_data = None
+        self.barcode_type = None
+        self.barcode_confidence = None
+        self.barcode_timestamp = None
+        self.barcode_detection_time_ms = None
+        self.barcode_manually_entered = False
         self.updated_at = datetime.now()
     
     def to_dict(self) -> Dict[str, Any]:
@@ -157,6 +180,12 @@ class AgentState:
             "frames_collected": self.frames_collected,
             "finalized_attributes": self.finalized_attributes,
             "aggregation_method": self.aggregation_method,
+            "barcode_data": self.barcode_data,
+            "barcode_type": self.barcode_type,
+            "barcode_confidence": self.barcode_confidence,
+            "barcode_timestamp": self.barcode_timestamp,
+            "barcode_detection_time_ms": self.barcode_detection_time_ms,
+            "barcode_manually_entered": self.barcode_manually_entered,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             "checkpointed_at": self.checkpointed_at.isoformat() if self.checkpointed_at else None
@@ -176,13 +205,19 @@ class AgentState:
             frames_collected=data.get("frames_collected", []),
             finalized_attributes=data.get("finalized_attributes", {}),
             aggregation_method=data.get("aggregation_method", ""),
+            barcode_data=data.get("barcode_data"),
+            barcode_type=data.get("barcode_type"),
+            barcode_confidence=data.get("barcode_confidence"),
+            barcode_timestamp=data.get("barcode_timestamp"),
+            barcode_detection_time_ms=data.get("barcode_detection_time_ms"),
+            barcode_manually_entered=data.get("barcode_manually_entered", False),
         )
-        
+
         if data.get("created_at"):
             state.created_at = datetime.fromisoformat(data["created_at"])
         if data.get("updated_at"):
             state.updated_at = datetime.fromisoformat(data["updated_at"])
         if data.get("checkpointed_at"):
             state.checkpointed_at = datetime.fromisoformat(data["checkpointed_at"])
-        
+
         return state

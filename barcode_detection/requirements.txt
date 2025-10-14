@@ -1,0 +1,28 @@
+# Core dependencies
+opencv-python==4.8.1.78
+numpy>=1.24.0
+Pillow>=10.0.0
+python-dotenv>=1.0.0
+
+# Camera support
+depthai==2.24.0.0  # OAK-D camera support (PoE compatible version)
+scipy>=1.10.0  # Required for CV60 camera module
+
+# Library fallbacks
+pyzbar>=0.1.9
+zxing-cpp>=2.2.0
+
+# Development dependencies
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-benchmark>=4.0.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.5.0
+
+# Logging and monitoring
+loguru>=0.7.0
+
+# Performance profiling
+line-profiler>=4.0.0
+memory-profiler>=0.61.0

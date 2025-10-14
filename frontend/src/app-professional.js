@@ -10,11 +10,17 @@ class ProfessionalApplicationController {
         this.streamViewer = new StreamViewer();
         this.resultsDisplay = new ResultsDisplayProfessional();
         this.progressMonitor = new ProgressMonitor();
-        
+        this.barcodeConfig = new BarcodeConfig();
+        this.barcodeManualEntryModal = new BarcodeManualEntryModal();
+        this.barcodeRetryButton = new BarcodeRetryButton();
+
         // Store globally for access
         window.streamViewer = this.streamViewer;
         window.resultsDisplay = this.resultsDisplay;
         window.progressMonitor = this.progressMonitor;
+        window.barcodeConfig = this.barcodeConfig;
+        window.barcodeManualEntryModal = this.barcodeManualEntryModal;
+        window.barcodeRetryButton = this.barcodeRetryButton;
         
         this.sessionId = null;
         this.monitoringActive = false;
@@ -34,6 +40,8 @@ class ProfessionalApplicationController {
         // Agent timers and states
         this.agentTimers = {};
         this.agentStates = {
+            'barcode_detector': 'inactive',
+            'barcode': 'inactive',
             'initial_classifier': 'inactive',
             'detail_extractor': 'inactive',
             'damage_detector': 'inactive',
@@ -698,6 +706,12 @@ class ProfessionalApplicationController {
             case 'agent_completed':
                 this.handleAgentCompleted(data);
                 break;
+            case 'barcode_progress':
+                this.handleBarcodeProgress(data);
+                break;
+            case 'barcode_completed':
+                this.handleBarcodeCompleted(data);
+                break;
             case 'final_results':
                 this.handleFinalResults(data);
                 break;
@@ -752,6 +766,8 @@ class ProfessionalApplicationController {
             
             // Reset all agent states to inactive (not empty)
             this.agentStates = {
+                'barcode_detector': 'inactive',
+                'barcode': 'inactive',
                 'initial_classifier': 'inactive',
                 'detail_extractor': 'inactive',
                 'damage_detector': 'inactive',
@@ -762,7 +778,7 @@ class ProfessionalApplicationController {
             this.previousAgentStates = {};
             
             // Reset all timers
-            ['initial', 'detail', 'damage'].forEach(agent => {
+            ['barcode', 'initial', 'detail', 'damage'].forEach(agent => {
                 this.resetAgentTimer(agent);
             });
             
@@ -941,8 +957,9 @@ class ProfessionalApplicationController {
 
         // Don't stop active agent timers - let them complete
         // Only stop idle agent timers
-        ['initial', 'detail', 'damage'].forEach(agent => {
-            const fullAgentName = agent === 'initial' ? 'initial_classifier' :
+        ['barcode', 'initial', 'detail', 'damage'].forEach(agent => {
+            const fullAgentName = agent === 'barcode' ? 'barcode_detector' :
+                                 agent === 'initial' ? 'initial_classifier' :
                                  agent === 'detail' ? 'detail_extractor' :
                                  'damage_detector';
 
@@ -955,7 +972,7 @@ class ProfessionalApplicationController {
         });
 
         // Reset only inactive agent states
-        ['initial_classifier', 'detail_extractor', 'damage_detector', 'initial', 'detail', 'damage'].forEach(agent => {
+        ['barcode_detector', 'barcode', 'initial_classifier', 'detail_extractor', 'damage_detector', 'initial', 'detail', 'damage'].forEach(agent => {
             if (this.agentStates[agent] !== 'processing') {
                 this.agentStates[agent] = 'inactive';
             }
@@ -1594,6 +1611,146 @@ class ProfessionalApplicationController {
     }
 
     /**
+     * Handle barcode detection progress
+     */
+    handleBarcodeProgress(data) {
+        console.log('[Professional App] Barcode progress:', data);
+
+        const { status, barcode_data, barcode_type, elapsed_time } = data;
+
+        // Map backend status to standard state names
+        let standardState = 'idle';
+        if (status === 'searching') {
+            standardState = 'processing';
+        } else if (status === 'detected') {
+            standardState = 'completed';
+        } else if (status === 'skipped' || status === 'manual_entry' || status === 'error') {
+            standardState = status; // Keep custom states for these
+        }
+
+        // Update barcode node state
+        const barcodeNode = document.getElementById('node-barcode');
+        if (barcodeNode) {
+            // Remove all state classes
+            barcodeNode.classList.remove('idle', 'processing', 'completed', 'searching', 'detected', 'skipped', 'manual_entry', 'error');
+
+            // Add standard state
+            barcodeNode.classList.add(standardState);
+
+            // Update timer
+            const timerEl = barcodeNode.querySelector('.node-timer');
+            if (timerEl && elapsed_time !== undefined) {
+                timerEl.textContent = `${Math.round(elapsed_time)}s`;
+            }
+        }
+
+        // Update video container for visual feedback
+        const videoContainer = document.getElementById('videoContainer');
+        if (videoContainer) {
+            videoContainer.classList.remove('barcode-searching', 'barcode-detected');
+
+            if (status === 'searching') {
+                videoContainer.classList.add('barcode-searching');
+            }
+        }
+
+        // Update barcode status indicator
+        const statusIndicator = document.getElementById('barcodeStatusIndicator');
+        const statusText = statusIndicator?.querySelector('.status-text');
+
+        if (statusText) {
+            if (status === 'searching') {
+                statusText.textContent = 'Searching for barcode...';
+            } else if (status === 'detected') {
+                statusText.textContent = `Barcode detected: ${barcode_data}`;
+            }
+        }
+
+        // Update progressive attributes
+        if (barcode_data) {
+            this.updateProgressiveAttributes({ barcode: barcode_data });
+        }
+    }
+
+    /**
+     * Handle barcode detection completion
+     */
+    handleBarcodeCompleted(data) {
+        console.log('[Professional App] Barcode completed:', data);
+
+        const { barcode_data, barcode_type, status, manually_entered, validation, elapsed_time } = data;
+
+        // Map backend status to standard state names
+        let standardState = 'completed';
+        if (status === 'skipped') {
+            standardState = 'idle';
+        } else if (status === 'error') {
+            standardState = 'error';
+        }
+
+        // Update barcode node to completed state
+        const barcodeNode = document.getElementById('node-barcode');
+        if (barcodeNode) {
+            barcodeNode.classList.remove('idle', 'processing', 'completed', 'searching', 'detected', 'skipped', 'manual_entry', 'error');
+
+            // Add standard state
+            barcodeNode.classList.add(standardState);
+
+            // Also add custom state for visual variety
+            if (status === 'manual_entry') {
+                barcodeNode.classList.add('manual_entry');
+            } else if (status === 'skipped') {
+                barcodeNode.classList.add('skipped');
+            }
+
+            // Update timer
+            const timerEl = barcodeNode.querySelector('.node-timer');
+            if (timerEl && elapsed_time !== undefined) {
+                timerEl.textContent = `${Math.round(elapsed_time)}s`;
+            }
+        }
+
+        // Update video container - add green border if detected
+        const videoContainer = document.getElementById('videoContainer');
+        if (videoContainer) {
+            videoContainer.classList.remove('barcode-searching');
+
+            if (status === 'detected' || status === 'manual_entry') {
+                videoContainer.classList.add('barcode-detected');
+
+                // Remove after 2 seconds
+                setTimeout(() => {
+                    videoContainer.classList.remove('barcode-detected');
+                }, 2000);
+            }
+        }
+
+        // Update progressive results barcode field
+        const progBarcode = document.getElementById('prog-barcode');
+        if (progBarcode) {
+            if (barcode_data) {
+                progBarcode.textContent = barcode_data;
+                progBarcode.setAttribute('data-status', status);
+            } else {
+                progBarcode.textContent = status === 'skipped' ? 'Skipped' : '-';
+                progBarcode.setAttribute('data-status', 'skipped');
+            }
+        }
+
+        // Update results table barcode cell
+        this.updateResultsTablePartial('barcode_detector', {
+            barcode_data,
+            barcode_type,
+            barcode_manually_entered: manually_entered
+        });
+
+        // Hide retry button if shown
+        if (this.barcodeRetryButton) {
+            this.barcodeRetryButton.hide();
+        }
+    }
+
+    /**
      * Handle final results
      */
     handleFinalResults(data) {
@@ -1956,18 +2113,21 @@ class ProfessionalApplicationController {
      */
     startAgentTimer(agent) {
         const agentMap = {
+            'barcode_detector': 'barcode',
             'initial_classifier': 'initial',
             'detail_extractor': 'detail',
             'damage_detector': 'damage',
             'final_compiler': 'final',
+            'barcode': 'barcode',
             'initial': 'initial',
             'detail': 'detail',
             'damage': 'damage',
             'final': 'final'
         };
-        
+
         const agentKey = agentMap[agent] || agent;
         const maxTimes = {
+            'barcode': 10.0,
             'initial': 4.0,
             'detail': 3.0,
             'damage': 4.0,
@@ -1998,16 +2158,18 @@ class ProfessionalApplicationController {
      */
     stopAgentTimer(agent) {
         const agentMap = {
+            'barcode_detector': 'barcode',
             'initial_classifier': 'initial',
             'detail_extractor': 'detail',
             'damage_detector': 'damage',
             'final_compiler': 'final',
+            'barcode': 'barcode',
             'initial': 'initial',
             'detail': 'detail',
             'damage': 'damage',
             'final': 'final'
         };
-        
+
         const agentKey = agentMap[agent] || agent;
         
         if (this.agentTimers[agentKey]) {
@@ -2021,18 +2183,21 @@ class ProfessionalApplicationController {
      */
     resetAgentTimer(agent) {
         const agentMap = {
+            'barcode_detector': 'barcode',
             'initial_classifier': 'initial',
             'detail_extractor': 'detail',
             'damage_detector': 'damage',
             'final_compiler': 'final',
+            'barcode': 'barcode',
             'initial': 'initial',
             'detail': 'detail',
             'damage': 'damage',
             'final': 'final'
         };
-        
+
         const agentKey = agentMap[agent] || agent;
         const maxTimes = {
+            'barcode': 10.0,
             'initial': 4.0,
             'detail': 3.0,
             'damage': 4.0,
@@ -2171,6 +2336,7 @@ class ProfessionalApplicationController {
         row.setAttribute('data-metadata', JSON.stringify(metadata));
         row.innerHTML = `
             <td class="selectable-cell" data-value="${this.currentRowIndex}" data-row-id="${this.currentRowIndex}">${this.currentRowIndex}</td>
+            <td class="barcode-cell" data-value="N/A">-</td>
             <td data-value="N/A">-</td>
             <td data-value="N/A">-</td>
             <td data-value="N/A">-</td>
@@ -2222,26 +2388,46 @@ class ProfessionalApplicationController {
         };
         
         // Map agent to the attributes they provide (using normalized keys)
-        if (agent === 'initial_classifier' || agent === 'initial') {
+        if (agent === 'barcode_detector' || agent === 'barcode') {
+            // Barcode agent handles: barcode_data
+            if (attributes.barcode_data !== undefined) {
+                const barcodeCell = cells[1];
+                const barcodeType = attributes.barcode_type || 'UNKNOWN';
+                const isManual = attributes.barcode_manually_entered || false;
+
+                if (attributes.barcode_data) {
+                    barcodeCell.innerHTML = `
+                        <div class="barcode-value" data-manual="${isManual}" data-skipped="false">
+                            <span>${attributes.barcode_data}</span>
+                            <span class="barcode-type-badge">${barcodeType}</span>
+                        </div>
+                    `;
+                    barcodeCell.setAttribute('data-value', attributes.barcode_data);
+                } else {
+                    barcodeCell.innerHTML = '<span class="no-barcode">No Barcode</span>';
+                    barcodeCell.setAttribute('data-value', 'N/A');
+                }
+            }
+        } else if (agent === 'initial_classifier' || agent === 'initial') {
             // Initial agent handles: type, color, pattern, neckline, sleeve, closure
-            if (attributes.item_type !== undefined) setCell(1, attributes.item_type);
-            if (attributes.color !== undefined) setCell(2, attributes.color);
-            if (attributes.pattern !== undefined) setCell(3, attributes.pattern);
-            if (attributes.neckline !== undefined) setCell(6, attributes.neckline);
-            if (attributes.sleeve_type !== undefined) setCell(7, attributes.sleeve_type);
-            if (attributes.closure_type !== undefined) setCell(8, attributes.closure_type);
+            if (attributes.item_type !== undefined) setCell(2, attributes.item_type);
+            if (attributes.color !== undefined) setCell(3, attributes.color);
+            if (attributes.pattern !== undefined) setCell(4, attributes.pattern);
+            if (attributes.neckline !== undefined) setCell(7, attributes.neckline);
+            if (attributes.sleeve_type !== undefined) setCell(8, attributes.sleeve_type);
+            if (attributes.closure_type !== undefined) setCell(9, attributes.closure_type);
         } else if (agent === 'detail_extractor' || agent === 'detail') {
             // Detail agent handles: brand and size only
-            if (attributes.brand !== undefined) setCell(4, attributes.brand);
-            if (attributes.size !== undefined) setCell(5, attributes.size);
+            if (attributes.brand !== undefined) setCell(5, attributes.brand);
+            if (attributes.size !== undefined) setCell(6, attributes.size);
         } else if (agent === 'damage_detector' || agent === 'damage') {
             // Damage agent handles: is_damaged and damage_type
             if (attributes.is_damaged !== undefined) {
                 const damageValue = attributes.is_damaged ? 'Yes' : 'No';
-                cells[9].textContent = damageValue;
-                cells[9].setAttribute('data-value', damageValue);
+                cells[10].textContent = damageValue;
+                cells[10].setAttribute('data-value', damageValue);
             }
-            if (attributes.damage_type !== undefined) setCell(10, attributes.damage_type);
+            if (attributes.damage_type !== undefined) setCell(11, attributes.damage_type);
         }
     }
     
@@ -2273,8 +2459,8 @@ class ProfessionalApplicationController {
         const currentRow = document.getElementById('current-classification-row');
         if (currentRow) {
             const cells = currentRow.getElementsByTagName('td');
-            if (cells.length > 11) {
-                cells[11].textContent = timestampWithDuration;
+            if (cells.length > 12) {
+                cells[12].textContent = timestampWithDuration;
             }
 
             // Update row metadata with processing times
@@ -2747,9 +2933,9 @@ class ProfessionalApplicationController {
     forceResetAllNodes() {
         // Clear tracking FIRST to allow nodes to be reset
         this.completedAgentsInCycle.clear();
-        
+
         // Now reset all nodes to idle
-        ['initial', 'detail', 'damage'].forEach(nodeId => {
+        ['barcode', 'initial', 'detail', 'damage'].forEach(nodeId => {
             this.setPipelineNodeState(nodeId, 'idle');
         });
     }

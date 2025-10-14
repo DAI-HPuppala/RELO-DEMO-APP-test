@@ -26,6 +26,11 @@ python-dotenv==1.0.0
 uuid6==2023.5.2
 aiofiles==23.2.1  # For async file I/O
 
+# Barcode Detection
+pyzbar==0.1.9  # Barcode decoder
+zxing-cpp==2.2.0  # Additional barcode support
+scipy==1.11.4  # Scientific computing (for barcode detection)
+
 # Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1

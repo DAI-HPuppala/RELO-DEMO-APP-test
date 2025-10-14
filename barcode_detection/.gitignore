@@ -1,0 +1,113 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual Environments
+barcode-env/
+barcode-env-gpu/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pyvenv.cfg
+pip-selfcheck.json
+
+# Environment variables
+.env
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Generated outputs and cache
+cached_detections/
+captured_frames/
+test_captured_frames/
+output/
+logs/
+*.log
+
+# Test and benchmark files
+test_*.py
+test_*.png
+test_*.jpg
+benchmark_*.py
+benchmark_images/
+temp_*/
+screenshot_*/
+camera_captures/
+
+# Unused/fallback implementations
+cv60_qr_detector.py
+cv60_qr_robust.py
+cv60_shipping_label_detector.py
+scan_oakd_network.py
+analyze_captured_frames.py
+qr_detector_silent.py
+setup_and_run.sh
+
+# Example and test directories
+examples/
+tests/
+docs/
+config/
+
+# Image files (test data)
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.tiff
+*.tif
+
+# Keep specific images if needed (uncomment these lines if you need them)
+# !docs/images/*.png
+# !README_assets/*.png
+
+# Profiling
+*.prof
+*.lprof
+*.dat
+
+# Coverage
+.coverage*
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Jupyter
+.ipynb_checkpoints
+
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+*~
+
+# Compressed files
+*.zip
+*.tar.gz
+*.rar
+
+# Backup files
+*.bak
+*.backup
+*.orig

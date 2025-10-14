@@ -148,6 +148,40 @@
                                     </span>
                                 </label>
                             </div>
+
+                            <!-- Barcode Configuration -->
+                            <div class="barcode-config">
+                                <div class="barcode-header">
+                                    <span class="barcode-label">Barcode:</span>
+                                    <span class="status-badge enabled" id="barcodeStatusBadge">Enabled</span>
+                                    <button id="barcodeToggleBtn" class="btn-config" data-tooltip="Configure barcode types">
+                                        <span class="btn-icon">⚙</span>
+                                    </button>
+                                </div>
+
+                                <!-- Collapsible Config Panel -->
+                                <div class="barcode-config-panel" id="barcodeConfigPanel">
+                                    <div class="config-section">
+                                        <label class="config-label">Allowed Barcode Types:</label>
+                                        <div class="barcode-type-selector">
+                                            <div class="dropdown-trigger" id="barcodeTypeDropdown">
+                                                <div class="selected-types" id="selectedBarcodeTypes">
+                                                    <span class="selected-placeholder">Select types...</span>
+                                                </div>
+                                                <span class="dropdown-arrow">▼</span>
+                                            </div>
+                                            <div class="dropdown-list" id="barcodeTypeList">
+                                                <!-- Checkboxes will be dynamically populated -->
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="config-actions">
+                                        <button id="cancelBarcodeConfig" class="btn-config-action btn-cancel">Cancel</button>
+                                        <button id="applyBarcodeConfig" class="btn-config-action btn-apply">Apply</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="control-buttons">
                             <button id="startBtn" class="btn btn-primary" data-tooltip="Start classification process">
@@ -177,7 +211,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="video-container">
+                    <div class="video-container" id="videoContainer">
                         <video id="videoPreview" autoplay playsinline muted></video>
                         <div class="video-overlay" id="videoOverlay">
                             <div class="overlay-content">
@@ -185,6 +219,11 @@
                                 <p>Camera feed will appear here</p>
                                 <p class="overlay-hint">Click "Start Classification" to begin</p>
                             </div>
+                        </div>
+                        <!-- Barcode Status Indicator -->
+                        <div class="barcode-status-indicator" id="barcodeStatusIndicator">
+                            <span class="status-icon">🔍</span>
+                            <span class="status-text">Searching for barcode...</span>
                         </div>
                         <!-- FPS Overlay -->
                         <div class="fps-overlay" id="fpsOverlay">
@@ -206,6 +245,11 @@
                             </div>
                             <!-- Progressive Attributes Display -->
                             <div class="progressive-attributes-grid">
+                                <!-- Barcode Attribute -->
+                                <div class="attribute-item attribute-item-full">
+                                    <span class="attribute-label">Barcode:</span>
+                                    <span class="attribute-value" id="prog-barcode">-</span>
+                                </div>
                                 <div class="attribute-item">
                             <span class="attribute-label">Type:</span>
                             <span class="attribute-value" id="prog-type">-</span>
@@ -258,6 +302,17 @@
                         <div class="pipeline-wrapper">
                             <!-- Horizontal Pipeline Status -->
                             <div class="horizontal-pipeline">
+                                <!-- Barcode Detector Node -->
+                                <div class="pipeline-node idle" id="node-barcode" data-agent="barcode_detector">
+                                    <div class="node-circle">
+                                        <div class="node-dot"></div>
+                                    </div>
+                                    <div class="node-info">
+                                        <div class="node-label">Barcode</div>
+                                        <div class="node-timer" id="barcode-timer">--</div>
+                                    </div>
+                                </div>
+                                <div class="pipeline-connector"></div>
                                 <div class="pipeline-node idle" id="node-initial" data-agent="initial_classifier">
                                         <div class="node-circle">
                                             <div class="node-dot"></div>
@@ -326,23 +381,24 @@
                         <table class="classification-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 5%" class="select-all-header" id="selectAllHeader" title="Click to select/deselect all">#</th>
-                                    <th style="width: 9%">Type</th>
-                                    <th style="width: 7%">Color</th>
-                                    <th style="width: 7%">Pattern</th>
-                                    <th style="width: 9%">Brand</th>
-                                    <th style="width: 6%">Size</th>
-                                    <th style="width: 8%">Neckline</th>
-                                    <th style="width: 8%">Sleeve</th>
-                                    <th style="width: 8%">Closure</th>
-                                    <th style="width: 8%">Damaged</th>
+                                    <th style="width: 4%" class="select-all-header" id="selectAllHeader" title="Click to select/deselect all">#</th>
+                                    <th style="width: 9%">Barcode</th>
+                                    <th style="width: 8%">Type</th>
+                                    <th style="width: 6%">Color</th>
+                                    <th style="width: 6%">Pattern</th>
+                                    <th style="width: 8%">Brand</th>
+                                    <th style="width: 5%">Size</th>
+                                    <th style="width: 7%">Neckline</th>
+                                    <th style="width: 7%">Sleeve</th>
+                                    <th style="width: 7%">Closure</th>
+                                    <th style="width: 7%">Damaged</th>
                                     <th style="width: 10%">Defect</th>
-                                    <th style="width: 7%">Time</th>
+                                    <th style="width: 6%">Time</th>
                                 </tr>
                             </thead>
                             <tbody id="resultsTableBody">
                                 <tr class="empty-row">
-                                    <td colspan="12">No classification results available</td>
+                                    <td colspan="13">No classification results available</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -449,6 +505,9 @@
     <script src="src/components/status-monitor.js"></script>
     <script src="src/components/agent-monitor.js"></script>
     <script src="src/components/video-display.js"></script>
+    <script src="src/components/barcode-config.js"></script>
+    <script src="src/components/barcode-manual-entry-modal.js"></script>
+    <script src="src/components/barcode-retry-button.js"></script>
 
     <!-- Load professional components -->
     <script src="src/components/csv-exporter.js"></script>

@@ -1,6 +1,7 @@
 """Main FastAPI application."""
 import os
 import sys
+import time
 from pathlib import Path
 from contextlib import asynccontextmanager
 import logging
@@ -13,7 +14,7 @@ load_dotenv()
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -97,7 +98,7 @@ async def lifespan(app: FastAPI):
         # Apply Ollama optimizations
         logger.info("⚡ Applying SOTA Ollama optimizations...")
         ollama_result = await optimize_ollama_at_startup()
-        
+
         if ollama_result.get("configuration", {}).get("status") == "success":
             logger.info("✅ Ollama optimized successfully")
             if ollama_result.get("flash_attention"):
@@ -107,7 +108,23 @@ async def lifespan(app: FastAPI):
                 logger.info(f"   - Average inference time: {avg_time:.2f}s")
         else:
             logger.warning("⚠️ Ollama optimization incomplete")
-        
+
+        # Initialize barcode detection service
+        logger.info("🔍 Initializing barcode detection service...")
+        from services.barcode_detection_service import get_barcode_service
+        barcode_service = get_barcode_service()
+        barcode_init_success = await barcode_service.initialize()
+
+        if barcode_init_success:
+            logger.info("✅ Barcode detection service initialized successfully")
+            stats = barcode_service.get_statistics()
+            logger.info(f"   - Allowed types: {', '.join(stats['allowed_types'])}")
+            logger.info(f"   - 2-stage detection enabled")
+        else:
+            logger.warning("⚠️ Barcode detection service failed to initialize")
+            logger.warning("   - Barcode detection will be unavailable")
+            logger.warning("   - Check pyzbar and libzbar0 installation")
+
         logger.info("All managers initialized successfully")
     except Exception as e:
         logger.error(f"Error initializing managers: {e}")
@@ -381,6 +398,254 @@ async def save_camera_preset(preset_name: str, description: str = ""):
         "success": success,
         "message": f"Preset '{preset_name}' saved" if success else "Failed to save preset"
     }
+
+# Barcode Detection endpoints
+@app.get("/api/barcode/config")
+async def get_barcode_config():
+    """Get current barcode detection configuration."""
+    from services.barcode_detection_service import get_barcode_service
+
+    try:
+        service = get_barcode_service()
+        stats = service.get_statistics()
+
+        return {
+            "enabled": os.getenv('BARCODE_ENABLED', 'true').lower() == 'true',
+            "required": os.getenv('BARCODE_REQUIRED', 'false').lower() == 'true',
+            "timeout_seconds": int(os.getenv('BARCODE_DETECTION_TIMEOUT', '0')),
+            "auto_delay_ms": int(os.getenv('BARCODE_AUTO_DELAY_MS', '1000')),
+            "allowed_types": service.allowed_types,
+            "supported_types": service.SUPPORTED_TYPES,
+            "initialized": stats['initialized'],
+            "save_frames": service.save_frames,
+            "statistics": {
+                "detection_count": stats['detection_count'],
+                "avg_presence_time_ms": stats['avg_presence_time_ms'],
+                "avg_decode_time_ms": stats['avg_decode_time_ms']
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting barcode config: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Failed to get barcode config: {str(e)}"}
+        )
+
+@app.post("/api/barcode/config")
+async def update_barcode_config(config: dict = Body(...)):
+    """
+    Update barcode detection configuration.
+
+    Args:
+        config: Configuration dictionary with optional keys:
+            - allowed_types: List of barcode types to detect (e.g., ['CODE128', 'QRCODE'])
+    """
+    from services.barcode_detection_service import get_barcode_service
+
+    try:
+        service = get_barcode_service()
+
+        # Update allowed types if provided
+        if 'allowed_types' in config:
+            allowed_types = config['allowed_types']
+            if not isinstance(allowed_types, list):
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "allowed_types must be a list"}
+                )
+
+            service.set_allowed_types(allowed_types)
+            logger.info(f"Updated barcode allowed types: {allowed_types}")
+
+        return {
+            "success": True,
+            "message": "Barcode configuration updated",
+            "config": {
+                "allowed_types": service.allowed_types,
+                "supported_types": service.SUPPORTED_TYPES
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error updating barcode config: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Failed to update barcode config: {str(e)}"}
+        )
+
+@app.post("/api/barcode/manual-entry")
+async def manual_barcode_entry(session_id: str, barcode_data: str):
+    """
+    Submit manually entered barcode data for current session.
+
+    Args:
+        session_id: Current session ID
+        barcode_data: Manually entered barcode string
+    """
+    from api.websocket import orchestrators
+
+    try:
+        if not barcode_data or not barcode_data.strip():
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Barcode data cannot be empty"}
+            )
+
+        # Get orchestrator for session
+        if session_id not in orchestrators:
+            return JSONResponse(
+                status_code=404,
+                content={"detail": f"Session {session_id} not found or not active"}
+            )
+
+        orchestrator = orchestrators[session_id]
+
+        # Find barcode agent in current session state
+        barcode_state = orchestrator.session_state.agent_states.get('barcode_detector')
+        if not barcode_state:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Barcode detector not active in current session"}
+            )
+
+        # Set manual entry on barcode state
+        barcode_state.barcode_data = barcode_data.strip()
+        barcode_state.barcode_type = "MANUAL"
+        barcode_state.barcode_manually_entered = True
+        barcode_state.barcode_timestamp = time.time()
+
+        logger.info(f"Manual barcode entry for session {session_id}: {barcode_data}")
+
+        return {
+            "success": True,
+            "message": "Manual barcode entry recorded",
+            "barcode_data": barcode_data.strip(),
+            "barcode_type": "MANUAL",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error processing manual barcode entry: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Failed to process manual entry: {str(e)}"}
+        )
+
+@app.post("/api/barcode/skip")
+async def skip_barcode_detection(session_id: str):
+    """
+    Skip barcode detection for current session/cycle.
+
+    Args:
+        session_id: Current session ID
+    """
+    from api.websocket import orchestrators
+
+    try:
+        # Get orchestrator for session
+        if session_id not in orchestrators:
+            return JSONResponse(
+                status_code=404,
+                content={"detail": f"Session {session_id} not found or not active"}
+            )
+
+        orchestrator = orchestrators[session_id]
+
+        # Find barcode agent in current session state
+        barcode_state = orchestrator.session_state.agent_states.get('barcode_detector')
+        if not barcode_state:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Barcode detector not active in current session"}
+            )
+
+        # Mark barcode as skipped
+        from orchestration.models.agent_state import AgentStatus
+        barcode_state.barcode_data = None
+        barcode_state.barcode_type = None
+        barcode_state.status = AgentStatus.COMPLETED
+
+        logger.info(f"Barcode detection skipped for session {session_id}")
+
+        return {
+            "success": True,
+            "message": "Barcode detection skipped",
+            "session_id": session_id,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error skipping barcode detection: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Failed to skip barcode: {str(e)}"}
+        )
+
+@app.post("/api/barcode/retry-init")
+async def retry_barcode_init():
+    """
+    Retry barcode detection service initialization.
+    Useful if the service failed to initialize at startup.
+    """
+    from services.barcode_detection_service import get_barcode_service
+
+    try:
+        service = get_barcode_service()
+
+        if service.is_initialized:
+            return {
+                "success": True,
+                "message": "Barcode service already initialized",
+                "already_initialized": True,
+                "timestamp": datetime.now().isoformat()
+            }
+
+        # Retry initialization
+        logger.info("Retrying barcode service initialization...")
+        success = await service.reinitialize()
+
+        if success:
+            logger.info("✅ Barcode service initialized successfully")
+            return {
+                "success": True,
+                "message": "Barcode service initialized successfully",
+                "config": {
+                    "allowed_types": service.allowed_types,
+                    "supported_types": service.SUPPORTED_TYPES
+                },
+                "timestamp": datetime.now().isoformat()
+            }
+        else:
+            logger.error("❌ Barcode service initialization failed")
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Barcode service initialization failed. Check logs for details."}
+            )
+    except Exception as e:
+        logger.error(f"Error retrying barcode initialization: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Failed to retry initialization: {str(e)}"}
+        )
+
+@app.get("/api/barcode/statistics")
+async def get_barcode_statistics():
+    """Get barcode detection statistics and performance metrics."""
+    from services.barcode_detection_service import get_barcode_service
+
+    try:
+        service = get_barcode_service()
+        stats = service.get_statistics()
+
+        return {
+            **stats,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting barcode statistics: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Failed to get statistics: {str(e)}"}
+        )
 
 # VLM Status endpoints
 @app.get("/api/vlm/status")

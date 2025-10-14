@@ -40,6 +40,7 @@ class StatefulOrchestrator:
         
         # Agent configurations
         self.agent_timers = {
+            "barcode_detector": 0,  # No timeout (continuous until detected), overridden by BARCODE_DETECTION_TIMEOUT env
             "initial_classifier": 4.0,
             "detail_extractor": 3.0,
             "damage_detector": 4.0,

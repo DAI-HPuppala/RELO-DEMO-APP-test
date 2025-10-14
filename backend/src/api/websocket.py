@@ -890,15 +890,16 @@ async def broadcast_to_session(session_id: str, message: Dict):
 async def translate_v2_to_v1_message(v2_msg: Dict) -> Dict:
     """Translate V2 stateful messages to V1 format for frontend compatibility"""
     msg_type = v2_msg.get("type")
-    
+
     # Map backend agent names to frontend short names
     agent_name_map = {
+        "barcode_detector": "barcode",
         "initial_classifier": "initial",
-        "detail_extractor": "detail", 
+        "detail_extractor": "detail",
         "damage_detector": "damage",
         "final_compiler": "final"
     }
-    
+
     # Get short agent name for frontend
     agent = v2_msg.get("agent", "")
     short_agent = agent_name_map.get(agent, agent)
@@ -914,8 +915,21 @@ async def translate_v2_to_v1_message(v2_msg: Dict) -> Dict:
         }
         
     elif msg_type == "inference_update":
-        # V2: {"type": "inference_update", "agent": "initial_classifier", "inference_num": 2, ...}  
+        # V2: {"type": "inference_update", "agent": "initial_classifier", "inference_num": 2, ...}
         # V1: {"type": "progress_update", "agent": "initial", "progress": {...}, ...}
+
+        # Special handling for barcode_detector progress
+        if agent == "barcode_detector":
+            return {
+                "type": "barcode_progress",
+                "agent": "barcode",
+                "session_id": v2_msg.get("session_id"),
+                "status": v2_msg.get("status", "searching"),  # "searching", "detected", "skipped"
+                "barcode_data": v2_msg.get("barcode_data"),
+                "barcode_type": v2_msg.get("barcode_type"),
+                "elapsed_time": v2_msg.get("elapsed_time", 0)
+            }
+
         return {
             "type": "progress_update",
             "agent": short_agent,  # Use short name for frontend
@@ -946,11 +960,27 @@ async def translate_v2_to_v1_message(v2_msg: Dict) -> Dict:
     elif msg_type == "agent_completed":
         # V2: {"type": "agent_completed", "agent": "initial_classifier", "results": {...}}
         # V1: {"type": "agent_completed", "agent": "initial", "results": {...}}
-        
+
+        # Special handling for barcode_detector completion
+        if agent == "barcode_detector":
+            raw_results = v2_msg.get("results", {})
+            return {
+                "type": "barcode_completed",
+                "agent": "barcode",
+                "session_id": v2_msg.get("session_id"),
+                "barcode_data": raw_results.get("barcode_data"),
+                "barcode_type": raw_results.get("barcode_type"),
+                "confidence": raw_results.get("confidence", 1.0),
+                "elapsed_time": raw_results.get("elapsed_time", 0),
+                "manually_entered": raw_results.get("manually_entered", False),
+                "status": raw_results.get("status", "detected"),  # "detected", "manual_entry", "skipped"
+                "validation": raw_results.get("validation", "passed")
+            }
+
         # Normalize results before sending to frontend
         raw_results = v2_msg.get("results", {})
         normalized_results = KeyNormalizer.normalize_agent_attributes(agent, raw_results)
-        
+
         return {
             "type": "agent_completed",
             "agent": short_agent,  # Use short name for frontend
@@ -1072,15 +1102,17 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
                 })
             
             # Initialize agents fresh for each cycle
+            from src.orchestration.agents.barcode_detector_v2 import BarcodeDetectorV2
             from src.orchestration.agents.initial_classifier_v2 import InitialClassifierV2
             from src.orchestration.agents.detail_extractor_v2 import DetailExtractorV2
             from src.orchestration.agents.damage_detector_v2 import DamageDetectorV2
             from src.orchestration.agents.final_compiler_v2 import FinalCompilerV2
-            
+
             agents = {
+                "barcode_detector": BarcodeDetectorV2(),
                 "initial_classifier": InitialClassifierV2(),
                 "detail_extractor": DetailExtractorV2(),
-                "damage_detector": DamageDetectorV2(), 
+                "damage_detector": DamageDetectorV2(),
                 "final_compiler": FinalCompilerV2()
             }
             
@@ -1092,11 +1124,19 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
                     agent.set_frame_provider(orchestrator.frame_provider)
                 if hasattr(agent, 'set_inference_engine'):
                     agent.set_inference_engine(orchestrator.inference_engine)
-            
+
+            # Initialize all agents (critical for barcode agent)
+            for agent_name, agent in agents.items():
+                if hasattr(agent, 'initialize'):
+                    init_success = await agent.initialize()
+                    if not init_success:
+                        logger.error(f"Failed to initialize {agent_name}")
+
             results = {}
             
             # Run classification agents with V2 timer-based processing
-            agent_list = ["initial_classifier", "detail_extractor", "damage_detector"]
+            # Note: barcode_detector runs FIRST, before all other agents
+            agent_list = ["barcode_detector", "initial_classifier", "detail_extractor", "damage_detector"]
             current_agent_index = 0
             
             while current_agent_index < len(agent_list):
@@ -1157,29 +1197,72 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
 
                 # Run agent with timer through orchestrator - with interruption support
                 try:
-                    # Verify VLM is still ready before running agent
-                    if not orchestrator.is_vlm_configured():
-                        logger.error(f"VLM not configured before running {agent_name}, attempting re-init...")
-                        init_success = await orchestrator.initialize_gpu_optimization()
-                        if not init_success:
-                            raise RuntimeError("VLM engine not available")
+                    # Special handling for barcode_detector (non-VLM agent)
+                    if agent_name == "barcode_detector":
+                        logger.info(f"Running barcode_detector agent (non-VLM agent)")
+                        # Barcode detector doesn't need VLM, uses its own detection service
+                        # Wire up frame provider and callbacks
+                        barcode_agent = agents[agent_name]
+                        barcode_agent.frame_provider = orchestrator.frame_provider
 
-                    # Extract initial classifier context for damage detector (auto mode)
-                    initial_classifier_context = None
-                    if agent_name == "damage_detector" and "initial_classifier" in results:
-                        initial_classifier_state = results["initial_classifier"]
-                        if initial_classifier_state and initial_classifier_state.finalized_attributes:
-                            initial_classifier_context = initial_classifier_state.finalized_attributes
-                            logger.info(f"Auto mode: Extracted initial classifier context for damage_detector: {initial_classifier_context}")
+                        # Set up callbacks for status updates
+                        async def barcode_inference_update(update):
+                            if orchestrator.send_message:
+                                await orchestrator.send_message({
+                                    "type": "inference_update",
+                                    "session_id": cycle_session_id,
+                                    "agent": agent_name,
+                                    "status": update.get("status"),
+                                    "barcode_data": update.get("barcode_data"),
+                                    "barcode_type": update.get("barcode_type"),
+                                    "elapsed_time": update.get("elapsed_time", 0)
+                                })
 
-                    # Create a task for the agent
-                    agent_task = asyncio.create_task(
-                        orchestrator.run_agent_with_timer(
-                            agent_name,
-                            timer_seconds,
-                            initial_classifier_context=initial_classifier_context
+                        async def barcode_complete(agent, result):
+                            logger.info(f"Barcode detector completed: {result}")
+
+                        barcode_agent.on_inference_update = barcode_inference_update
+                        barcode_agent.on_agent_complete = barcode_complete
+
+                        # Run barcode agent with its own run_with_timer method
+                        agent_result = await barcode_agent.run_with_timer()
+
+                        # Convert barcode result dict to AgentState for consistent handling
+                        from orchestration.models.agent_state import AgentState, AgentStatus
+                        agent_state_obj = AgentState(agent_name=agent_name, timer_seconds=timer_seconds)
+                        agent_state_obj.status = AgentStatus.COMPLETED
+                        agent_state_obj.finalized_attributes = agent_result  # Barcode result dict
+
+                        # Create a mock task that returns the agent state
+                        async def mock_task():
+                            return agent_state_obj
+                        agent_task = asyncio.create_task(mock_task())
+
+                    else:
+                        # Standard VLM agent processing
+                        # Verify VLM is still ready before running agent
+                        if not orchestrator.is_vlm_configured():
+                            logger.error(f"VLM not configured before running {agent_name}, attempting re-init...")
+                            init_success = await orchestrator.initialize_gpu_optimization()
+                            if not init_success:
+                                raise RuntimeError("VLM engine not available")
+
+                        # Extract initial classifier context for damage detector (auto mode)
+                        initial_classifier_context = None
+                        if agent_name == "damage_detector" and "initial_classifier" in results:
+                            initial_classifier_state = results["initial_classifier"]
+                            if initial_classifier_state and initial_classifier_state.finalized_attributes:
+                                initial_classifier_context = initial_classifier_state.finalized_attributes
+                                logger.info(f"Auto mode: Extracted initial classifier context for damage_detector: {initial_classifier_context}")
+
+                        # Create a task for the agent
+                        agent_task = asyncio.create_task(
+                            orchestrator.run_agent_with_timer(
+                                agent_name,
+                                timer_seconds,
+                                initial_classifier_context=initial_classifier_context
+                            )
                         )
-                    )
                     
                     # Wait for agent to complete or interruption signal
                     while not agent_task.done():
@@ -1391,12 +1474,14 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
             # This prevents spam every second
 
             # Initialize agents for this cycle
+            from orchestration.agents.barcode_detector_v2 import BarcodeDetectorV2
             from orchestration.agents.initial_classifier_v2 import InitialClassifierV2
             from orchestration.agents.detail_extractor_v2 import DetailExtractorV2
             from orchestration.agents.damage_detector_v2 import DamageDetectorV2
             from orchestration.agents.final_compiler_v2 import FinalCompilerV2
-            
+
             agents = {
+                "barcode_detector": BarcodeDetectorV2(),
                 "initial_classifier": InitialClassifierV2(),
                 "detail_extractor": DetailExtractorV2(),
                 "damage_detector": DamageDetectorV2(),
@@ -1411,7 +1496,14 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                     agent.set_frame_provider(orchestrator.frame_provider)
                 if hasattr(agent, 'set_inference_engine'):
                     agent.set_inference_engine(orchestrator.inference_engine)
-            
+
+            # Initialize all agents (critical for barcode agent)
+            for agent_name, agent in agents.items():
+                if hasattr(agent, 'initialize'):
+                    init_success = await agent.initialize()
+                    if not init_success:
+                        logger.error(f"Failed to initialize {agent_name}")
+
             # Skip reset here - already done by reset_after_final_compiler()
             # Only reset if this is the very first cycle for this session
             if session_first_cycle:
@@ -1495,20 +1587,57 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                 if session_id in manual_mode_sessions:
                     manual_mode_sessions[session_id].record_agent_start(agent_name, timer_seconds)
 
-                # Extract initial classifier context for damage detector (manual mode)
-                initial_classifier_context = None
-                if agent_name == "damage_detector" and "initial_classifier" in manual_handler.agent_results:
-                    initial_classifier_context = manual_handler.agent_results["initial_classifier"]
-                    logger.info(f"Manual mode: Extracted initial classifier context for damage_detector: {initial_classifier_context}")
-
                 # Run agent with timer
                 try:
-                    agent_state = await orchestrator.run_agent_with_timer(
-                        agent_name,
-                        timer_seconds,
-                        initial_classifier_context=initial_classifier_context
-                    )
-                    
+                    # Special handling for barcode_detector (non-VLM agent)
+                    if agent_name == "barcode_detector":
+                        logger.info(f"Manual mode: Running barcode_detector agent (non-VLM agent)")
+                        # Wire up frame provider and callbacks
+                        barcode_agent = agents[agent_name]
+                        barcode_agent.frame_provider = orchestrator.frame_provider
+
+                        # Set up callbacks for status updates
+                        async def barcode_inference_update(update):
+                            if orchestrator.send_message:
+                                await orchestrator.send_message({
+                                    "type": "inference_update",
+                                    "session_id": cycle_session_id,
+                                    "agent": agent_name,
+                                    "status": update.get("status"),
+                                    "barcode_data": update.get("barcode_data"),
+                                    "barcode_type": update.get("barcode_type"),
+                                    "elapsed_time": update.get("elapsed_time", 0)
+                                })
+
+                        async def barcode_complete(agent, result):
+                            logger.info(f"Barcode detector completed: {result}")
+
+                        barcode_agent.on_inference_update = barcode_inference_update
+                        barcode_agent.on_agent_complete = barcode_complete
+
+                        # Run barcode agent with its own run_with_timer method
+                        agent_result = await barcode_agent.run_with_timer()
+
+                        # Convert barcode result to AgentState-like object for manual handler
+                        from orchestration.models.agent_state import AgentState, AgentStatus
+                        agent_state = AgentState(agent_name=agent_name, timer_seconds=timer_seconds)
+                        agent_state.status = AgentStatus.COMPLETED
+                        agent_state.finalized_attributes = agent_result  # Barcode result dict
+
+                    else:
+                        # Standard VLM agent processing
+                        # Extract initial classifier context for damage detector (manual mode)
+                        initial_classifier_context = None
+                        if agent_name == "damage_detector" and "initial_classifier" in manual_handler.agent_results:
+                            initial_classifier_context = manual_handler.agent_results["initial_classifier"]
+                            logger.info(f"Manual mode: Extracted initial classifier context for damage_detector: {initial_classifier_context}")
+
+                        agent_state = await orchestrator.run_agent_with_timer(
+                            agent_name,
+                            timer_seconds,
+                            initial_classifier_context=initial_classifier_context
+                        )
+
                     if agent_state:
                         # Mark agent as completed
                         manual_handler.mark_agent_completed(agent_name, agent_state.finalized_attributes)
