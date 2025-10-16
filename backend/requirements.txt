@@ -21,6 +21,19 @@ depthai==2.24.0.0  # OAK-D Pro camera support via DepthAI SDK
 # Ollama client
 ollama==0.1.7
 
+# HuggingFace dependencies (for huggingface provider)
+# Install these only if using MODEL_PROVIDER=huggingface
+# pip install transformers torch accelerate huggingface-hub
+transformers>=4.40.0
+torch>=2.0.0
+accelerate>=0.27.0
+huggingface-hub>=0.20.0
+safetensors>=0.4.0
+
+# GGUF support (for GGUF models from HuggingFace)
+# Required when using GGUF models like NexaAI/Qwen3-VL-4B-Thinking-GGUF
+llama-cpp-python>=0.2.0
+
 # Utilities
 python-dotenv==1.0.0
 uuid6==2023.5.2
