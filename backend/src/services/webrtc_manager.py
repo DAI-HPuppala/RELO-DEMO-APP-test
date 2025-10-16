@@ -42,7 +42,7 @@ class WebRTCManager:
         self.ice_servers = []
         # Frame buffer for each session - stores latest frames with automatic eviction
         self.frame_buffers: Dict[str, deque] = {}
-        self.max_buffer_size = 10  # Automatic FIFO eviction when full
+        self.max_buffer_size = 2  # Reduced from 10 to minimize latency (67ms at 30fps vs 333ms)
         # Callback for handling control messages from data channel
         self.control_message_handler = None
 
@@ -69,11 +69,7 @@ class WebRTCManager:
         # Set up event handlers
         @pc.on("connectionstatechange")
         async def on_connectionstatechange():
-            logger.info(f"🔌 Connection Details for {session_id}:")
-            logger.info(f"   Connection State: {pc.connectionState}")
-            logger.info(f"   ICE Connection State: {pc.iceConnectionState}")
-            logger.info(f"   ICE Gathering State: {pc.iceGatheringState}")
-            logger.info(f"   Signaling State: {pc.signalingState}")
+            logger.info(f"WebRTC Connection for {session_id}: state={pc.connectionState}, ICE={pc.iceConnectionState}, gathering={pc.iceGatheringState}")
             
             if pc.connectionState == "connected":
                 await self.on_connection_established(session_id)
@@ -136,15 +132,9 @@ class WebRTCManager:
     
     async def handle_offer(self, session_id: str, offer: Dict, camera_source: str = "realsense") -> Dict:
         """Handle WebRTC offer and create answer."""
-        logger.info("="*80)
-        logger.info(f"🎬 WEBRTC HANDLE_OFFER STARTED for session: {session_id}")
-        logger.info(f"   Camera source: {camera_source}")
-        logger.info(f"   Offer type: {offer.get('type')}")
-        logger.info("="*80)
+        logger.info(f"WebRTC handle_offer for {session_id}, camera: {camera_source}")
         try:
-            logger.info(f"Step 1: Creating peer connection for {session_id}...")
             pc = await self.create_peer_connection(session_id)
-            logger.info(f"✅ Step 1 complete: Peer connection created")
 
             # Initialize camera service and video track (singleton pattern with reset logic)
             async with WebRTCManager._camera_service_lock:
@@ -175,53 +165,43 @@ class WebRTCManager:
                 if WebRTCManager._video_track:
                     # Check if the video track is in test mode (not properly initialized)
                     if hasattr(WebRTCManager._video_track, 'is_initialized') and not WebRTCManager._video_track.is_initialized:
-                        logger.warning("🔄 CAMERA RESET: Existing video track is in test mode")
-                        logger.info(f"   Previous session: {getattr(WebRTCManager._video_track, 'current_session_id', 'unknown')}")
-                        logger.info(f"   New session: {session_id}")
+                        logger.warning(f"Camera reset: video track in test mode, reinitializing for {session_id}")
                         # Stop the old track
                         if hasattr(WebRTCManager._video_track, 'stop'):
                             WebRTCManager._video_track.stop()
                         WebRTCManager._video_track = None
-                        logger.info("✅ Video track reset - will attempt to reconnect to camera")
                     # Also reset if the track has been running for too long (stale)
                     elif hasattr(WebRTCManager._video_track, '_creation_time'):
                         import time
                         track_age = time.time() - WebRTCManager._video_track._creation_time
-                        if track_age > 3600:  # Reset if track is older than 1 hour
-                            logger.warning(f"🔄 CAMERA RESET: Video track is stale ({track_age:.0f}s old)")
+                        # Reset if track is older than 5 minutes (300s) - handles refresh/reconnect better
+                        if track_age > 300:  # Reduced from 3600 to 300 for better refresh handling
+                            logger.warning(f"Camera reset: video track is stale ({track_age:.0f}s old)")
                             if hasattr(WebRTCManager._video_track, 'stop'):
                                 WebRTCManager._video_track.stop()
                             WebRTCManager._video_track = None
-                            logger.info("✅ Stale video track cleared")
 
                 # Create video track with session ID for frame buffer
                 if not WebRTCManager._video_track:
+                    # Add delay for OAK-D PoE device to reset after release
+                    await asyncio.sleep(5.0)  # 5 second delay for PoE camera reset
+                    logger.info(f"Creating new video track for session {session_id} after camera reset delay...")
                     WebRTCManager._video_track = WebRTCManager._camera_service.get_video_track(session_id)
                     logger.info(f"New video track created for session {session_id}")
             
-            # First set the remote description to understand what the client wants
-            logger.info(f"Step 2: Setting remote description (offer SDP)...")
+            # Set remote description and create answer
             remote_sdp = RTCSessionDescription(
                 sdp=offer["sdp"],
                 type=offer.get("type", "offer")
             )
             await pc.setRemoteDescription(remote_sdp)
-            logger.info(f"✅ Step 2 complete: Remote description set")
 
-            # Add the video track directly without relay for simplicity
-            # The relay can cause issues if not properly configured
-            logger.info(f"Step 3: Adding video track to peer connection...")
+            # Add video track
             video_track = WebRTCManager._video_track
-
-            # Add video track to peer connection
-            # Use addTrack instead of manipulating transceivers
             pc.addTrack(video_track)
-            logger.info(f"✅ Step 3 complete: Video track added to peer connection")
 
-            # Create answer after adding tracks
-            logger.info(f"Step 4: Creating answer SDP...")
+            # Create answer
             answer = await pc.createAnswer()
-            logger.info(f"✅ Step 4 complete: Answer SDP created")
 
             # Wait for ICE gathering to complete or timeout
             # Register handler BEFORE setLocalDescription to avoid race condition
@@ -233,41 +213,26 @@ class WebRTCManager:
                     gathering_complete.set()
 
             # Set local description (triggers ICE gathering)
-            logger.info(f"Step 5: Setting local description (triggers ICE gathering)...")
             await pc.setLocalDescription(answer)
-            logger.info(f"✅ Step 5 complete: Local description set, ICE gathering state: {pc.iceGatheringState}")
+            logger.info(f"ICE gathering state: {pc.iceGatheringState}")
 
-            # Check if ICE gathering already completed (in case event fired before handler registered)
+            # Check if ICE gathering already completed
             if pc.iceGatheringState == "complete":
-                logger.info("ICE gathering already complete before wait")
                 gathering_complete.set()
 
-            # Wait up to 10 seconds for ICE gathering (increased for offline mode with multiple network interfaces)
-            logger.info(f"Step 6: Waiting for ICE gathering to complete (timeout: 10s)...")
+            # Wait up to 10 seconds for ICE gathering
             try:
                 await asyncio.wait_for(gathering_complete.wait(), timeout=10.0)
-                logger.info("✅ Step 6 complete: ICE gathering completed successfully")
+                logger.info("ICE gathering completed")
             except asyncio.TimeoutError:
-                logger.warning("⚠️ Step 6: ICE gathering timeout after 10s, proceeding with current candidates")
+                logger.warning("ICE gathering timeout after 10s, proceeding with current candidates")
             
             # Get the final SDP with candidates
             final_sdp = pc.localDescription.sdp
-            
-            logger.info(f"Created answer for session {session_id}")
-            logger.info(f"ICE gathering state: {pc.iceGatheringState}")
-            logger.info(f"ICE connection state: {pc.iceConnectionState}")
-            logger.info(f"Peer connection state: {pc.connectionState}")
-            logger.info(f"Answer SDP (first 800 chars): {final_sdp[:800]}")
-            logger.debug(f"📋 Full Answer SDP:\n{final_sdp}")
 
             # OFFLINE MODE FIX: Force localhost ONLY for invalid/link-local IPs
-            # Valid LAN IPs (192.168.x.x) are preserved for offline operation via LAN
-            # This matches the working repo behavior
-            logger.info(f"Step 7: Checking SDP for IP address replacement...")
-            logger.info(f"   Checking for 0.0.0.0: {'YES' if 'c=IN IP4 0.0.0.0' in final_sdp else 'NO'}")
-            logger.info(f"   Checking for 169.254.x.x: {'YES' if 'c=IN IP4 169.254.' in final_sdp else 'NO'}")
             if "c=IN IP4 0.0.0.0" in final_sdp or "c=IN IP4 169.254." in final_sdp:
-                logger.info("🔧 Step 7a: Replacing invalid/link-local IPs with 127.0.0.1")
+                logger.info("Replacing invalid/link-local IPs with 127.0.0.1 in SDP")
 
                 # Replace ONLY invalid/link-local IPs with localhost in connection lines
                 import re
@@ -286,15 +251,7 @@ class WebRTCManager:
                     final_sdp
                 )
 
-                logger.info("✅ Step 7a complete: Replaced invalid/link-local IPs with 127.0.0.1")
-                logger.info(f"   Modified SDP (first 800 chars): {final_sdp[:800]}")
-            else:
-                logger.info("✅ Step 7 complete: No IP replacement needed, SDP has valid IPs (LAN or localhost)")
-
-            logger.info("="*80)
-            logger.info(f"🎉 WEBRTC HANDLE_OFFER COMPLETED for session: {session_id}")
-            logger.info(f"   Returning answer SDP to client")
-            logger.info("="*80)
+            logger.info(f"WebRTC answer created for {session_id}")
 
             return {
                 "type": "answer",
@@ -337,11 +294,6 @@ class WebRTCManager:
                 logger.info(f"Data channel ready for session {session_id}")
                 return True
             
-            # Check if channel exists but not open yet
-            channel = self.data_channels.get(session_id)
-            if channel:
-                logger.debug(f"Data channel state for {session_id}: {channel.readyState}")
-            
             await asyncio.sleep(0.1)
         
         logger.warning(f"Data channel timeout for session {session_id} after {timeout}ms")
@@ -351,10 +303,9 @@ class WebRTCManager:
         """Send message via data channel."""
         # Use session_id directly, not with _results suffix
         channel = self.data_channels.get(session_id)
-        
+
         if not channel:
             logger.warning(f"No data channel found for session {session_id}")
-            logger.debug(f"Available channels: {list(self.data_channels.keys())}")
             return False
         
         if channel.readyState != "open":
@@ -371,7 +322,6 @@ class WebRTCManager:
         try:
             msg_str = json.dumps(message)
             channel.send(msg_str)
-            logger.debug(f"Sent data channel message: {message.get('type')} for {message.get('agent', 'N/A')}")
             return True
         except Exception as e:
             logger.error(f"Error sending data channel message: {e}")
@@ -419,8 +369,6 @@ class WebRTCManager:
                         await self.send_data_channel_message(session_id, response)
                 else:
                     logger.warning(f"No control message handler set for manual command {msg_type}")
-            else:
-                logger.debug(f"Unhandled message type: {msg_type}")
         except json.JSONDecodeError:
             logger.error(f"Invalid JSON in data channel message: {message}")
     
@@ -610,13 +558,25 @@ class WebRTCManager:
 
         # Clean up frame buffers to free memory
         if session_id in self.frame_buffers:
-            buffer_size = len(self.frame_buffers[session_id])
             del self.frame_buffers[session_id]
-            logger.debug(f"Cleared frame buffer for {session_id} ({buffer_size} frames freed)")
 
         # Clean up session timestamp
         if session_id in self.session_timestamps:
             del self.session_timestamps[session_id]
+
+        # CRITICAL: Stop and reset video track if no more active connections
+        # This releases the camera resource when the browser disconnects
+        if len(self.peer_connections) == 0:
+            async with WebRTCManager._camera_service_lock:
+                if WebRTCManager._video_track:
+                    logger.info("Camera release: No active connections, stopping video track")
+                    try:
+                        if hasattr(WebRTCManager._video_track, 'stop'):
+                            WebRTCManager._video_track.stop()
+                        WebRTCManager._video_track = None
+                        logger.info("Camera resource released - ready for reconnection")
+                    except Exception as e:
+                        logger.error(f"Error stopping video track: {e}")
 
         logger.info(f"Closed connection and cleaned resources for session {session_id}")
     
@@ -714,14 +674,10 @@ class WebRTCManager:
         import numpy as np
         
         async def provider():
-            # First, clear old frames from buffer to ensure freshness
+            # Optimized: Don't maintain old frames, just get fresh ones
+            # Clear buffer to prevent stale frames
             if session_id in self.frame_buffers:
-                buffer = self.frame_buffers[session_id]
-                # Keep only the last 2 frames to ensure freshness
-                if len(buffer) > 2:
-                    # Maintain deque type - convert list slice back to deque
-                    from collections import deque
-                    self.frame_buffers[session_id] = deque(list(buffer)[-2:], maxlen=self.max_buffer_size)
+                self.frame_buffers[session_id].clear()
 
             # Try to get fresh frame from video track
             if hasattr(WebRTCManager, '_video_track'):
@@ -734,11 +690,11 @@ class WebRTCManager:
                             # Convert to numpy array (creates fresh memory automatically)
                             # Use BGR format to match OpenCV/aiortc convention
                             frame_data = av_frame.to_ndarray(format="bgr24")
-                            # Note: Camera's recv() already added frame to buffer (cv60_camera.py:478)
-                            # to_ndarray() creates fresh numpy array - no additional copy needed
+                            # Add to buffer for potential reuse
+                            self.add_frame_to_buffer(session_id, frame_data)
                             return frame_data
-                    except Exception as e:
-                        logger.debug(f"Could not get fresh frame from video track: {e}")
+                    except Exception:
+                        pass
 
             # Fallback to buffer if video track not available
             frame = self.get_latest_frame(session_id)

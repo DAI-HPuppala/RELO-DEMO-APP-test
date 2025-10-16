@@ -69,6 +69,7 @@ class DamageDetectorV2(StatefulBaseAgent):
 
                 # Log derived attributes after processing
                 logger.info("DamageDetectorV2 DERIVED ATTRIBUTES:")
+                logger.info(f"  - damaged (derived): {attrs.get('damaged', False)}")
                 logger.info(f"  - is_damaged (derived): {attrs.get('is_damaged', False)}")
                 logger.info(f"  - damage_type (final): {attrs.get('damage_type', None)}")
 
@@ -83,7 +84,7 @@ class DamageDetectorV2(StatefulBaseAgent):
         return result
 
     def _derive_is_damaged(self, attributes: Dict[str, Any]) -> None:
-        """Derive is_damaged attribute from damage_type value"""
+        """Derive is_damaged/damaged attribute from damage_type value"""
         if not attributes:
             return
 
@@ -92,9 +93,11 @@ class DamageDetectorV2(StatefulBaseAgent):
         # Check if damage_type indicates no damage
         if self._indicates_no_damage(damage_type):
             attributes["is_damaged"] = False
+            attributes["damaged"] = False  # Also set 'damaged' for consistency
         else:
             # There is damage
             attributes["is_damaged"] = True
+            attributes["damaged"] = True  # Also set 'damaged' for consistency
             # Extract location from damage_type if present (e.g., "stain on front")
             if damage_type and isinstance(damage_type, str):
                 # Try to extract location from damage_type description

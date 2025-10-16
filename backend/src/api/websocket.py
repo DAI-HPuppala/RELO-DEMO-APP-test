@@ -7,7 +7,6 @@ from typing import Dict, Any
 from fastapi import WebSocket, WebSocketDisconnect
 import asyncio
 
-from services.vlm_service_ultra import UltraVLMService as VLMService
 from orchestration.utils.key_normalizer import KeyNormalizer
 from services.manual_mode_handler import ManualModeHandler
 from models.manual_session import ManualSessionState, NavigationDirection
@@ -33,24 +32,79 @@ orchestrators: Dict[str, Any] = {}
 _webrtc_manager = None
 _control_handler_setup = False
 
-# Global VLM service instance
-_vlm_service = None
-
 # Global cycle counter - persists across sessions, resets only on backend restart
 _global_cycle_counter = 0
 
-async def initialize_vlm_service():
-    """Initialize VLM service if not already done"""
-    global _vlm_service
-    if _vlm_service is None:
-        _vlm_service = VLMService()
-        # Check if VLM is available
-        vlm_healthy = await _vlm_service.health_check()
-        if vlm_healthy:
-            logger.info("✅ VLM service initialized and healthy")
-        else:
-            logger.error("❌ VLM service health check failed - check Ollama setup")
-    return _vlm_service
+# Cleanup task reference
+_cleanup_task = None
+
+
+async def cleanup_stale_monitoring_controls():
+    """Periodic cleanup of stale monitoring_controls entries.
+
+    Runs every 5 minutes and removes entries that are:
+    - NOT running (stopped sessions)
+    - Have no active connection (user disconnected)
+    - Have been inactive for 30+ minutes
+
+    This prevents unbounded growth from abandoned sessions while preserving
+    active sessions and recently stopped sessions that might be resumed.
+    """
+    import time
+
+    # Track last activity time for each session
+    last_activity: Dict[str, float] = {}
+
+    while True:
+        try:
+            await asyncio.sleep(300)  # Run every 5 minutes
+
+            current_time = time.time()
+            stale_threshold = 1800  # 30 minutes in seconds
+
+            entries_to_remove = []
+
+            for session_id, control in list(monitoring_controls.items()):
+                # Update last activity if session is running
+                if control.get('running', False):
+                    last_activity[session_id] = current_time
+                    continue
+
+                # Check if session has active connection
+                has_connection = session_id in active_connections
+                if has_connection:
+                    last_activity[session_id] = current_time
+                    continue
+
+                # Check if session is stale (no activity for 30+ min)
+                last_seen = last_activity.get(session_id, current_time)
+                inactive_duration = current_time - last_seen
+
+                if inactive_duration > stale_threshold:
+                    entries_to_remove.append(session_id)
+
+            # Remove stale entries
+            for session_id in entries_to_remove:
+                del monitoring_controls[session_id]
+                if session_id in last_activity:
+                    del last_activity[session_id]
+                logger.info(f"Cleaned up stale monitoring_controls entry for {session_id}")
+
+            if entries_to_remove:
+                logger.info(f"Cleanup: Removed {len(entries_to_remove)} stale entries from monitoring_controls")
+
+        except Exception as e:
+            logger.error(f"Error in monitoring_controls cleanup task: {e}")
+
+
+def start_cleanup_task():
+    """Start the periodic cleanup task for monitoring_controls."""
+    global _cleanup_task
+
+    if _cleanup_task is None:
+        _cleanup_task = asyncio.create_task(cleanup_stale_monitoring_controls())
+        logger.info("Started periodic cleanup task for monitoring_controls")
+
 
 async def setup_orchestrator_vlm(orchestrator):
     """Setup VLM integration for orchestrator"""
@@ -59,13 +113,13 @@ async def setup_orchestrator_vlm(orchestrator):
     try:
         if hasattr(orchestrator, 'inference_engine'):
             # The inference engine already has VLM integrated
-            logger.info("✅ VLM already integrated in MultiInferenceEngine")
+            logger.info("VLM already integrated in MultiInferenceEngine")
             return True
         else:
-            logger.error("❌ Orchestrator missing inference_engine")
+            logger.error("Orchestrator missing inference_engine")
             return False
     except Exception as e:
-        logger.error(f"❌ Failed to verify VLM integration: {e}")
+        logger.error(f"Failed to verify VLM integration: {e}")
         return False
 
 
@@ -106,10 +160,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 if response:
                     await websocket.send_text(json.dumps(response))
                     
-                # For WebRTC signaling messages, keep the connection alive
-                if message.get("type") in ["offer", "answer", "ice_candidate"]:
-                    logger.info(f"WebRTC signaling complete for {session_id}, keeping connection alive")
-                    
             except json.JSONDecodeError:
                 await websocket.send_text(json.dumps({
                     "type": "error",
@@ -128,12 +178,79 @@ async def websocket_endpoint(websocket: WebSocket):
                 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected for session {session_id}")
-        if session_id and session_id in active_connections:
-            del active_connections[session_id]
+        if session_id:
+            # Clean up active connection
+            if session_id in active_connections:
+                del active_connections[session_id]
+
+            # CRITICAL: Release WebRTC connection and camera
+            # This triggers the camera release when browser refreshes/disconnects
+            from api import main
+            if main.webrtc_manager:
+                logger.info(f"Releasing WebRTC connection for session {session_id}")
+                await main.webrtc_manager.close_connection(session_id)
+                logger.info(f"WebRTC connection released for {session_id}")
+
+            # Stop monitoring and clean up orchestrator if running
+            if session_id in monitoring_controls:
+                logger.info(f"Stopping monitoring for disconnected session {session_id}")
+                monitoring_controls[session_id]['running'] = False
+                monitoring_controls[session_id]['paused'] = False
+
+            # Clean up orchestrator
+            if session_id in orchestrators:
+                logger.info(f"Cleaning up orchestrator for disconnected session {session_id}")
+                try:
+                    await orchestrators[session_id].cleanup()
+                except Exception as e:
+                    logger.error(f"Error cleaning up orchestrator: {e}")
+                del orchestrators[session_id]
+
+            # Clean up manual mode if active
+            if session_id in manual_mode_handlers:
+                logger.info(f"Cleaning up manual mode for disconnected session {session_id}")
+                manual_mode_handlers[session_id].deactivate_manual_mode()
+                del manual_mode_handlers[session_id]
+
+            if session_id in manual_mode_sessions:
+                del manual_mode_sessions[session_id]
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
-        if session_id and session_id in active_connections:
-            del active_connections[session_id]
+        if session_id:
+            # Clean up active connection
+            if session_id in active_connections:
+                del active_connections[session_id]
+
+            # Release WebRTC connection on any error
+            from api import main
+            if main.webrtc_manager:
+                logger.info(f"Releasing WebRTC connection for session {session_id} due to error")
+                await main.webrtc_manager.close_connection(session_id)
+                logger.info(f"WebRTC connection released for {session_id}")
+
+            # Stop monitoring and clean up orchestrator if running
+            if session_id in monitoring_controls:
+                logger.info(f"Stopping monitoring for errored session {session_id}")
+                monitoring_controls[session_id]['running'] = False
+                monitoring_controls[session_id]['paused'] = False
+
+            # Clean up orchestrator
+            if session_id in orchestrators:
+                logger.info(f"Cleaning up orchestrator for errored session {session_id}")
+                try:
+                    await orchestrators[session_id].cleanup()
+                except Exception as cleanup_error:
+                    logger.error(f"Error cleaning up orchestrator: {cleanup_error}")
+                del orchestrators[session_id]
+
+            # Clean up manual mode if active
+            if session_id in manual_mode_handlers:
+                logger.info(f"Cleaning up manual mode for errored session {session_id}")
+                manual_mode_handlers[session_id].deactivate_manual_mode()
+                del manual_mode_handlers[session_id]
+
+            if session_id in manual_mode_sessions:
+                del manual_mode_sessions[session_id]
 
 
 async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket) -> Dict:
@@ -145,13 +262,9 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
     session_manager = main.session_manager
     webrtc_manager = main.webrtc_manager
     
-    # Debug logging
-    logger.info(f"Session manager: {session_manager}")
-    logger.info(f"WebRTC manager: {webrtc_manager}")
-    
     # Check if managers are initialized
     if not session_manager or not webrtc_manager:
-        logger.error(f"Session or WebRTC manager not initialized - session_manager: {session_manager}, webrtc_manager: {webrtc_manager}")
+        logger.error("Session or WebRTC manager not initialized")
         return {
             "type": "error",
             "error_code": "SYSTEM_NOT_READY",
@@ -185,9 +298,8 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
         webrtc_manager.set_control_message_handler(handle_control_message_from_data_channel)
         _control_handler_setup = True
         logger.info("Control message handler set up for WebRTC manager")
-    
+
     msg_type = message.get("type")
-    logger.info(f"Handling WebSocket message type: {msg_type}")
     
     if msg_type == "start_session":
         # Always create a new session
@@ -386,18 +498,10 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
                 "type": "error",
                 "message": "Monitoring already running for this session"
             }
-        
-        # Ensure VLM service is initialized before starting
-        vlm_service = await initialize_vlm_service()
-        if not vlm_service:
-            logger.error("VLM service not available, cannot start automatic mode")
-            return {
-                "type": "error",
-                "error_code": "VLM_NOT_READY",
-                "message": "Vision model service is not ready. Please wait a moment and try again.",
-                "recoverable": True
-            }
-        
+
+        # Note: VLM initialization is handled by the orchestrator in run_v1_to_v2_monitoring_flow
+        # The orchestrator uses vlm_singleton which is provider-aware (Ollama or HuggingFace)
+
         # Verify data channel is ready
         if not webrtc_manager.is_data_channel_ready(session_id):
             logger.warning(f"Data channel not ready for session {session_id}, waiting...")
@@ -946,16 +1050,15 @@ async def translate_v2_to_v1_message(v2_msg: Dict) -> Dict:
     elif msg_type == "agent_completed":
         # V2: {"type": "agent_completed", "agent": "initial_classifier", "results": {...}}
         # V1: {"type": "agent_completed", "agent": "initial", "results": {...}}
-        
-        # Normalize results before sending to frontend
-        raw_results = v2_msg.get("results", {})
-        normalized_results = KeyNormalizer.normalize_agent_attributes(agent, raw_results)
-        
+
+        # Results are already normalized by frame_aggregator, no need to normalize again
+        results = v2_msg.get("results", {})
+
         return {
             "type": "agent_completed",
             "agent": short_agent,  # Use short name for frontend
             "session_id": v2_msg.get("session_id"),
-            "results": normalized_results
+            "results": results
         }
         
     elif msg_type == "classification_complete":
@@ -1039,9 +1142,7 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
                     })
                 monitoring_control['running'] = False
                 return
-        
-        # Double-check VLM is ready
-        logger.info(f"VLM configured status: {orchestrator.is_vlm_configured()}")
+
         if not orchestrator.is_vlm_configured():
             logger.error("VLM still not configured after initialization attempt")
             monitoring_control['running'] = False
@@ -1107,7 +1208,6 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
                 while monitoring_control.get('paused', False):
                     if pause_start is None:
                         pause_start = time.time()
-                        logger.debug(f"Monitoring paused for session {cycle_session_id}")
                     await asyncio.sleep(0.5)
                     if not monitoring_control.get('running', True):
                         logger.info(f"Monitoring stopped during pause for session {cycle_session_id}")
@@ -1236,7 +1336,6 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
             while monitoring_control.get('paused', False):
                 if pause_start is None:
                     pause_start = time.time()
-                    logger.debug(f"Final compiler paused for session {cycle_session_id}")
                 await asyncio.sleep(0.5)
                 if not monitoring_control.get('running', True):
                     logger.info(f"Monitoring stopped during pause before final_compiler for session {cycle_session_id}")
@@ -1323,6 +1422,7 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
 
             # Clear orchestrator state for next cycle
             orchestrator.session_state.reset_for_new_cycle()
+            orchestrator.reset_for_new_cycle()  # Clear dynamic buffer timings
 
             # Reset redo counters for new cycle (auto mode doesn't use redo, but reset for consistency)
             orchestrator.redo_counts = {}
@@ -1331,12 +1431,50 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
             if session_id in monitoring_controls:
                 monitoring_controls[session_id]['current_agent'] = None
                 monitoring_controls[session_id]['current_agent_full'] = None
-                logger.debug(f"Cleared current_agent tracking for inter-cycle period")
 
             # ============================================================
-            # INTER-CYCLE DELAY
+            # INTER-CYCLE DELAY (Dynamic based on damage_detector inference time)
             # ============================================================
-            TARGET_DELAY = 3.0  # Fixed 3-second cycle delay
+            TARGET_DELAY = 3.0  # Default 3-second cycle delay
+
+            # Adjust delay based on damage_detector inference time (O(1) complexity)
+            if "damage_detector" in results:
+                damage_state = results["damage_detector"]
+                if damage_state and hasattr(damage_state, 'inference_results') and damage_state.inference_results:
+                    # Get last inference result (O(1) list access)
+                    last_result = damage_state.inference_results[-1]
+
+                    # InferenceResult stores metadata in attributes['inference_metadata']
+                    # (VLM puts it at top level, but it gets stored inside attributes)
+                    if hasattr(last_result, 'attributes') and isinstance(last_result.attributes, dict):
+                        inference_meta = last_result.attributes.get('inference_metadata', {})
+
+                        if inference_meta and 'total_duration' in inference_meta:
+                            # total_duration is in milliseconds (nanoseconds / 1e6)
+                            total_duration_ms = inference_meta.get('total_duration', 0)
+
+                            # Convert to seconds (O(1) arithmetic)
+                            inference_time_sec = total_duration_ms / 1000.0
+
+                            logger.info(f"Damage detector last inference: {inference_time_sec:.2f}s")
+
+                            # Apply conditional logic (O(1) comparisons)
+                            if inference_time_sec > 7:
+                                TARGET_DELAY = 0.3
+                                logger.info(f"Damage inference {inference_time_sec:.1f}s > 7s → delay = 0.3s")
+                            elif inference_time_sec > 6:
+                                TARGET_DELAY = 1.0  # 3 - 2
+                                logger.info(f"Damage inference {inference_time_sec:.1f}s > 6s → delay = 1.0s")
+                            elif inference_time_sec > 5:
+                                TARGET_DELAY = 2.0  # 3 - 1
+                                logger.info(f"Damage inference {inference_time_sec:.1f}s > 5s → delay = 2.0s")
+                            else:
+                                logger.info(f"Damage inference {inference_time_sec:.1f}s ≤ 5s → default delay = 3.0s")
+                        else:
+                            logger.warning(f"No total_duration in inference_metadata: {inference_meta}")
+                    else:
+                        logger.warning("last_result.attributes is not a dict or doesn't exist")
+
             await asyncio.sleep(TARGET_DELAY)
 
         logger.info(f"V1-to-V2 monitoring flow stopped after {_global_cycle_counter} cycles")
@@ -1457,10 +1595,9 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                     # Wait for user command
                     manual_handler.waiting_for_command = True
                     await manual_handler._send_status_update()
-                    
+
                     logger.info(f"Manual mode: Waiting for command, current agent: {manual_handler.get_current_agent()}")
-                    logger.debug(f"Monitoring control state: waiting_for_manual_agent={monitoring_control.get('waiting_for_manual_agent', False)}, manual_agent={monitoring_control.get('manual_agent')}")
-                    
+
                     # Wait for command signal from monitoring_control
                     while not monitoring_control.get('waiting_for_manual_agent', False):
                         await asyncio.sleep(0.1)
@@ -1605,9 +1742,10 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                 # Start new cycle - use the new reset method
                 manual_handler.reset_after_final_compiler()
 
-                # Reset redo counters for new cycle
+                # Reset redo counters and dynamic buffer timings for new cycle
                 if session_id in orchestrators:
                     orchestrators[session_id].redo_counts = {}
+                    orchestrators[session_id].reset_for_new_cycle()  # Clear dynamic buffer timings
                     logger.info(f"Reset redo counters for new cycle {_global_cycle_counter + 1}")
 
                 # Increment global cycle counter for next cycle
@@ -1636,7 +1774,6 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
                 # Clear monitoring control flags for clean state
                 monitoring_control['waiting_for_manual_agent'] = False
                 monitoring_control['manual_agent'] = None
-                logger.info("Cleared monitoring control flags for new cycle")
 
             # Brief delay before next cycle
             await asyncio.sleep(1.0)

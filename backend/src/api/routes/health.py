@@ -126,20 +126,46 @@ def check_gpu_available() -> bool:
 
 
 def check_model_loaded() -> bool:
-    """Check if Ollama model is loaded."""
+    """Check if VLM model is loaded (provider-aware)."""
     try:
-        # Check if Ollama is running and model is available
-        result = subprocess.run(
-            ["ollama", "list"],
-            capture_output=True,
-            text=True,
-            timeout=2
-        )
-        
-        if result.returncode == 0:
-            # Check if our specific model is in the list
-            return "qwen2.5-vl" in result.stdout.lower()
-        return False
+        # Only check Ollama if using Ollama provider
+        model_provider = os.getenv("MODEL_PROVIDER", "ollama").lower()
+
+        if model_provider == "ollama":
+            # Check if Ollama is running and model is available
+            result = subprocess.run(
+                ["ollama", "list"],
+                capture_output=True,
+                text=True,
+                timeout=2
+            )
+
+            if result.returncode == 0:
+                # Check if our specific model is in the list
+                return "qwen2.5-vl" in result.stdout.lower()
+            return False
+        elif model_provider == "huggingface":
+            # For HuggingFace, check if the HF server is running
+            import aiohttp
+            import asyncio
+
+            async def check_hf_server():
+                try:
+                    hf_host = os.getenv("HF_SERVER_HOST", "localhost")
+                    hf_port = os.getenv("HF_SERVER_PORT", "11435")
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(
+                            f"http://{hf_host}:{hf_port}/health",
+                            timeout=aiohttp.ClientTimeout(total=2)
+                        ) as response:
+                            return response.status == 200
+                except:
+                    return False
+
+            # Run async check synchronously
+            return asyncio.run(check_hf_server())
+        else:
+            return False
     except:
         return False
 

@@ -32,6 +32,7 @@ class OakDVideoTrack(VideoStreamTrack):
     kind = "video"
 
     # Camera resolution configuration (change here to update everywhere)
+    # High resolution for garment detail capture
     CAMERA_WIDTH = 2400
     CAMERA_HEIGHT = 2160
 
@@ -40,7 +41,7 @@ class OakDVideoTrack(VideoStreamTrack):
         self.session_id = session_id
         self.is_initialized = False
         self._stop_capture = False
-        self._frame_queue = Queue(maxsize=2)  # Minimal queue for low latency
+        self._frame_queue = Queue(maxsize=1)  # Single frame queue for minimum latency
         self._capture_thread = None
         self._last_frame_time = 0
         self._target_fps = 30
@@ -73,22 +74,9 @@ class OakDVideoTrack(VideoStreamTrack):
                 self._pipeline = self._create_pipeline()
 
                 # Connect to device and start pipeline
-                # Try dynamic discovery first, then fall back to static IP
-                device_info = None
-                devices = dai.Device.getAllAvailableDevices()
-                logger.info(f"Found {len(devices)} device(s) via discovery")
-
-                # Look for PoE device via auto-discovery
-                for dev in devices:
-                    if dev.protocol == dai.XLinkProtocol.X_LINK_TCP_IP:
-                        logger.info(f"✓ Dynamically discovered PoE device: {dev.name}")
-                        device_info = dev
-                        break
-
-                # Fall back to static IP if no device found via discovery
-                if device_info is None:
-                    logger.info(f"No PoE device found via auto-discovery, falling back to static IP: {OAKD_POE_FALLBACK_IP}")
-                    device_info = dai.DeviceInfo(OAKD_POE_FALLBACK_IP)
+                # Use static IP directly for PoE (more reliable after reloads)
+                logger.info(f"Connecting directly to OAK-D PoE at static IP: {OAKD_POE_FALLBACK_IP}")
+                device_info = dai.DeviceInfo(OAKD_POE_FALLBACK_IP)
 
                 # Connect to the device
                 self._device = dai.Device(self._pipeline, device_info)
@@ -97,8 +85,9 @@ class OakDVideoTrack(VideoStreamTrack):
                 else:
                     logger.info(f"✓ Connected to OAK-D Pro camera at fallback IP: {OAKD_POE_FALLBACK_IP}")
 
-                # Get output queue (exactly like reference)
-                self._q_rgb = self._device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+                # Get output queue with minimal buffering for low latency
+                # Reduced from 4 to 1 to minimize hardware queue delay
+                self._q_rgb = self._device.getOutputQueue(name="rgb", maxSize=1, blocking=False)
 
                 # Get control input queue for tap-to-focus
                 self._q_control = self._device.getInputQueue(name="control", maxSize=8, blocking=False)
@@ -150,8 +139,8 @@ class OakDVideoTrack(VideoStreamTrack):
         # Image quality controls (all via initialControl)
         cam_rgb.initialControl.setSharpness(1)         # Slight sharpening for fabric texture (0-4)
         cam_rgb.initialControl.setLumaDenoise(1)       # Reduce brightness noise (0-4)
-        cam_rgb.initialControl.setChromaDenoise(4)     # Reduce color noise - max recommended (0-4)
-        cam_rgb.initialControl.setSaturation(1)        # Slight boost for vibrant colors (0-4)
+        cam_rgb.initialControl.setChromaDenoise(1)     # Reduce color noise - reduced from 4 to prevent desaturation (0-4)
+        cam_rgb.initialControl.setSaturation(0)        # Neutral saturation - no boost needed with lower chroma denoise (0-4)
         # 3A (Auto-Exposure, Auto-White Balance) controls
         cam_rgb.initialControl.setAutoExposureEnable()  # Enable auto-exposure
         cam_rgb.initialControl.setAutoWhiteBalanceMode(
@@ -254,20 +243,41 @@ class OakDVideoTrack(VideoStreamTrack):
         """Receive next video frame for WebRTC."""
         pts, time_base = await self.next_timestamp()
 
-        # Get LATEST frame from queue (skip old frames for low latency)
+        # Get ONLY the latest frame - don't waste time extracting all frames
         frame = None
-        while not self._frame_queue.empty():
-            try:
-                frame = self._frame_queue.get_nowait()
-            except Empty:
-                break
+        try:
+            # Try to get the newest frame without extracting all
+            frame = self._frame_queue.get_nowait()
 
-        # Use last valid frame if queue is empty
-        if frame is None:
+            # If there are more frames queued, clear them and keep only the newest
+            if not self._frame_queue.empty():
+                # Clear old frames quickly
+                while not self._frame_queue.empty():
+                    try:
+                        frame = self._frame_queue.get_nowait()  # Keep updating to newest
+                    except Empty:
+                        break
+        except Empty:
+            # Queue is empty - use last valid frame
             if self._last_valid_frame is not None:
-                frame = self._last_valid_frame.copy()
+                frame = self._last_valid_frame  # No copy needed, read-only
             else:
-                frame = self._generate_test_pattern()
+                # Only generate test pattern if camera truly isn't working
+                # Wait a tiny bit to see if a frame arrives
+                await asyncio.sleep(0.01)  # 10ms wait
+                try:
+                    frame = self._frame_queue.get_nowait()
+                except Empty:
+                    # Still no frame - camera might be initializing or disconnected
+                    if self.is_initialized:
+                        # Camera is initialized but no frames - keep using last valid if available
+                        if self._last_valid_frame is not None:
+                            frame = self._last_valid_frame
+                        else:
+                            logger.warning("No frames available from initialized camera")
+                            frame = self._generate_test_pattern()
+                    else:
+                        frame = self._generate_test_pattern()
 
         # Convert frame to VideoFrame
         av_frame = VideoFrame.from_ndarray(frame, format="bgr24")
@@ -329,16 +339,25 @@ class OakDVideoTrack(VideoStreamTrack):
         if self._capture_thread and self._capture_thread.is_alive():
             self._capture_thread.join(timeout=2.0)
 
+        # Clear queues first
+        self._q_rgb = None
+        self._q_control = None
+
+        # Close device with proper cleanup
         if self._device:
             try:
+                logger.info("Closing OAK-D PoE device connection...")
                 self._device.close()
-            except:
-                pass
-            self._device = None
+                # Add small delay for PoE device to fully disconnect
+                import time
+                time.sleep(1.0)
+            except Exception as e:
+                logger.warning(f"Error closing device: {e}")
+            finally:
+                self._device = None
 
-        self._q_rgb = None
         self._pipeline = None
-        logger.info("OAK-D Pro video track stopped")
+        logger.info("OAK-D Pro video track stopped and resources cleaned")
 
 
 class OakDCameraService:

@@ -7,6 +7,7 @@ from collections import Counter, defaultdict
 
 from ..models.aggregated_result import AggregatedResult, ConflictResolution
 from ..models.inference_result import InferenceResult
+from ..utils.key_normalizer import KeyNormalizer
 
 logger = logging.getLogger(__name__)
 
@@ -48,24 +49,27 @@ class FrameAggregator:
 
         return result
     
-    def _aggregate_single(self, agent_name: str, 
+    def _aggregate_single(self, agent_name: str,
                          inference: InferenceResult) -> AggregatedResult:
-        """Handle single inference - use as-is"""
+        """Handle single inference - use as-is with normalization"""
         result = AggregatedResult(
             agent_name=agent_name,
             total_inferences=1,
             aggregation_method="single"
         )
-        
-        result.attributes = inference.attributes.copy()
+
+        # Normalize the attributes for this agent before using them
+        # Note: normalize_agent_attributes() creates a new dict, so no .copy() needed (O(1) optimization)
+        normalized = KeyNormalizer.normalize_agent_attributes(agent_name, inference.attributes)
+        result.attributes = normalized
         result.overall_confidence = inference.confidence
-        
-        for attr, value in inference.attributes.items():
+
+        for attr, value in normalized.items():
             result.per_attribute_confidence[attr] = inference.confidence
-        
+
         return result
     
-    def _aggregate_two(self, agent_name: str, 
+    def _aggregate_two(self, agent_name: str,
                       inferences: List[InferenceResult]) -> AggregatedResult:
         """Handle two inferences - last with first fallback for nulls"""
         result = AggregatedResult(
@@ -73,17 +77,19 @@ class FrameAggregator:
             total_inferences=2,
             aggregation_method="last_with_fallback"
         )
-        
-        first = inferences[0].attributes
-        second = inferences[1].attributes
-        
+
+        # Normalize both inference results
+        # Note: normalize_agent_attributes() creates new dicts, so no .copy() needed (O(1) optimization)
+        first = KeyNormalizer.normalize_agent_attributes(agent_name, inferences[0].attributes)
+        second = KeyNormalizer.normalize_agent_attributes(agent_name, inferences[1].attributes)
+
         # Get all unique attributes
         all_attrs = set(first.keys()) | set(second.keys())
-        
+
         for attr in all_attrs:
             first_val = first.get(attr)
             second_val = second.get(attr)
-            
+
             if second_val is not None:
                 # Use second inference value
                 final_val = second_val
@@ -96,16 +102,16 @@ class FrameAggregator:
                 # Both null
                 final_val = None
                 reason = "Both inferences returned null"
-            
+
             result.attributes[attr] = final_val
-            
+
             # Record resolution
             if first_val != second_val:
                 result.add_conflict_resolution(
                     attr, [first_val, second_val],
                     "last_with_fallback", final_val, reason
                 )
-        
+
         return result
     
     def _aggregate_multiple(self, agent_name: str,
@@ -122,9 +128,12 @@ class FrameAggregator:
         # Single-pass collection: build attribute votes in one iteration
         attribute_values = defaultdict(list)
 
-        # Collect all attribute values in a single pass
+        # Collect all attribute values in a single pass (with normalization)
         for inf in inferences:
-            for attr, value in inf.attributes.items():
+            # Normalize each inference result before aggregating
+            # Note: normalize_agent_attributes() creates a new dict, so no .copy() needed (O(1) optimization)
+            normalized = KeyNormalizer.normalize_agent_attributes(agent_name, inf.attributes)
+            for attr, value in normalized.items():
                 attribute_values[attr].append(value)
 
         # Process each attribute's votes

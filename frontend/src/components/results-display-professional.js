@@ -9,6 +9,9 @@ class ResultsDisplayProfessional {
         this.allSessions = this.loadFromLocalStorage() || [];
         this.csvExporter = new CSVExporter();
         this.initializeElements();
+
+        // Restore last current result on page load
+        this.restoreCurrentResult();
     }
 
     /**
@@ -58,6 +61,13 @@ class ResultsDisplayProfessional {
         this.currentResults = null;
         this.showNoResults();
         this.disableExportButtons();
+
+        // Clear saved current result when starting new classification
+        try {
+            localStorage.removeItem('relo_current_result');
+        } catch (e) {
+            console.error('Failed to clear current result:', e);
+        }
     }
 
     /**
@@ -105,9 +115,12 @@ class ResultsDisplayProfessional {
         
         // Enable export buttons
         this.enableExportButtons();
-        
+
         // Save to localStorage for persistence
         this.saveToLocalStorage();
+
+        // Save current result separately for restoration
+        this.saveCurrentResult(results);
     }
 
     /**
@@ -373,7 +386,7 @@ class ResultsDisplayProfessional {
      * Generate session ID
      */
     generateSessionId() {
-        return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        return 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
     }
 
     /**
@@ -406,8 +419,47 @@ class ResultsDisplayProfessional {
     clearLocalStorage() {
         try {
             localStorage.removeItem('relo_classification_history');
+            localStorage.removeItem('relo_current_result');
         } catch (e) {
             console.error('Failed to clear localStorage:', e);
+        }
+    }
+
+    /**
+     * Save current result for restoration after refresh
+     */
+    saveCurrentResult(results) {
+        try {
+            localStorage.setItem('relo_current_result', JSON.stringify(results));
+        } catch (e) {
+            console.error('Failed to save current result:', e);
+        }
+    }
+
+    /**
+     * Restore current result from localStorage on page load
+     */
+    restoreCurrentResult() {
+        try {
+            const stored = localStorage.getItem('relo_current_result');
+            if (stored) {
+                const results = JSON.parse(stored);
+                this.currentResults = results;
+
+                // Display restored results
+                this.displayResultsSummary(results);
+                this.displayResultsTable(results);
+
+                // Add to CSV exporter for export functionality
+                this.csvExporter.addResult(results);
+
+                // Enable export buttons
+                this.enableExportButtons();
+
+                console.log('✅ Restored classification result from previous session');
+            }
+        } catch (e) {
+            console.error('Failed to restore current result:', e);
         }
     }
 

@@ -34,6 +34,9 @@ class StatefulOrchestrator:
         self.is_redo = False  # Track if current run is a redo
         self.redo_counts = {}  # Track redo attempts per agent: {agent_name: count}
 
+        # Dynamic buffer tracking - use first inference time as threshold
+        self.first_inference_times = {}  # {agent_name: first_inference_duration_seconds}
+
         # GPU optimization state
         self.gpu_optimization_initialized = False
         self.gpu_optimization_status = "not_initialized"
@@ -193,10 +196,11 @@ class StatefulOrchestrator:
         opt_info = self.inference_engine.get_optimization_status()
         await self._send_agent_started(agent_name, timer_seconds, opt_info)
         
-        # Run inference loop until timer expires (with 1-second buffer)
+        # Run inference loop until timer expires (with dynamic buffer)
         end_time = time.time() + timer_seconds
-        buffer_time = 1.0  # Reserve for aggregation
-        
+        # Start with default 1.0s buffer, will become dynamic after first inference
+        buffer_time = 1.0
+
         while time.time() < (end_time - buffer_time):
             agent_state.update_timer()
             
@@ -252,6 +256,9 @@ class StatefulOrchestrator:
             # Determine mode for filename
             mode = "manual" if self.manual_mode else "auto"
 
+            # Start timing BEFORE creating the task (task starts immediately)
+            inference_start = time.time()
+
             inference_task = asyncio.create_task(
                 self.inference_engine.run_inference(
                     agent_name, frames, inference_num, previous_context,
@@ -261,15 +268,27 @@ class StatefulOrchestrator:
                     initial_classifier_context=initial_classifier_context
                 )
             )
-            
+
             # Send inference update
             await self._send_inference_update(
                 agent_name, inference_num, len(frames), agent_state.timer_remaining
             )
-            
+
             # Wait for inference to complete (even if timer expires)
             result = await inference_task
-            
+            inference_duration = time.time() - inference_start
+
+            # Track first inference time for dynamic buffer calculation (AUTO MODE ONLY)
+            if not self.manual_mode and inference_num == 1 and agent_name not in self.first_inference_times:
+                self.first_inference_times[agent_name] = inference_duration
+                # Update buffer to be first_inference_time - 0.3s (aggressive timing)
+                buffer_time = inference_duration - 0.3
+                logger.info(f"📊 {agent_name} inference #1 took {inference_duration:.2f}s")
+                logger.info(f"⏱️  Dynamic buffer updated to {buffer_time:.2f}s (inference time - 0.3s for aggressive second run)")
+                logger.info(f"   Second inference will run if time remaining > {buffer_time:.2f}s")
+            elif self.manual_mode:
+                logger.debug(f"📊 {agent_name} inference #{inference_num} took {inference_duration:.2f}s (manual mode: using fixed 1.0s buffer)")
+
             # Add result
             agent_state.add_inference_result(result)
 
@@ -536,15 +555,26 @@ class StatefulOrchestrator:
             else:
                 logger.info(f"Confirmed: Agent {agent_name} deleted from session_state.agent_states")
 
+        # Clear first inference time for fresh dynamic buffer calculation
+        if agent_name in self.first_inference_times:
+            del self.first_inference_times[agent_name]
+            logger.info(f"Cleared first inference time for {agent_name} - will recalculate on next run")
+
     def reset_all_agent_states(self) -> None:
         """Reset all agent states for new cycle (manual mode only)"""
         if self.manual_mode:
             self.session_state.agent_states.clear()
+            self.first_inference_times.clear()  # Clear all dynamic buffer timings
             logger.info("Reset all agent states for new manual mode cycle")
 
             # Clean up frame registry
             if self.frame_registry:
                 asyncio.create_task(self.frame_registry.cleanup())
+
+    def reset_for_new_cycle(self) -> None:
+        """Reset orchestrator state for a new cycle (both auto and manual modes)"""
+        self.first_inference_times.clear()
+        logger.info(f"🔄 Cleared dynamic buffer timings for new cycle (mode: {'manual' if self.manual_mode else 'auto'})")
     
     async def get_performance_metrics(self) -> Dict[str, Any]:
         """Get comprehensive performance metrics"""

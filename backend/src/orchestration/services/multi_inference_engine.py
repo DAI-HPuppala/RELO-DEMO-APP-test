@@ -25,12 +25,11 @@ class MultiInferenceEngine:
 
     # O(1) lookup set for non-damaging issues (cosmetic only, don't affect resale value)
     NON_DAMAGING_ISSUES = frozenset({
-        'wrinkle', 'wrinkles', 'wrinkled', 'crease', 'creases', 'creased', 'creasing',
+        'wrinkle', 'wrinkles', 'wrinkled',
         'fold', 'folds', 'folded', 'folding',
         'pilling', 'pills',
         'dust', 'dusty',
         'minor dirt', 'light dirt',
-        'minor fading',
         'wrinkled fabric'
     })
 
@@ -58,19 +57,19 @@ class MultiInferenceEngine:
     
     async def initialize_gpu_optimization(self, progress_callback=None) -> bool:
         """Initialize GPU optimization for VLM inference"""
-        logger.info("🚀 Checking VLM singleton initialization status...")
-        
+        logger.info("Checking VLM singleton initialization status")
+
         try:
             # Check if VLM singleton is already initialized
             if self.vlm_singleton.is_ready():
-                logger.info("✅ VLM singleton already initialized - no warmup needed")
+                logger.info("VLM singleton already initialized")
                 return True
-            
+
             # Initialize VLM singleton (will only initialize once)
             result = await self.vlm_singleton.initialize_once(progress_callback)
-            
+
             if result.get("status") in ["success", "already_initialized"]:
-                logger.info("✅ VLM singleton ready for multi-inference")
+                logger.info("VLM singleton ready for multi-inference")
                 return True
             else:
                 raise RuntimeError(f"VLM initialization failed: {result}")
@@ -81,9 +80,7 @@ class MultiInferenceEngine:
     
     def is_gpu_optimized(self) -> bool:
         """Check if GPU optimization is active and ready"""
-        is_ready = self.vlm_singleton.is_ready()
-        logger.debug(f"VLM singleton ready status: {is_ready}")
-        return is_ready
+        return self.vlm_singleton.is_ready()
     
     async def run_inference(self, agent_name: str, frames: List[np.ndarray], inference_num: int, previous_context: Dict[str, Any] = None, cycle_num: int = 1, redo_attempt: int = 0, mode: str = "auto", initial_classifier_context: Optional[Dict[str, Any]] = None) -> InferenceResult:
         """Run GPU-accelerated inference for multiple frames"""
@@ -109,39 +106,8 @@ class MultiInferenceEngine:
             prev_frame = previous_context.get('frame_data')
             frames_to_process = [prev_frame] + frames_to_process
 
-        # Clear logging for debugging
-        logger.info("="*80)
-        logger.info(f"🎯 INFERENCE START: {agent_name.upper()} - Inference #{inference_num}")
-        logger.info("="*80)
-
-        if inference_num == 1:
-            logger.info(f"📸 FRAME CAPTURED: {len(frames)} {'frame' if len(frames) == 1 else 'frames'} captured from camera (first inference)")
-        else:
-            logger.info(f"📸 FRAME CAPTURED: 1 new frame captured for inference #{inference_num}")
-            if previous_context and previous_context.get('frame_data') is not None:
-                logger.info(f"🖼️ BATCH PROCESSING: Using 2 images (1 previous + 1 new) for context-aware inference")
-                logger.info(f"📚 CONTEXT: Using results and image from inference #{previous_context.get('inference_num', inference_num-1)}")
-                # Log the actual context being used
-                logger.info("*" * 30 + " CONTEXT " + "*" * 30)
-                prev_attrs = previous_context.get('attributes', {})
-                if prev_attrs:
-                    logger.info(f"Previous Attributes: {prev_attrs}")
-                logger.info(f"Previous Confidence: {previous_context.get('confidence', 0.0):.1%}")
-                if previous_context.get('reasoning'):
-                    logger.info(f"Previous Reasoning: {previous_context.get('reasoning')}")
-                logger.info("*" * 69)
-
-        if inference_num > 1 and previous_context and previous_context.get('frame_data') is not None:
-            logger.info(f"  📁 PREVIOUS Frame: Used from inference #{previous_context.get('inference_num')} (in memory)")
-            logger.info(f"  🔍 Batch processing with 2 images (previous + new) for {agent_name} inference #{inference_num}")
-            logger.info("*" * 30 + f" BATCH DETAILS FOR {agent_name.upper()} " + "*" * 30)
-            logger.info(f"  Image 1: Previous frame from inference #{previous_context.get('inference_num')}")
-            logger.info(f"  Image 2: New frame just captured")
-            logger.info(f"  Previous Results: {previous_context.get('attributes')}")
-            logger.info("*" * (60 + len(agent_name) + 14))
-        else:
-            logger.info(f"  🔍 This frame will be used for {agent_name} inference #{inference_num}")
-        logger.info("-"*80)
+        # Log inference start
+        logger.info(f"VLM inference start: {agent_name} inference #{inference_num}, frames={len(frames)}")
 
         start_time = time.time()
 
@@ -156,9 +122,7 @@ class MultiInferenceEngine:
                 # Use GPU-optimized inference with agent name for better detection
                 # Use frames_to_process which includes previous frame for batch processing
                 result_data = await vlm_loader.infer_optimized(frames_to_process, prompt, agent_name)
-                logger.info("=/*"*40)
-                logger.info(f"GPU inference completed for {agent_name} in {time.time() - start_time:.2f}s and agent response: {result_data}")
-                logger.info("=/*"*40)
+                logger.info(f"[VLM RAW RESPONSE] {agent_name}: {result_data}")
                 # Create InferenceResult object
                 result = InferenceResult(
                     agent_name=agent_name,
@@ -170,6 +134,11 @@ class MultiInferenceEngine:
                 attributes = result_data.get("attributes", {})
                 confidence = result_data.get("confidence", 0.8)
                 reasoning = result_data.get("reasoning", "")
+
+                # Extract inference_metadata if available and add to attributes
+                inference_metadata = result_data.get("inference_metadata", {})
+                if inference_metadata:
+                    attributes['inference_metadata'] = inference_metadata
 
                 # Filter out non-damaging issues for damage_detector agent
                 if agent_name == "damage_detector":
@@ -195,25 +164,35 @@ class MultiInferenceEngine:
                 self.successful_inferences += 1
                 self._record_performance(agent_name, inference_time, "success")
 
-                logger.info(f"✅ GPU INFERENCE COMPLETED for {agent_name} in {inference_time:.2f}s")
-                logger.info(f"📊 Results: {len(attributes)} attributes detected")
-                logger.info("="*80)
+                logger.info(f"VLM inference completed: {agent_name} in {inference_time:.2f}s, attributes={len(attributes)}")
 
                 # Save frames AFTER inference (doesn't impact timer)
                 saved_frame_paths = await self._save_debug_frames(
                     agent_name, frames, inference_num, cycle_num=cycle_num, redo_attempt=redo_attempt, mode=mode
                 )
 
-                # Log saved frames
-                for i, path in enumerate(saved_frame_paths, 1):
-                    logger.info(f"  📁 Frame SAVED TO: {path}")
-
                 # Save annotated version for damage_detector ONLY if damage passed filters (bbox < 60%)
-                # Handle both boolean True and string 'true' from VLM
+                # Check for damage in RAW format (before normalization)
+                # RAW format: {'damage': {'Hole': [0.45, 0.25, 0.5, 0.3]}}
+                # Also check normalized format for backward compatibility
+                raw_damage = attributes.get('damage')
                 damaged_value = attributes.get('damaged')
-                is_damaged = damaged_value == True or damaged_value == 'true' or damaged_value == 'True'
+                damage_locations = attributes.get('damage_locations')
+                damage_location = attributes.get('damage_location')
 
-                if agent_name == "damage_detector" and is_damaged and attributes.get('damage_location'):
+                # Determine if damaged based on available fields
+                is_damaged = False
+                if isinstance(raw_damage, dict) and raw_damage:
+                    # New raw format from VLM
+                    is_damaged = True
+                elif damaged_value == True or damaged_value == 'true' or damaged_value == 'True':
+                    # Already normalized format
+                    is_damaged = True
+
+                # Check if we have location data
+                has_damage_location = raw_damage or damage_locations or damage_location
+
+                if agent_name == "damage_detector" and is_damaged and has_damage_location:
                     await self._save_annotated_damage_frames(
                         frames, saved_frame_paths, attributes, cycle_num, inference_num, mode, redo_attempt
                     )
@@ -229,8 +208,8 @@ class MultiInferenceEngine:
                     inference_time = time.time() - start_time
                     self.total_inferences += 1
                     self._record_performance(agent_name, inference_time, "failed")
-                    
-                    logger.error(f"❌ GPU inference failed for {agent_name} after {self.max_retries} retries: {e}")
+
+                    logger.error(f"VLM inference failed for {agent_name} after {self.max_retries} retries: {e}")
                     
                     # Return error result
                     error_result = InferenceResult(
@@ -303,10 +282,8 @@ class MultiInferenceEngine:
 
                     # Track in saved_images for this cycle
                     self.saved_images[cycle_num][agent_name].append(relative_path)
-
-                    logger.debug(f"Saved frame: {filepath}")
                 else:
-                    logger.error(f"❌ Failed to save frame: {filepath}")
+                    logger.error(f"Failed to save frame: {filepath}")
 
         except Exception as e:
             logger.error(f"Error saving debug frames for {agent_name}: {e}")
@@ -394,17 +371,39 @@ class MultiInferenceEngine:
         Save annotated versions of damage detector frames with bounding boxes drawn.
 
         Handles coordinate scaling from VLM-processed resolution (768x691) to original frame resolution.
+        Supports both old format (damage_location) and new format (damage_locations dict).
 
         Args:
             frames: Original frame data (numpy arrays at original resolution, e.g., 2400x2160)
             saved_paths: Paths where original frames were saved
-            attributes: Damage detection attributes including damage_location
+            attributes: Damage detection attributes including damage_location or damage_locations
             cycle_num: Cycle number
             inference_num: Inference number
             mode: Mode (auto/manual)
             redo_attempt: Redo attempt number
         """
         try:
+            # Check for RAW format first (from VLM before normalization)
+            raw_damage = attributes.get('damage')
+            if raw_damage and isinstance(raw_damage, dict):
+                # RAW VLM format: {'damage': {'Hole': [0.45, 0.25, 0.5, 0.3]}}
+                logger.info(f"Using RAW damage format with {len(raw_damage)} damage type(s)")
+                await self._save_annotated_frames_new_format(
+                    frames, saved_paths, raw_damage, cycle_num, inference_num, mode, redo_attempt
+                )
+                return
+
+            # Check for normalized damage_locations format
+            damage_locations = attributes.get('damage_locations')
+            if damage_locations and isinstance(damage_locations, dict):
+                # Normalized format: {damage_type: bbox, ...}
+                logger.info(f"Using normalized damage_locations format with {len(damage_locations)} damage type(s)")
+                await self._save_annotated_frames_new_format(
+                    frames, saved_paths, damage_locations, cycle_num, inference_num, mode, redo_attempt
+                )
+                return
+
+            # Fall back to old format
             damage_location = attributes.get('damage_location')
             damage_type = attributes.get('damage_type', 'damage')
 
@@ -412,6 +411,7 @@ class MultiInferenceEngine:
                 logger.debug("No damage_location found, skipping annotation")
                 return
 
+            logger.info("Using old damage_location format")
             # Parse damage location - handle string or list format, supporting multiple bboxes
             bboxes = []  # List of bounding boxes to draw
 
@@ -579,17 +579,9 @@ class MultiInferenceEngine:
                     )
 
                     if success:
-                        logger.info(f"  🎨 Annotated frame SAVED TO: damage_detector/{annotated_filename}")
-                        logger.info(f"     Resolution: {img_width}x{img_height}, Bounding boxes: {bbox_count}")
-                        if bbox_count <= 3:
-                            # Show all boxes if there are only a few
-                            for i, bbox in enumerate(bboxes, 1):
-                                logger.info(f"     Box {i}: {bbox}")
-                        else:
-                            # Show summary for many boxes
-                            logger.info(f"     First bbox: {bboxes[0]}, Last bbox: {bboxes[-1]}")
+                        logger.info(f"Annotated frame saved: damage_detector/{annotated_filename}, resolution={img_width}x{img_height}, boxes={bbox_count}")
                     else:
-                        logger.error(f"❌ Failed to save annotated frame: {annotated_filepath}")
+                        logger.error(f"Failed to save annotated frame: {annotated_filepath}")
 
                 except Exception as frame_error:
                     logger.error(f"Error annotating frame {idx}: {frame_error}")
@@ -597,6 +589,141 @@ class MultiInferenceEngine:
 
         except Exception as e:
             logger.error(f"Error saving annotated damage frames: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+
+    async def _save_annotated_frames_new_format(self, frames: List[np.ndarray], saved_paths: List[str],
+                                                 damage_locations: Dict[str, Any], cycle_num: int,
+                                                 inference_num: int, mode: str, redo_attempt: int):
+        """
+        Save annotated frames using new format with individual damage type labels.
+
+        New format: {"Hole": [0.45, 0.25, 0.5, 0.3], "Stain": [0.1, 0.2, 0.3, 0.4]}
+
+        Args:
+            frames: Original frame data
+            saved_paths: Paths where original frames were saved
+            damage_locations: Dict mapping damage types to bounding boxes
+            cycle_num: Cycle number
+            inference_num: Inference number
+            mode: Mode (auto/manual)
+            redo_attempt: Redo attempt number
+        """
+        try:
+            # Get agent directory
+            agent_dir = self.frame_config.get_agent_frame_dir("damage_detector")
+
+            # VLM processes images at this resolution (from vlm_gpu_loader.py)
+            VLM_RESIZE_WIDTH = 768
+            VLM_RESIZE_HEIGHT = 691
+
+            for idx, (frame, saved_path) in enumerate(zip(frames, saved_paths)):
+                try:
+                    import cv2
+                    from PIL import Image, ImageDraw, ImageFont
+
+                    # Build filename for annotated version
+                    original_filename = saved_path.split('/')[-1]
+                    base_name = original_filename.rsplit('.', 1)[0]
+                    annotated_filename = f"{base_name}_annotated.jpg"
+                    annotated_filepath = agent_dir / annotated_filename
+
+                    # Convert frame to PIL Image for drawing
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    pil_img = Image.fromarray(frame_rgb)
+                    draw = ImageDraw.Draw(pil_img)
+
+                    # Get actual frame dimensions
+                    img_width, img_height = pil_img.size
+
+                    # Calculate scale factors once
+                    scale_x = img_width / VLM_RESIZE_WIDTH
+                    scale_y = img_height / VLM_RESIZE_HEIGHT
+
+                    # Load font once
+                    try:
+                        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
+                    except:
+                        font = None  # Use default font
+
+                    # Draw each damage type with its own bounding box and label
+                    damage_count = len(damage_locations)
+                    logger.info(f"Drawing {damage_count} damage annotations")
+
+                    for damage_type, bbox in damage_locations.items():
+                        if not bbox or not isinstance(bbox, (list, tuple)) or len(bbox) < 4:
+                            logger.warning(f"Invalid bbox for {damage_type}: {bbox}")
+                            continue
+
+                        # Parse bounding box coordinates
+                        x1, y1, x2, y2 = bbox[:4]
+
+                        # Determine coordinate type and scale appropriately
+                        if all(0 <= v <= 1 for v in [x1, y1, x2, y2]):
+                            # Case 1: Normalized coordinates (0-1 range)
+                            x1_px = int(x1 * img_width)
+                            y1_px = int(y1 * img_height)
+                            x2_px = int(x2 * img_width)
+                            y2_px = int(y2 * img_height)
+                            logger.debug(f"{damage_type}: Normalized coords {bbox} → Pixels [{x1_px}, {y1_px}, {x2_px}, {y2_px}]")
+
+                        elif all(v <= max(VLM_RESIZE_WIDTH, VLM_RESIZE_HEIGHT) for v in [x1, y1, x2, y2]):
+                            # Case 2: Pixel coordinates from VLM-resized image
+                            x1_px = int(x1 * scale_x)
+                            y1_px = int(y1 * scale_y)
+                            x2_px = int(x2 * scale_x)
+                            y2_px = int(y2 * scale_y)
+                            logger.debug(f"{damage_type}: VLM coords {bbox} → Scaled [{x1_px}, {y1_px}, {x2_px}, {y2_px}]")
+
+                        else:
+                            # Case 3: Pixel coordinates already at original resolution
+                            x1_px = int(x1)
+                            y1_px = int(y1)
+                            x2_px = int(x2)
+                            y2_px = int(y2)
+                            logger.debug(f"{damage_type}: Original pixel coords {bbox}")
+
+                        # Clamp coordinates to image bounds
+                        x1_px = max(0, min(x1_px, img_width - 1))
+                        y1_px = max(0, min(y1_px, img_height - 1))
+                        x2_px = max(0, min(x2_px, img_width))
+                        y2_px = max(0, min(y2_px, img_height))
+
+                        # Validate bounding box
+                        if x2_px <= x1_px or y2_px <= y1_px:
+                            logger.warning(f"{damage_type}: Invalid bbox after scaling [{x1_px}, {y1_px}, {x2_px}, {y2_px}] - skipping")
+                            continue
+
+                        # Draw bounding box
+                        draw.rectangle([x1_px, y1_px, x2_px, y2_px], outline='red', width=4)
+
+                        # Draw individual label for this damage type
+                        label_text = damage_type
+                        text_bbox = draw.textbbox((x1_px + 5, y1_px - 30), label_text, font=font)
+                        draw.rectangle(text_bbox, fill='red')
+                        draw.text((x1_px + 5, y1_px - 30), label_text, fill='white', font=font)
+
+                    # Convert back to BGR for OpenCV saving
+                    annotated_frame = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+
+                    # Save annotated frame
+                    success = cv2.imwrite(
+                        str(annotated_filepath),
+                        annotated_frame,
+                        [cv2.IMWRITE_JPEG_QUALITY, self.frame_config.jpeg_quality]
+                    )
+
+                    if success:
+                        logger.info(f"Annotated frame saved: damage_detector/{annotated_filename}, resolution={img_width}x{img_height}, types={damage_count}")
+                    else:
+                        logger.error(f"Failed to save annotated frame: {annotated_filepath}")
+
+                except Exception as frame_error:
+                    logger.error(f"Error annotating frame {idx}: {frame_error}")
+                    continue
+
+        except Exception as e:
+            logger.error(f"Error saving annotated damage frames (new format): {e}")
             import traceback
             logger.error(traceback.format_exc())
 
@@ -640,14 +767,14 @@ class MultiInferenceEngine:
             filtered_attrs['damaged'] = False
             filtered_attrs['damage_type'] = None
             filtered_attrs['damage_location'] = None  # Clear bbox to prevent annotation
-            logger.info(f"🧹 Filtered out cosmetic issues: {damage_type} → No damage")
+            logger.info(f"Filtered out cosmetic issues: {damage_type} → No damage")
         else:
             # Real damages remain - preserve original format (list or string)
             if isinstance(damage_type, list):
                 filtered_attrs['damage_type'] = real_damages
             else:
                 filtered_attrs['damage_type'] = ', '.join(real_damages)
-            logger.info(f"🔍 Filtered damage types: {damage_type} → {filtered_attrs['damage_type']}")
+            logger.info(f"Filtered damage types: {damage_type} → {filtered_attrs['damage_type']}")
 
         return filtered_attrs
 
@@ -766,10 +893,7 @@ class MultiInferenceEngine:
             filtered_attrs['damage_type'] = None
             filtered_attrs['damage_location'] = None
             resolution_info = f"{img_width}x{img_height}" if 'img_width' in locals() else "normalized"
-            logger.info(f"🚫 Rejected vague damage detection: bbox covers {area_coverage*100:.1f}% of {resolution_info} image (threshold: {VAGUE_DETECTION_THRESHOLD*100:.0f}%)")
-        else:
-            resolution_info = f"{img_width}x{img_height}" if 'img_width' in locals() else "normalized"
-            logger.debug(f"✅ Accepted damage detection: bbox covers {area_coverage*100:.1f}% of {resolution_info} image")
+            logger.info(f"Rejected vague damage detection: bbox covers {area_coverage*100:.1f}% of {resolution_info} image (threshold: {VAGUE_DETECTION_THRESHOLD*100:.0f}%)")
 
         return filtered_attrs
 
@@ -804,39 +928,42 @@ class MultiInferenceEngine:
     def _get_agent_prompt(self, agent_name: str, inference_num: int, previous_context: Dict[str, Any] = None, initial_classifier_context: Optional[Dict[str, Any]] = None) -> str:
         """Generate appropriate prompt based on agent name and context"""
         prompts = {
-            "initial_classifier": "Analyze this garment and identify: type (e.g., T-shirt, Dress, Pants, Shoes, Shirt, Shorts, Jacket, Sweatshirt, Sweater, Hoodie, Bag), color, pattern (max 3 words - only if necessary), neckline style, sleeve length, and closure type. Neckline, closure type, and sleeve length are optional or could be null for Shoes. Return null for unrecognizable attributes.",
-            "detail_extractor": "Analyze this garment and Search for brand name/logo and size on this garment. Return brand and size, or null if not visible.",
-            "damage_detector": """Analyze this garment image for PHYSICAL DAMAGE that affects resale value.
+            "initial_classifier": "You are a state-of-the-art fashion vision analyst. Inspect the entire garment carefully before answering. Determine garment type, color, pattern, neckline, sleeve_length, and closure. Reason step-by-step about silhouette, fabric cues, lighting, and camera angle to validate each attribute. Type, color, pattern are required. If any attribute cannot be confidently inferred, return null for that attribute.",
+            "detail_extractor": "You are a state-of-the-art garment label specialist. Analyze all tags, labels, and printed regions at multiple scales to detect brand name and size. Use advanced OCR reasoning to disambiguate stylized fonts or partial views. Validate the brand name with your knowledge of fashion brands. If brand or size cannot be read, return null.",
+            "damage_detector": """Analyze the given garment image and ignore any other objects/items other than the garment. Find PHYSICAL DAMAGE affecting resale.
 
-STEP 1 - OBSERVATION: Carefully examine the garment's fabric, structure, and condition. Look for any abnormalities, defects, or deterioration. If garment context is provided (type, color, pattern, closure), use it to understand the garment's normal structure and design elements.
+STEP 1 - FOLLOW HANDS: If hands present → they show damage location. Examine that area FIRST at maximum zoom.
 
-STEP 2 - CLASSIFICATION: Determine if what you observe is actual damage or normal garment features. Use the garment context to distinguish between intentional design elements and actual damage:
-- DAMAGE: Physical defects that reduce the garment's value (fabric integrity compromised, discoloration, structural issues)
-- NOT DAMAGE: Normal features (pockets, seams, zippers, buttons, design elements, intentional distressing, wrinkles, folds, natural fabric texture)
-- CRITICAL: If the garment has a "distressed" or "ripped" pattern, DO NOT mark intentional design features as damage
+STEP 2 - SCAN HARDWARE (inspect each individually):
+• Belt loops/strings: Frayed edges? Cut/torn fabric? Loose threads?
+• Buttons: Cracks? Chips? Missing? Loose attachment?
+• Zippers: Broken teeth? Stuck? Bent pull tab?
+• Fasteners/snaps: Bent? Broken? Missing?
+Scan from pixel level to find each damage with its location.
 
-STEP 3 - CHARACTERIZATION: If you identify damage, analyze its nature and characteristics:
-- What is the specific condition you observe? (Think: Is the fabric broken? Is there marking? Is there discoloration? Is there separation?)
-- Is this consistent with the garment's stated pattern/style or is it actual damage?
-- What is the appropriate general name for this type of defect?
-- Where exactly is this damage located on the garment?
+STEP 3 - SCAN FABRIC (top→bottom):
+• Stains, holes, tears, cuts, abrasions, discoloration
+• Hair, fuzz, lint, dirty areas
+• Is the apparel color faded?
 
-STEP 4 - NAMING: Provide the most accurate general name for the damage type. Use standard terminology that describes what the damage IS, not how it was caused.
-
-STEP 5 - OUTPUT:
-- damaged: true/false
-- damage_type: Specific general name of the damage (use standard damage terminology, comma-separated if multiple types, NULL if none)
-- damage_location: Precise bounding box coordinates [x1,y1,x2,y2] for EACH damaged area. Multiple boxes if damage appears in different locations: "[x1,y1,x2,y2], [x1,y1,x2,y2]". Null if no damage.
-
-CRITICAL RULES:
-- Only analyze the garment itself, ignore background objects
-- Draw tight bounding boxes around ONLY the damaged areas, not the entire garment
-- Use garment context to avoid marking intentional design features as damage
-- If uncertain whether something is damage, describe what you observe and mark as potential damage""",
-            "final_compiler": "Compile final classification based on all attributes."
+STEP 4 - CLASSIFY & LOCATE:
+Damage types: Stain, Hole, Tear, Cut, Color fade, Scratch, Discoloration, Hair, Lint, Dirty, Frayed Belt Loop/String, Damaged/Missing Button, Broken Zipper, Damaged Fastener... etc.
+Not limited to the list above.
+NOT damage: Pockets, seams, patterns, wrinkles, folds, intact hardware
+Mark bbox [x1,y1,x2,y2] NORMALIZED (0.0-1.0 ONLY). Example: 400px ÷ 800px width = 0.5
+Multiple damage_types can have same name but UNIQUE LOCATIONS. Each damage location should be unique with only one entry per damage type and should only have 4 normalized coordinates [x1, y1, x2, y2]. (normalized coordinates 0.0-1.0)
+JSON:
+{
+  "damage": {
+    "type1": [x_min, y_min, x_max, y_max], (normalized coordinates 0.0-1.0)
+    "type2": [x_min, y_min, x_max, y_max], (normalized coordinates 0.0-1.0)
+    ...
+  }
+}""",
+            "final_compiler": "You are a state-of-the-art fashion assistant consolidating prior analyses. Review all available attributes and reconcile conflicts using best-evidence reasoning. Produce the final structured classification, ensuring every field is justified by visual cues or prior agent outputs, and mark any unknown attribute as null."
         }
 
-        base_prompt = prompts.get(agent_name, "Analyze this clothing item")
+        base_prompt = prompts.get(agent_name, "Analyze this image of a garment")
 
         # Add context for inference #2 and beyond (not for final_compiler)
         if inference_num > 1 and previous_context and agent_name != "final_compiler":
@@ -849,40 +976,38 @@ CRITICAL RULES:
             if agent_name == "initial_classifier":
                 # For initial classifier, mention previous garment attributes
                 if prev_attrs:
-                    context_str += f"\n- Previously identified: {', '.join([f'{k}={v}' for k, v in prev_attrs.items() if v])}"
-                context_str += "\n\nYou are now analyzing TWO images in batch: your previous inference image AND a new image of the same garment. Compare both views to confirm or refine your findings."
-
+                    context_str += f"\n- Previous: {', '.join([f'{k}={v}' for k, v in prev_attrs.items() if v])}"
+                context_str += "\nAnalyzing 2 images. Confirm or update attributes."
+                base_prompt = "You are a state-of-the-art fashion vision analyst. Inspect the entire garment carefully before answering. Determine garment type, color, pattern, neckline, sleeve_length, and closure. Reason step-by-step about silhouette, fabric cues, lighting, and camera angle to validate each attribute. Type, color, pattern are required. If any attribute cannot be confidently inferred, return null for that attribute."
+                base_prompt += context_str
             elif agent_name == "detail_extractor":
                 # For detail extractor, mention if brand/size was found before
                 brand = prev_attrs.get('brand', 'not found')
                 size = prev_attrs.get('size', 'not found')
-                context_str += f"\n- Previous brand detection: {brand}"
-                context_str += f"\n- Previous size detection: {size}"
-                context_str += "\n\nYou are now analyzing TWO images in batch: your previous inference image AND a new image. Check both images for brand and size labels - they may be clearer in one view."
-
+                context_str += f"\n- Previous: brand={brand}, size={size}"
+                context_str += "\n2 images. Check both for labels."
+                base_prompt = "You are a state-of-the-art garment label specialist. Analyze all tags, labels, and printed regions at multiple scales to detect brand name and size. Use advanced OCR reasoning to disambiguate stylized fonts or partial views. Validate the brand name with your knowledge of fashion brands. If brand or size cannot be read, return null."
+                base_prompt += context_str
             elif agent_name == "damage_detector":
                 # For damage detector, mention previous damage findings
                 damaged = prev_attrs.get('damaged', 'unknown')
                 damage_type = prev_attrs.get('damage_type', 'none')
-                context_str += f"\n- Previous damage detection: {damaged}"
-                if damaged == 'yes':
-                    context_str += f"\n- Damage type found: {damage_type}"
-                context_str += "\n\nYou are now analyzing TWO images in batch: your previous inference image AND a new image. Examine both views for damage to confirm findings or detect additional issues."
-
-            base_prompt += context_str
+                context_str += f"\n- Previous: damaged={damaged}, type={damage_type}"
+                context_str += "\n2 images. Confirm damage."
+                base_prompt += context_str
+            
+            
 
         # Add garment context for damage_detector if available
         if agent_name == "damage_detector" and initial_classifier_context:
             filtered_context = self._filter_garment_attributes(initial_classifier_context)
             if filtered_context:
-                context_lines = ["\n\n=== GARMENT CONTEXT (use in your analysis) ==="]
-                for key, value in filtered_context.items():
-                    context_lines.append(f"• {key.replace('_', ' ').title()}: {value}")
-                context_lines.append("\nIMPORTANT: Use this context throughout your Chain of Thought reasoning to distinguish between intentional garment features (like distressed patterns, design rips) and actual damage that affects resale value.")
-                base_prompt += "\n".join(context_lines)
-                logger.debug(f"Added garment context to damage_detector prompt: {base_prompt}")
-
-        return f"{base_prompt} (Inference #{inference_num})"
+                context_str = f"\nGarment: {', '.join([f'{k}={v}' for k, v in filtered_context.items()])}"
+                context_str += "\nUse context to distinguish design features from damage."
+                base_prompt += context_str
+                logger.debug(f"Added garment context to damage_detector prompt")
+        base_prompt += " JSON format."
+        return base_prompt
     
     def _record_performance(self, agent_name: str, inference_time: float, status: str):
         """Record performance metrics"""
@@ -962,13 +1087,13 @@ CRITICAL RULES:
     
     async def shutdown(self):
         """Shutdown GPU-optimized inference engine"""
-        logger.info("Shutting down GPU-optimized multi-inference engine...")
-        
+        logger.info("Shutting down GPU-optimized multi-inference engine")
+
         try:
             # VLM singleton manages its own lifecycle
             # No need to shutdown as it's shared across the application
-            logger.info("✅ GPU-optimized multi-inference engine shutdown completed")
-            
+            logger.info("GPU-optimized multi-inference engine shutdown completed")
+
         except Exception as e:
             logger.error(f"Shutdown error: {e}")
     

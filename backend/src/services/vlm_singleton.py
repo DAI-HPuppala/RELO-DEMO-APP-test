@@ -1,17 +1,21 @@
 """
 VLM Singleton Manager - Single unified VLM service for the entire application
 Ensures VLM initializes only once and is shared across all components
+Supports multiple providers: Ollama, HuggingFace
 """
 
 import asyncio
 import logging
+import os
 import time
 from typing import Optional, Dict, Any, Callable, List
 from enum import Enum
 import numpy as np
 
 from .vlm_gpu_loader import VLMGPULoader
+from .vlm_hf_client import VLMHuggingFaceClient
 from .vlm_service_ultra import UltraVLMService
+from .provider_factory import get_provider_config, ModelProvider
 from config.gpu_config import gpu_config
 
 logger = logging.getLogger(__name__)
@@ -43,30 +47,43 @@ class VLMSingleton:
     def __init__(self):
         if self._initialized:
             return
-            
-        # Core components
-        self.vlm_gpu_loader = VLMGPULoader()
-        self.ultra_vlm_service = UltraVLMService()
-        
+
+        # Check provider configuration
+        provider_config = get_provider_config()
+        self.provider = provider_config.provider
+
+        # Core components - choose based on provider
+        if self.provider == ModelProvider.HUGGINGFACE:
+            logger.info("🔧 Using HuggingFace provider for VLM")
+            self.vlm_client = VLMHuggingFaceClient()
+            self.ultra_vlm_service = None  # Not used with HuggingFace
+        else:  # Ollama
+            logger.info("🔧 Using Ollama provider for VLM")
+            self.vlm_client = VLMGPULoader()
+            self.ultra_vlm_service = UltraVLMService()
+
+        # Backward compatibility aliases
+        self.vlm_gpu_loader = self.vlm_client
+
         # State management
         self.state = VLMState.NOT_INITIALIZED
         self.initialization_lock = asyncio.Lock()
         self.initialization_start_time = None
         self.initialization_duration = None
-        
+
         # Progress tracking
         self.progress_callbacks = []
         self.current_progress = 0
         self.progress_messages = []
-        
+
         # Performance metrics
         self.warmup_results = {}
         self.gpu_info = {}
         self.model_info = {}
-        
+
         self._initialized = True
-        
-        logger.info("VLM Singleton Manager initialized")
+
+        logger.info(f"VLM Singleton Manager initialized (provider: {self.provider.value})")
     
     async def initialize_once(self, progress_callback: Optional[Callable] = None, force: bool = False) -> Dict[str, Any]:
         """
@@ -211,12 +228,12 @@ class VLMSingleton:
     async def _create_cuda_context(self) -> Dict[str, Any]:
         """Create and configure CUDA execution context"""
         try:
-            # Apply CUDA optimizations via VLMGPULoader
-            await self.vlm_gpu_loader._apply_ollama_optimizations()
-            
+            # Apply provider-specific optimizations
+            await self.vlm_client._apply_ollama_optimizations()
+
             await self._update_progress("CUDA context created and optimized", 35)
             return {"status": "success"}
-            
+
         except Exception as e:
             logger.error(f"CUDA context creation failed: {e}")
             raise
@@ -242,17 +259,18 @@ class VLMSingleton:
     async def _compile_model(self) -> Dict[str, Any]:
         """Compile model for optimized GPU execution"""
         try:
-            # Mark VLMGPULoader as optimized
-            self.vlm_gpu_loader.is_optimized = True
+            # Mark client as optimized
+            self.vlm_client.is_optimized = True
             self.model_info["optimized"] = True
-            
-            # Also initialize UltraVLMService
-            self.ultra_vlm_service.is_model_loaded = True
-            self.ultra_vlm_service.is_gpu_locked = True
-            
+
+            # Also initialize UltraVLMService if using Ollama
+            if self.provider == ModelProvider.OLLAMA and self.ultra_vlm_service:
+                self.ultra_vlm_service.is_model_loaded = True
+                self.ultra_vlm_service.is_gpu_locked = True
+
             await self._update_progress("Model compiled for GPU execution", 65)
             return {"status": "success"}
-            
+
         except Exception as e:
             logger.error(f"Model compilation failed: {e}")
             raise
@@ -260,38 +278,37 @@ class VLMSingleton:
     async def _run_warmup_sequences(self) -> Dict[str, Any]:
         """Run warmup inference sequences"""
         try:
+            # Single warmup is sufficient - multiple warmups don't add significant benefit
             warmup_prompts = [
-                {"prompt": "Identify color", "step": "Color detection warmup"},
-                {"prompt": "Describe item", "step": "Item classification warmup"},
-                {"prompt": "Check damage", "step": "Damage detection warmup"}
+                {"prompt": "Check item", "step": "Model warmup"}
             ]
-            
+
             warmup_times = []
-            
+
             for i, warmup_item in enumerate(warmup_prompts):
                 start_time = time.time()
-                
+
                 # Update progress with specific warmup step
-                progress = 70 + (i * 6)  # 70, 76, 82
-                await self._update_progress(f"Warmup {i+1}/3: {warmup_item['step']}", progress)
+                progress = 70
+                await self._update_progress(f"Warmup: {warmup_item['step']}", progress)
                 
                 # Create test image
                 test_image = np.random.randint(0, 256, (224, 224, 3), dtype=np.uint8)
-                
-                # Run inference using VLMGPULoader
+
+                # Run inference using provider client
                 try:
-                    result = await self.vlm_gpu_loader.infer_optimized(
-                        [test_image], 
+                    result = await self.vlm_client.infer_optimized(
+                        [test_image],
                         warmup_item["prompt"]
                     )
-                    
+
                     inference_time = (time.time() - start_time) * 1000
                     warmup_times.append(inference_time)
-                    
-                    logger.info(f"Warmup {i+1}: {inference_time:.0f}ms")
-                    
+
+                    logger.info(f"Warmup: {inference_time:.0f}ms")
+
                 except Exception as e:
-                    logger.warning(f"Warmup {i+1} failed: {e}")
+                    logger.warning(f"Warmup failed: {e}")
             
             # Calculate average warmup time
             if warmup_times:
@@ -303,9 +320,10 @@ class VLMSingleton:
                 }
                 
                 # Mark warmup as complete
-                self.vlm_gpu_loader.warmup_completed = True
-                self.ultra_vlm_service.warmup_completed = True
-                
+                self.vlm_client.warmup_completed = True
+                if self.provider == ModelProvider.OLLAMA and self.ultra_vlm_service:
+                    self.ultra_vlm_service.warmup_completed = True
+
                 await self._update_progress(
                     f"Warmup complete: avg {avg_time:.0f}ms",
                     88
@@ -322,18 +340,18 @@ class VLMSingleton:
         try:
             # Quick verification inference
             test_image = np.random.randint(0, 256, (224, 224, 3), dtype=np.uint8)
-            
+
             start_time = time.time()
-            result = await self.vlm_gpu_loader.infer_optimized([test_image], "Ready")
+            result = await self.vlm_client.infer_optimized([test_image], "Ready")
             verification_time = (time.time() - start_time) * 1000
-            
+
             if verification_time < 2000:  # Should be fast if properly warmed up
                 await self._update_progress("VLM verified and ready", 95)
                 return {"status": "success", "verification_time_ms": verification_time}
             else:
                 logger.warning(f"Verification took {verification_time:.0f}ms - may not be fully optimized")
                 return {"status": "success", "verification_time_ms": verification_time}
-                
+
         except Exception as e:
             logger.error(f"Readiness verification failed: {e}")
             raise
@@ -369,16 +387,21 @@ class VLMSingleton:
             "warmup_results": self.warmup_results
         }
     
-    def get_vlm_gpu_loader(self) -> VLMGPULoader:
-        """Get the VLMGPULoader instance for inference"""
+    def get_vlm_gpu_loader(self):
+        """
+        Get the VLM client instance for inference
+        Returns VLMGPULoader (Ollama) or VLMHuggingFaceClient (HuggingFace)
+        """
         if self.state != VLMState.INITIALIZED:
             raise RuntimeError("VLM not initialized. Call initialize_once() first.")
-        return self.vlm_gpu_loader
-    
-    def get_ultra_vlm_service(self) -> UltraVLMService:
-        """Get the UltraVLMService instance"""
+        return self.vlm_client
+
+    def get_ultra_vlm_service(self) -> Optional[UltraVLMService]:
+        """Get the UltraVLMService instance (Ollama only)"""
         if self.state != VLMState.INITIALIZED:
             raise RuntimeError("VLM not initialized. Call initialize_once() first.")
+        if self.provider != ModelProvider.OLLAMA:
+            raise RuntimeError("UltraVLMService only available with Ollama provider")
         return self.ultra_vlm_service
     
     def is_ready(self) -> bool:

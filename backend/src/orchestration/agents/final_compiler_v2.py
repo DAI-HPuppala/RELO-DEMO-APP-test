@@ -70,11 +70,15 @@ class FinalCompilerV2:
             # Get damage_type and derive is_damaged from it
             final.damage_type = damage.get("damage_type")
 
+            # Preserve damage_locations dict for bbox annotation
+            final.damage_locations = damage.get("damage_locations")
+
             # Check if damage_type indicates no damage
             if self._indicates_no_damage(final.damage_type):
                 final.is_damaged = False
                 final.damage_type = None
                 final.damage_severity = None
+                final.damage_locations = None  # Clear locations if no damage
             else:
                 final.is_damaged = True
                 # Get severity if available, or derive from damage_type

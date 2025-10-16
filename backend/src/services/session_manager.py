@@ -91,9 +91,10 @@ class SessionManager:
         session.status = SessionStatus.STOPPED
         
         # Save to JSON for potential recovery (optional for manual mode)
-        if session.mode == SessionMode.MANUAL:
-            session.interrupt_session()
-            await self.save_session_to_json(session)
+        # DISABLED: Frontend already stores this data, no need for backend JSON files
+        # if session.mode == SessionMode.MANUAL:
+        #     session.interrupt_session()
+        #     await self.save_session_to_json(session)
         
         # Always remove from active sessions - each start creates a new session
         del self.active_sessions[session_id]
@@ -237,11 +238,11 @@ class SessionManager:
         final_classification = self.compile_final_classification(session.agent_results)
         session.final_classification = final_classification
         session.complete_session()
-        
-        # Save to JSON
-        await self.save_session_to_json(session)
-        
-        logger.info(f"Finalized session {session_id}")
+
+        # Save to JSON - DISABLED: Frontend already stores this data
+        # await self.save_session_to_json(session)
+
+        logger.info(f"Finalized session {session_id} (JSON save disabled - frontend handles storage)")
     
     def compile_final_classification(self, agent_results: List[Dict]) -> Dict:
         """Compile final classification from all agent results."""

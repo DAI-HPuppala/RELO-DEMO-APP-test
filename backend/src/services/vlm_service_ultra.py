@@ -20,20 +20,23 @@ import numpy as np
 
 # Import our advanced GPU management
 from .gpu_manager import GPUMemoryManager, OllamaModelOptimizer
+from .provider_factory import get_ollama_host, get_model_name
 
 logger = logging.getLogger(__name__)
 
 
 class UltraVLMService:
     """Ultra-High Performance VLM Service with Aggressive GPU Optimization
-    
+
     Target: <800ms inference (vs <1200ms requirement)
     Strategies: Full GPU allocation, optimized model loading, aggressive caching
     """
-    
-    def __init__(self, ollama_host: str = "http://localhost:11434"):
+
+    def __init__(self, ollama_host: str = None):
+        # Use provider factory for flexible backend support
+        ollama_host = ollama_host or get_ollama_host()
         self.ollama_host = ollama_host.rstrip('/')
-        self.base_model_name = "qwen2.5vl:3b"
+        self.base_model_name = get_model_name()
         self.max_retries = 3  # Increased for reliability
         self.timeout = 45  # Aggressive timeout for fast GPU inference
         

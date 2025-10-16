@@ -100,6 +100,34 @@ class InitializationManager {
             if (response.ok) {
                 const data = await response.json();
                 console.log('Backend health check:', data);
+
+                // Detect page refresh and call force reset
+                const isRefresh = sessionStorage.getItem('appInitialized');
+                if (isRefresh) {
+                    console.log('🔄 Page refresh detected - forcing camera & memory reset');
+                    try {
+                        const resetResponse = await fetch('http://localhost:8000/api/session/force-reset', {
+                            method: 'POST',
+                            mode: 'cors',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (resetResponse.ok) {
+                            const resetData = await resetResponse.json();
+                            console.log('✓ Force reset complete:', resetData.stats);
+                        } else {
+                            console.warn('Force reset failed, but continuing initialization');
+                        }
+                    } catch (resetError) {
+                        console.warn('Force reset error:', resetError);
+                    }
+                }
+
+                // Mark app as initialized for future refreshes
+                sessionStorage.setItem('appInitialized', 'true');
+
                 await this.delay(500); // Show progress
             } else {
                 throw new Error('Backend server is not responding');

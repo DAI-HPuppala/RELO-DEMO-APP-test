@@ -40,6 +40,7 @@ class FinalClassification:
     is_damaged: bool = False  # From damage
     damage_type: Optional[str] = None  # From damage
     damage_severity: Optional[str] = None  # From damage
+    damage_locations: Optional[Dict[str, Any]] = None  # From damage - dict mapping damage_type to bbox
     
     # Aggregated reasoning
     reasoning_sequence: List[ReasoningEntry] = field(default_factory=list)
@@ -73,6 +74,7 @@ class FinalClassification:
             "is_damaged": self.is_damaged,
             "damage_type": self.damage_type,
             "damage_severity": self.damage_severity,
+            "damage_locations": self.damage_locations,
             "reasoning_sequence": [r.to_dict() for r in self.reasoning_sequence],
             "overall_confidence": self.overall_confidence,
             "processing_time_ms": self.processing_time_ms,

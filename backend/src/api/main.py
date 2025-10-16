@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
 import logging
+from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -25,16 +26,58 @@ from services.vlm_singleton import vlm_singleton, get_vlm_status
 from services.ollama_optimizer import optimize_ollama_at_startup
 from services.gpu_initializer import ensure_gpu_ready, gpu_initializer
 
-# Configure logging
+# Configure logging with time-based rotation
+# Production-ready hybrid approach:
+# - New session directory on each app restart (tracks app lifecycle)
+# - Time-based rotation within session (handles long-running apps)
+# - NEVER delete logs (infinite retention with backupCount=0)
+
+base_log_directory = Path(__file__).parent.parent.parent / os.getenv("LOG_DIRECTORY", "logs")
+base_log_directory.mkdir(parents=True, exist_ok=True)
+
+# Create session-specific directory with startup timestamp
+session_start_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+session_log_directory = base_log_directory / f"session_{session_start_timestamp}"
+session_log_directory.mkdir(parents=True, exist_ok=True)
+
+# Get rotation settings from environment
+rotation_interval_hours = int(os.getenv("LOG_ROTATION_INTERVAL", "5"))
+# backupCount=0 means NEVER delete old logs (infinite retention)
+backup_count = int(os.getenv("LOG_ROTATION_BACKUP_COUNT", "0"))
+log_level = os.getenv("LOG_LEVEL", "DEBUG").upper()
+
+# Create log file path in session directory
+log_file = session_log_directory / "relo_backend.log"
+
+# Create time-based rotating file handler
+# 'H' means rotate every N hours, where N is the interval
+# backupCount=0 means keep ALL rotated logs forever (never delete)
+file_handler = TimedRotatingFileHandler(
+    filename=str(log_file),
+    when='H',  # Rotate by hours
+    interval=rotation_interval_hours,
+    backupCount=backup_count,  # 0 = never delete
+    encoding='utf-8',
+    utc=False  # Use local time
+)
+file_handler.suffix = "%Y-%m-%d_%H-%M"  # Backup filename: relo_backend.log.2025-10-16_14-00
+
+# Create console handler
+console_handler = logging.StreamHandler()
+
+# Set format for both handlers
+log_format = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+file_handler.setFormatter(log_format)
+console_handler.setFormatter(log_format)
+
+# Configure root logger
 logging.basicConfig(
-    level=logging.DEBUG,  # Force DEBUG level for troubleshooting
+    level=getattr(logging, log_level),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler('../backend.log'),
-        logging.StreamHandler()
-    ]
+    handlers=[file_handler, console_handler]
 )
 logger = logging.getLogger(__name__)
+logger.info(f"📝 Logging: {session_log_directory} (rotates every {rotation_interval_hours}h, never deleted)")
 
 # Configure logging for all services - COMPREHENSIVE LOGGING
 # Enable all important service logs
@@ -61,54 +104,39 @@ async def lifespan(app: FastAPI):
     global session_manager, webrtc_manager
     
     # Startup
-    logger.info("🚀 Starting Returns Classifier API with Unified VLM Service")
-    
-    try:
-        # Initialize GPU FIRST - fix CUDA context issues
-        logger.info("🎮 Initializing GPU and CUDA context...")
-        gpu_ready = await ensure_gpu_ready()
-        if gpu_ready:
-            logger.info("✅ GPU initialized successfully - CUDA context ready")
-            gpu_status = gpu_initializer.get_gpu_status()
-            logger.info(f"   GPU: {gpu_status.get('gpu_name', 'Unknown')}")
-            logger.info(f"   Memory: {gpu_status.get('free_memory_mb', 0)}MB free / {gpu_status.get('total_memory_mb', 0)}MB total")
-        else:
-            logger.warning("⚠️ GPU initialization failed - will use CPU fallback")
-        
-        logger.info("Initializing SessionManager...")
-        session_manager = SessionManager()
-        logger.info(f"SessionManager initialized: {session_manager}")
-        
-        logger.info("Initializing WebRTCManager...")
-        webrtc_manager = WebRTCManager()
-        logger.info(f"WebRTCManager initialized: {webrtc_manager}")
+    logger.info("🚀 Starting Returns Classifier API")
 
-        # Start periodic cleanup task for memory management
+    try:
+        model_provider = os.getenv("MODEL_PROVIDER", "ollama").lower()
+        logger.info(f"Model Provider: {model_provider}")
+
+        # Initialize GPU for Ollama
+        if model_provider == "ollama":
+            gpu_ready = await ensure_gpu_ready()
+            if gpu_ready:
+                gpu_status = gpu_initializer.get_gpu_status()
+                logger.info(f"GPU: {gpu_status.get('gpu_name', 'Unknown')} ({gpu_status.get('free_memory_mb', 0)}MB free)")
+            else:
+                logger.warning("GPU initialization failed - using CPU fallback")
+
+        # Initialize managers
+        session_manager = SessionManager()
+        webrtc_manager = WebRTCManager()
+
+        # Start cleanup tasks
         await webrtc_manager.start_periodic_cleanup()
-        logger.info("✅ Started WebRTC periodic cleanup task")
-        
-        # NOTE: VLM initialization moved to frontend control
-        # The VLM singleton will be initialized once during frontend initialization
-        logger.info("📝 VLM will be initialized during frontend initialization sequence")
-        logger.info("   - Single initialization point for entire application")
-        logger.info("   - Progress tracking via frontend UI")
-        logger.info("   - No redundant warmups")
-        
-        # Apply Ollama optimizations
-        logger.info("⚡ Applying SOTA Ollama optimizations...")
-        ollama_result = await optimize_ollama_at_startup()
-        
-        if ollama_result.get("configuration", {}).get("status") == "success":
-            logger.info("✅ Ollama optimized successfully")
-            if ollama_result.get("flash_attention"):
-                logger.info("   - Flash Attention enabled")
-            if ollama_result.get("benchmark"):
-                avg_time = ollama_result["benchmark"].get("avg_time", 0)
-                logger.info(f"   - Average inference time: {avg_time:.2f}s")
-        else:
-            logger.warning("⚠️ Ollama optimization incomplete")
-        
-        logger.info("All managers initialized successfully")
+        from api.websocket import start_cleanup_task
+        start_cleanup_task()
+
+        # Ollama optimizations
+        if model_provider == "ollama":
+            ollama_result = await optimize_ollama_at_startup()
+            if ollama_result.get("configuration", {}).get("status") == "success":
+                logger.info("Ollama optimizations applied")
+            else:
+                logger.warning("Ollama optimization incomplete")
+
+        logger.info("✅ All services initialized")
     except Exception as e:
         logger.error(f"Error initializing managers: {e}")
         raise
@@ -118,15 +146,12 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("🛑 Shutting down Returns Classifier API")
 
-    # Stop periodic cleanup task
     if webrtc_manager:
         await webrtc_manager.stop_periodic_cleanup()
-        logger.info("Stopped WebRTC periodic cleanup task")
-    
-    # Clean up WebRTC connections
-    if webrtc_manager:
         for session_id in list(webrtc_manager.peer_connections.keys()):
             await webrtc_manager.close_connection(session_id)
+
+    logger.info("Shutdown complete")
 
 
 # Create FastAPI app
@@ -247,62 +272,34 @@ async def measure_camera_height():
     from services.camera_settings_manager import get_camera_settings_manager
 
     try:
-        logger.info("📏 Starting camera height measurement using stereo depth...")
-
-        # Create camera service and capture depth frame
         camera_service = OakDCameraService()
         depth_frame = camera_service.capture_depth_frame()
 
         if depth_frame is None:
-            logger.error("Failed to capture depth frame")
-            return {
-                "success": False,
-                "error": "Failed to capture depth frame - check camera connection"
-            }
+            logger.error("Camera height measurement failed: no depth frame")
+            return {"success": False, "error": "Failed to capture depth frame"}
 
-        # Sample center region of depth map (40%-60% of frame)
-        # This assumes the bench/ground is roughly centered under camera
         h, w = depth_frame.shape
-        center_roi = depth_frame[
-            int(h*0.4):int(h*0.6),
-            int(w*0.4):int(w*0.6)
-        ]
-
-        # Filter out invalid depth values (0 or NaN)
+        center_roi = depth_frame[int(h*0.4):int(h*0.6), int(w*0.4):int(w*0.6)]
         valid_depths = center_roi[center_roi > 0]
 
         if len(valid_depths) == 0:
-            logger.error("No valid depth measurements found in center ROI")
-            return {
-                "success": False,
-                "error": "No valid depth measurements - ensure camera is positioned above surface"
-            }
+            logger.error("Camera height measurement failed: no valid depth data")
+            return {"success": False, "error": "No valid depth measurements"}
 
-        # Calculate median depth (robust to outliers)
         median_depth_mm = float(np.median(valid_depths))
-        height_cm = median_depth_mm / 10.0  # Convert mm to cm
+        height_cm = median_depth_mm / 10.0
 
-        logger.info(f"✅ Measured camera height: {height_cm:.1f} cm ({median_depth_mm:.0f} mm)")
-
-        # Calculate FOV coverage at this distance
-        fov_h_deg = 69  # OAK-D Pro horizontal FOV
-        fov_v_deg = 55  # OAK-D Pro vertical FOV
-
+        fov_h_deg, fov_v_deg = 69, 55
         ground_width_cm = 2 * height_cm * np.tan(np.radians(fov_h_deg/2))
         ground_height_cm = 2 * height_cm * np.tan(np.radians(fov_v_deg/2))
 
-        ground_coverage = {
-            "width_cm": round(ground_width_cm, 2),
-            "height_cm": round(ground_height_cm, 2)
-        }
+        ground_coverage = {"width_cm": round(ground_width_cm, 2), "height_cm": round(ground_height_cm, 2)}
 
-        logger.info(f"📐 Ground coverage: {ground_width_cm:.1f}cm × {ground_height_cm:.1f}cm")
-
-        # Save measurement to persistent settings
         manager = get_camera_settings_manager()
         manager.save_height_measurement(height_cm, ground_coverage, make_persistent=True)
 
-        logger.info("💾 Height measurement saved to persistent settings")
+        logger.info(f"Camera height measured: {height_cm:.1f}cm, coverage: {ground_width_cm:.1f}×{ground_height_cm:.1f}cm")
 
         return {
             "success": True,
@@ -443,13 +440,114 @@ async def vlm_quick_check():
     """Quick VLM readiness check without full warmup."""
     is_ready = vlm_singleton.is_ready()
     status = vlm_singleton.get_status()
-    
+
     return {
         "ready": is_ready,
         "state": status.get("state"),
         "status": status,
         "timestamp": datetime.now().isoformat()
     }
+
+@app.post("/api/session/force-reset")
+async def force_reset_camera_and_memory():
+    """
+    Force camera reset and memory cleanup (called on page refresh).
+
+    This endpoint:
+    1. Forces video track recreation (even if < 5 min old)
+    2. Clears frame buffers
+    3. Cleans up stale monitoring_controls and orchestrators
+    4. Preserves VLM model (stays loaded)
+
+    Returns cleanup stats.
+    """
+    try:
+        logger.info("🔄 Force reset requested - clearing camera and memory")
+
+        cleanup_stats = {
+            "video_track_reset": False,
+            "frame_buffers_cleared": 0,
+            "monitoring_controls_cleared": 0,
+            "orchestrators_cleared": 0,
+            "peer_connections_active": 0
+        }
+
+        # Import required modules
+        from api import websocket
+
+        # 1. Force reset video track (even if not stale)
+        if webrtc_manager:
+            # Check if video track exists
+            if webrtc_manager._video_track:
+                logger.info("Forcing video track reset")
+                try:
+                    if hasattr(webrtc_manager._video_track, 'stop'):
+                        webrtc_manager._video_track.stop()
+                    webrtc_manager._video_track = None
+                    cleanup_stats["video_track_reset"] = True
+                    logger.info("✓ Video track reset complete")
+                except Exception as e:
+                    logger.error(f"Error resetting video track: {e}")
+
+            # 2. Clear all frame buffers
+            buffer_count = len(webrtc_manager.frame_buffers)
+            webrtc_manager.frame_buffers.clear()
+            cleanup_stats["frame_buffers_cleared"] = buffer_count
+            logger.info(f"✓ Cleared {buffer_count} frame buffers")
+
+            # Count active connections
+            cleanup_stats["peer_connections_active"] = len(webrtc_manager.peer_connections)
+
+        # 3. Clear stale monitoring_controls (keep only active running sessions)
+        stale_monitoring = []
+        for session_id, control in list(websocket.monitoring_controls.items()):
+            # Only keep if actively running
+            if not control.get('running', False):
+                stale_monitoring.append(session_id)
+
+        for session_id in stale_monitoring:
+            del websocket.monitoring_controls[session_id]
+
+        cleanup_stats["monitoring_controls_cleared"] = len(stale_monitoring)
+        logger.info(f"✓ Cleared {len(stale_monitoring)} stale monitoring_controls")
+
+        # 4. Clear stale orchestrators (ones not in active connections)
+        stale_orchestrators = []
+        for session_id in list(websocket.orchestrators.keys()):
+            if session_id not in websocket.active_connections:
+                stale_orchestrators.append(session_id)
+
+        for session_id in stale_orchestrators:
+            try:
+                await websocket.orchestrators[session_id].cleanup()
+            except Exception as e:
+                logger.error(f"Error cleaning up orchestrator {session_id}: {e}")
+            del websocket.orchestrators[session_id]
+
+        cleanup_stats["orchestrators_cleared"] = len(stale_orchestrators)
+        logger.info(f"✓ Cleared {len(stale_orchestrators)} stale orchestrators")
+
+        # 5. VLM stays loaded (intentional - no reinit needed)
+        logger.info("✓ VLM model preserved (no reinit)")
+
+        logger.info(f"🎉 Force reset complete: {cleanup_stats}")
+
+        return {
+            "success": True,
+            "message": "Camera and memory reset complete",
+            "stats": cleanup_stats,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Error in force reset: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": str(e)
+            }
+        )
 
 @app.get("/api/vlm/performance")
 async def vlm_performance_metrics():

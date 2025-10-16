@@ -140,6 +140,14 @@ class ProfessionalApplicationController {
         // Initialize keyboard shortcuts
         this.initializeKeyboardShortcuts();
 
+        // Restore table from localStorage (for persistence across page reloads)
+        this.restoreTableFromLocalStorage();
+
+        // Add beforeunload handler to auto-save table before page close/refresh
+        window.addEventListener('beforeunload', () => {
+            this.saveTableToLocalStorage();
+        });
+
         // Set up WebRTC callbacks
         this.setupWebRTCCallbacks();
         
@@ -487,6 +495,9 @@ class ProfessionalApplicationController {
 
             // Set this as current cell for undo using the same unique key
             this.currentEditCell = cellKey;
+
+            // Save table to localStorage after inline edit
+            this.saveTableToLocalStorage();
         };
 
         // Cancel function
@@ -1535,6 +1546,9 @@ class ProfessionalApplicationController {
             this.editHistory.clear();
             this.currentEditCell = null;
 
+            // Clear table from localStorage
+            this.clearTableFromLocalStorage();
+
             // Update UI state
             this.updateDeleteButtonState();
             this.updateSelectionCounter();
@@ -2190,6 +2204,9 @@ class ProfessionalApplicationController {
         this.cycleStartTime = Date.now();
         this.backendProcessingTime = null;
 
+        // Save table to localStorage after creating new row (critical for persistence)
+        this.saveTableToLocalStorage();
+
         // Sync instructions container width after table update
         if (this.syncInstructionsWidth) {
             setTimeout(this.syncInstructionsWidth, 50);
@@ -2347,6 +2364,10 @@ class ProfessionalApplicationController {
             
             // Remove the ID so the next classification gets a new row
             currentRow.id = '';
+
+            // Save table to localStorage for persistence
+            this.saveTableToLocalStorage();
+
             return;
         }
 
@@ -2934,6 +2955,9 @@ class ProfessionalApplicationController {
             // Disable export button
             const exportAllBtn = document.getElementById('exportAllBtn');
             if (exportAllBtn) exportAllBtn.disabled = true;
+
+            // Clear localStorage when no rows left
+            this.clearTableFromLocalStorage();
         } else {
             // Renumber with animation
             remainingRows.forEach((row, index) => {
@@ -2958,6 +2982,9 @@ class ProfessionalApplicationController {
 
             // Update current row index to highest number
             this.currentRowIndex = totalRows;
+
+            // Save table to localStorage after renumbering
+            this.saveTableToLocalStorage();
         }
     }
 
@@ -3814,6 +3841,160 @@ class ProfessionalApplicationController {
             if (this.isPaused && actionHint) {
                 actionHint.textContent = 'Paused';
             }
+        }
+    }
+
+    /**
+     * Save table rows to localStorage for persistence across page reloads
+     */
+    saveTableToLocalStorage() {
+        try {
+            const tbody = document.getElementById('resultsTableBody');
+            if (!tbody) return;
+
+            const rows = [];
+            for (let row of tbody.children) {
+                // Skip empty row placeholder
+                if (row.classList.contains('empty-row')) continue;
+
+                // Get row data
+                const cells = row.getElementsByTagName('td');
+                const metadata = row.getAttribute('data-metadata');
+                const rowId = row.getAttribute('data-row-id');
+                const isSelected = row.classList.contains('selected');
+
+                rows.push({
+                    dataRowId: rowId, // data-row-id attribute
+                    elementId: row.id, // Element ID like 'current-classification-row'
+                    cycleId: row.getAttribute('data-cycle-id'),
+                    isSelected: isSelected,
+                    cells: Array.from(cells).map(cell => ({
+                        text: cell.textContent,
+                        editable: cell.contentEditable === 'true',
+                        className: cell.className,
+                        dataValue: cell.getAttribute('data-value'),
+                        dataRowId: cell.getAttribute('data-row-id')
+                    })),
+                    metadata: metadata
+                });
+            }
+
+            localStorage.setItem('relo_professional_table_rows', JSON.stringify(rows));
+            console.log(`[Professional App] Saved ${rows.length} rows to localStorage`);
+        } catch (e) {
+            console.error('[Professional App] Failed to save table to localStorage:', e);
+        }
+    }
+
+    /**
+     * Restore table rows from localStorage after page reload
+     */
+    restoreTableFromLocalStorage() {
+        try {
+            const stored = localStorage.getItem('relo_professional_table_rows');
+            if (!stored) {
+                console.log('[Professional App] No stored table data found');
+                return;
+            }
+
+            const rows = JSON.parse(stored);
+            if (!rows || rows.length === 0) {
+                console.log('[Professional App] No rows to restore');
+                return;
+            }
+
+            const tbody = document.getElementById('resultsTableBody');
+            if (!tbody) {
+                console.error('[Professional App] Table body not found');
+                return;
+            }
+
+            // Clear existing rows (including empty row placeholder)
+            tbody.innerHTML = '';
+
+            // Restore each row
+            for (let rowData of rows) {
+                const row = document.createElement('tr');
+
+                // Restore row attributes
+                if (rowData.dataRowId) {
+                    row.setAttribute('data-row-id', rowData.dataRowId);
+                }
+
+                if (rowData.elementId) {
+                    row.id = rowData.elementId;
+                }
+
+                if (rowData.cycleId) {
+                    row.setAttribute('data-cycle-id', rowData.cycleId);
+                }
+
+                if (rowData.metadata) {
+                    row.setAttribute('data-metadata', rowData.metadata);
+                }
+
+                if (rowData.isSelected) {
+                    row.classList.add('selected');
+                }
+
+                // Create cells with full restoration
+                for (let i = 0; i < rowData.cells.length; i++) {
+                    const cellData = rowData.cells[i];
+                    const cell = document.createElement('td');
+
+                    cell.textContent = cellData.text;
+
+                    // Restore CSS classes (critical for functionality like selection)
+                    if (cellData.className) {
+                        cell.className = cellData.className;
+                    }
+
+                    // Restore data attributes
+                    if (cellData.dataValue) {
+                        cell.setAttribute('data-value', cellData.dataValue);
+                    }
+
+                    if (cellData.dataRowId) {
+                        cell.setAttribute('data-row-id', cellData.dataRowId);
+                    }
+
+                    // Restore editability (skip first column which is row number)
+                    if (i > 0 && i < 11 && cellData.editable) {
+                        cell.contentEditable = 'true';
+                    }
+
+                    row.appendChild(cell);
+                }
+
+                tbody.appendChild(row);
+            }
+
+            // Update row index and renumber
+            this.currentRowIndex = rows.length;
+            this.renumberTableRows();
+
+            // Update export buttons
+            const hasData = tbody && !tbody.querySelector('.empty-row');
+            const exportAllBtn = document.getElementById('exportAllBtn');
+            const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+            if (exportAllBtn) exportAllBtn.disabled = !hasData;
+            if (exportSelectedBtn) exportSelectedBtn.disabled = !hasData;
+
+            console.log(`[Professional App] ✅ Restored ${rows.length} rows from localStorage`);
+        } catch (e) {
+            console.error('[Professional App] Failed to restore table from localStorage:', e);
+        }
+    }
+
+    /**
+     * Clear all table data from localStorage
+     */
+    clearTableFromLocalStorage() {
+        try {
+            localStorage.removeItem('relo_professional_table_rows');
+            console.log('[Professional App] Cleared table data from localStorage');
+        } catch (e) {
+            console.error('[Professional App] Failed to clear localStorage:', e);
         }
     }
 }

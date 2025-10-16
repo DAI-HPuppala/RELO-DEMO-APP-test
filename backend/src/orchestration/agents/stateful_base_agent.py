@@ -88,16 +88,8 @@ class StatefulBaseAgent(ABC):
                 await asyncio.sleep(0.1)
                 continue
 
-            # Log frame capture clearly
-            logger.info("\n" + "*"*80)
-            logger.info(f"🎥 FRAME CAPTURE COMPLETE for {self.agent_name.upper()}")
-            logger.info(f"  🔢 Inference Number: #{inference_num}")
-            logger.info(f"  📷 Frames Captured: {len(frames)} frame{'s' if len(frames) > 1 else ''} from camera")
-            if inference_num > 1:
-                logger.info(f"  🔄 Single frame capture for inference #{inference_num} (context-aware)")
-            logger.info(f"  ⏱️ Timer Remaining: {self.state.timer_remaining:.1f}s")
-            logger.info(f"  ➡️ Next Step: Sending frame to inference engine with context..." if inference_num > 1 else f"  ➡️ Next Step: Sending frame to inference engine...")
-            logger.info("*"*80 + "\n")
+            # Log frame capture
+            logger.info(f"Frame capture: {self.agent_name} inference #{inference_num}, frames={len(frames)}, timer_remaining={self.state.timer_remaining:.1f}s")
 
             # Update current inference number
             self.state.current_inference_num = inference_num
@@ -106,8 +98,6 @@ class StatefulBaseAgent(ABC):
             previous_context = None
             if inference_num > 1:
                 previous_context = self.state.get_previous_context()
-                if previous_context:
-                    logger.info(f"  📚 Using context from inference #{previous_context['inference_num']}")
 
             # Run inference (complete even if timer expires)
             inference_task = asyncio.create_task(
@@ -136,15 +126,8 @@ class StatefulBaseAgent(ABC):
                 # Store context for future inferences (only for initial, detail, damage agents)
                 if self.agent_name in ["initial_classifier", "detail_extractor", "damage_detector"]:
                     self.state.add_inference_context(len(frames), result)
-                    logger.info(f"  💾 Context saved for future inferences")
 
-                logger.info("\n" + "✅"*40)
-                logger.info(f"✅ INFERENCE COMPLETE: {self.agent_name} - Inference #{inference_num}")
-                logger.info(f"  📊 Attributes Found: {len(result.attributes) if hasattr(result, 'attributes') else 'N/A'}")
-                logger.info(f"  🎯 Confidence: {result.confidence if hasattr(result, 'confidence') else 'N/A'}")
-                if inference_num > 1 and previous_context:
-                    logger.info(f"  🔄 Context-aware inference used")
-                logger.info("✅"*40 + "\n")
+                logger.info(f"Inference completed: {self.agent_name} #{inference_num}, attributes={len(result.attributes) if hasattr(result, 'attributes') else 'N/A'}")
             except Exception as e:
                 logger.error(f"{self.agent_name} inference #{inference_num} failed: {e}")
             
@@ -179,10 +162,9 @@ class StatefulBaseAgent(ABC):
                 if shared_frame is not None:
                     frames.append(shared_frame)
                     batch_size -= 1
-                    logger.info(f"✅ damage_detector successfully retrieved shared frame from initial_classifier")
-                    logger.debug(f"Shared frame shape: {shared_frame.shape if hasattr(shared_frame, 'shape') else 'unknown'}")
+                    logger.info(f"damage_detector retrieved shared frame from initial_classifier")
                 else:
-                    logger.warning(f"⚠️ damage_detector could not retrieve shared frame - will capture {batch_size} new frames")
+                    logger.warning(f"damage_detector could not retrieve shared frame - will capture {batch_size} new frames")
         
         # Capture new frames
         while len(frames) < batch_size and time.time() < end_time:

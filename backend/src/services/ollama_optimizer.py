@@ -13,15 +13,17 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 from config.gpu_optimizer import gpu_optimizer, OptimizationLevel
+from services.provider_factory import get_ollama_host, get_model_name
 
 logger = logging.getLogger(__name__)
 
 class OllamaOptimizer:
     """Optimizes Ollama for maximum performance with Qwen2.5-VL"""
-    
-    def __init__(self, ollama_host: str = "http://localhost:11434", model_name: str = "qwen2.5vl:3b"):
-        self.ollama_host = ollama_host
-        self.model_name = model_name
+
+    def __init__(self, ollama_host: str = None, model_name: str = None):
+        # Use provider factory for flexible backend support
+        self.ollama_host = ollama_host or get_ollama_host()
+        self.model_name = model_name or get_model_name()
         self.current_config: Optional[Dict[str, Any]] = None
         self.optimization_applied = False
         self.last_optimization_time = 0
