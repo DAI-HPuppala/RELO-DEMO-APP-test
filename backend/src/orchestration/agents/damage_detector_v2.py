@@ -75,9 +75,9 @@ class DamageDetectorV2(StatefulBaseAgent):
 
                 # Log final summary
                 if attrs.get("is_damaged"):
-                    logger.info(f"DamageDetectorV2 RESULT: ✅ Damage found - Type={attrs.get('damage_type', 'N/A')}")
+                    logger.info(f"DamageDetectorV2 RESULT:  Damage found - Type={attrs.get('damage_type', 'N/A')}")
                 else:
-                    logger.info("DamageDetectorV2 RESULT: ✅ No damage detected")
+                    logger.info("DamageDetectorV2 RESULT:  No damage detected")
         else:
             logger.warning("DamageDetectorV2: No 'attributes' key in result!")
 

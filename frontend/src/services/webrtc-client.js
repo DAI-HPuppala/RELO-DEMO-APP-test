@@ -38,7 +38,6 @@ class WebRTCClient {
                 this.ws = new WebSocket(this.wsUrl);
                 
                 this.ws.onopen = () => {
-                    console.log('WebSocket connected');
                     this.isConnected = true;
                     if (this.callbacks.onConnected) {
                         this.callbacks.onConnected();
@@ -60,7 +59,6 @@ class WebRTCClient {
                 };
 
                 this.ws.onclose = () => {
-                    console.log('WebSocket disconnected');
                     this.isConnected = false;
                     if (this.callbacks.onDisconnected) {
                         this.callbacks.onDisconnected();
@@ -98,13 +96,10 @@ class WebRTCClient {
      * Handle incoming WebSocket messages
      */
     async handleWebSocketMessage(message) {
-        console.log('WebSocket message:', message.type);
-
         switch (message.type) {
             case 'session_created':
                 this.sessionId = message.session_id;
                 this.tableRowLimit = message.table_row_limit || 200;
-                console.log(`Session created with table row limit: ${this.tableRowLimit}`);
                 await this.initializeWebRTC();
                 break;
 
@@ -117,25 +112,21 @@ class WebRTCClient {
                 break;
 
             case 'automatic_started':
-                console.log('Automatic mode started');
                 if (this.callbacks.onMessage) {
                     this.callbacks.onMessage(message);
                 }
                 break;
                 
             case 'agent_result':
-                console.log('Agent result received:', message.agent);
                 if (this.callbacks.onMessage) {
                     this.callbacks.onMessage(message);
                 }
                 break;
 
             case 'session_stopped':
-                console.log('Session stopped:', message.session_id);
                 // Clear session ID when session is stopped
                 if (message.session_id === this.sessionId) {
                     this.sessionId = null;
-                    console.log('[WebRTC Client] Session cleared after stop');
                 }
                 if (this.callbacks.onMessage) {
                     this.callbacks.onMessage(message);
@@ -143,7 +134,15 @@ class WebRTCClient {
                 break;
                 
             case 'manual_mode_started':
-                console.log('Manual mode started');
+                if (this.callbacks.onMessage) {
+                    this.callbacks.onMessage(message);
+                }
+                break;
+
+            case 'auto_export_success':
+                console.log('[WebRTC Client] Auto-export successful:', message.files);
+                // Dispatch event for app-professional.js to listen to
+                window.dispatchEvent(new CustomEvent('websocket_message', { detail: message }));
                 if (this.callbacks.onMessage) {
                     this.callbacks.onMessage(message);
                 }
@@ -161,7 +160,7 @@ class WebRTCClient {
                 break;
 
             default:
-                console.log('Unknown message type:', message.type);
+                break;
         }
     }
 
@@ -176,20 +175,11 @@ class WebRTCClient {
             // Set up event handlers
             this.pc.onicecandidate = (event) => {
                 if (event.candidate) {
-                    console.log('🧊 ICE Candidate:', {
-                        type: event.candidate.type,
-                        protocol: event.candidate.protocol,
-                        address: event.candidate.address,
-                        port: event.candidate.port
-                    });
                     this.sendIceCandidate(event.candidate);
-                } else {
-                    console.log('✅ ICE gathering complete (null candidate)');
                 }
             };
 
             this.pc.ontrack = (event) => {
-                console.log('Received remote track');
                 this.remoteStream = event.streams[0];
                 if (this.callbacks.onStream) {
                     this.callbacks.onStream(this.remoteStream);
@@ -197,16 +187,8 @@ class WebRTCClient {
             };
 
             this.pc.onconnectionstatechange = () => {
-                console.log('🔌 Connection State:', {
-                    connectionState: this.pc.connectionState,
-                    iceConnectionState: this.pc.iceConnectionState,
-                    iceGatheringState: this.pc.iceGatheringState,
-                    signalingState: this.pc.signalingState
-                });
-                if (this.pc.connectionState === 'connected') {
-                    console.log('✅ WebRTC connected successfully - offline mode');
-                } else if (this.pc.connectionState === 'failed') {
-                    console.error('❌ WebRTC connection failed');
+                if (this.pc.connectionState === 'failed') {
+                    console.error('WebRTC connection failed');
                 }
             };
 
@@ -214,12 +196,10 @@ class WebRTCClient {
             this.dataChannel = this.pc.createDataChannel('results', {
                 ordered: true
             });
-            console.log('Created data channel on client side');
             this.setupDataChannel();
             
             // Also listen for data channel from backend (if created there)
             this.pc.ondatachannel = (event) => {
-                console.log('Received data channel from backend:', event.channel.label);
                 // Use backend channel if we don't have one
                 if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
                     this.dataChannel = event.channel;
@@ -255,13 +235,12 @@ class WebRTCClient {
      */
     setupDataChannel() {
         this.dataChannel.onopen = () => {
-            console.log('Data channel opened');
+            // Data channel ready
         };
 
         this.dataChannel.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                console.log('Data channel message:', data.type);
                 
                 // Route all messages through the callback
                 if (this.callbacks.onMessage) {
@@ -309,14 +288,12 @@ class WebRTCClient {
                         break;
                     case 'manual_mode_status':
                         // Manual mode status update
-                        console.log('[WebRTC Client] Manual mode status:', data);
                         if (this.callbacks.onManualModeStatus) {
                             this.callbacks.onManualModeStatus(data);
                         }
                         break;
                     case 'manual_mode_started':
                         // Manual mode started confirmation
-                        console.log('[WebRTC Client] Manual mode started');
                         if (this.callbacks.onManualModeStarted) {
                             this.callbacks.onManualModeStarted(data);
                         }
@@ -345,7 +322,7 @@ class WebRTCClient {
         };
 
         this.dataChannel.onclose = () => {
-            console.log('Data channel closed');
+            // Data channel closed
         };
     }
 
@@ -359,7 +336,6 @@ class WebRTCClient {
                 sdp: message.sdp
             });
             await this.pc.setRemoteDescription(answer);
-            console.log('Remote description set');
         } catch (error) {
             console.error('Failed to handle answer:', error);
         }
@@ -372,7 +348,6 @@ class WebRTCClient {
         try {
             if (message.candidate) {
                 await this.pc.addIceCandidate(new RTCIceCandidate(message.candidate));
-                console.log('Added remote ICE candidate');
             }
         } catch (error) {
             console.error('Failed to add ICE candidate:', error);
@@ -441,13 +416,12 @@ class WebRTCClient {
         
         while (Date.now() - startTime < timeout) {
             if (this.isDataChannelReady()) {
-                console.log('Data channel is ready');
                 return true;
             }
             await new Promise(resolve => setTimeout(resolve, 100));
         }
-        
-        console.warn('Data channel timeout - not ready after', timeout, 'ms');
+
+        console.warn('Data channel timeout');
         return false;
     }
     
@@ -455,7 +429,6 @@ class WebRTCClient {
      * Trigger manual analysis for a specific agent
      */
     triggerAnalysis(agent = null) {
-        console.log(`Triggering manual analysis for agent: ${agent}`);
         if (this.ws && this.ws.readyState === WebSocket.OPEN && this.sessionId) {
             this.ws.send(JSON.stringify({
                 type: 'manual_trigger',
@@ -549,7 +522,6 @@ class WebRTCClient {
                 timestamp: Date.now(),
                 ...data
             };
-            console.log('[WebRTC Client] Sending manual command:', commandType);
             this.dataChannel.send(JSON.stringify(message));
         } else {
             console.warn('[WebRTC Client] Data channel not ready for manual command');
@@ -593,7 +565,18 @@ class WebRTCClient {
      */
     tapToFocus(x, y) {
         this.sendManualCommand('tap_to_focus', { x, y });
-        console.log(`[WebRTC Client] Tap-to-focus at (${x.toFixed(3)}, ${y.toFixed(3)})`);
+    }
+
+    /**
+     * Send a generic message via WebSocket
+     * @param {Object} message - Message object to send
+     */
+    sendMessage(message) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify(message));
+        } else {
+            console.warn('[WebRTC Client] WebSocket not ready to send message');
+        }
     }
 
     /**

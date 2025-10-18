@@ -146,16 +146,16 @@ class CV60VideoTrack(VideoStreamTrack):
                         stream_subnet = '.'.join(str(stream_ip).split('.')[:3])
 
                         if camera_subnet != stream_subnet:
-                            logger.warning(f"⚠️  Stream IP {stream_ip} is not on same subnet as camera {self.connection_id}")
+                            logger.warning(f"  Stream IP {stream_ip} is not on same subnet as camera {self.connection_id}")
                             logger.warning(f"   Camera subnet: {camera_subnet}.x, Stream subnet: {stream_subnet}.x")
                             logger.warning(f"   This may cause frame retrieval issues!")
                         else:
-                            logger.info(f"✅ Subnet validation passed: {camera_subnet}.x")
+                            logger.info(f" Subnet validation passed: {camera_subnet}.x")
 
                         device.NegotiatePacketSize()
                         device.SetStreamDestination(stream_ip, stream_port)
 
-                        logger.info(f"✅ Stream destination configured: {stream_ip}:{stream_port}")
+                        logger.info(f" Stream destination configured: {stream_ip}:{stream_port}")
 
                     # Allocate buffers (match working test script exactly)
                     size = device.GetPayloadSize()
@@ -552,15 +552,15 @@ class CV60VideoTrack(VideoStreamTrack):
         """Generate a test pattern when camera is not available."""
         # Log test mode fallback only once per instance
         if not self._test_mode_logged:
-            logger.error("🔴 CV60 CAMERA FALLBACK TO TEST MODE")
-            logger.error(f"   📍 Camera IP: {self.connection_id}")
-            logger.error(f"   🔧 eBUS SDK Available: {eb is not None}")
-            logger.error(f"   🎯 Camera Initialized: {self.is_initialized}")
+            logger.error(" CV60 CAMERA FALLBACK TO TEST MODE")
+            logger.error(f"    Camera IP: {self.connection_id}")
+            logger.error(f"    eBUS SDK Available: {eb is not None}")
+            logger.error(f"    Camera Initialized: {self.is_initialized}")
             logger.error(f"   ⏰ Track Age: {time.time() - self._creation_time:.1f}s")
             logger.error(f"   🆔 Session ID: {self.current_session_id}")
             logger.error(f"   ❗ Fallback Reason: {fallback_reason}")
-            logger.error("   📊 This indicates camera hardware/network issues or page refresh recovery")
-            logger.error("   🔄 Will attempt reconnection every 30 seconds")
+            logger.error("    This indicates camera hardware/network issues or page refresh recovery")
+            logger.error("    Will attempt reconnection every 30 seconds")
             self._test_mode_logged = True
 
         frame = np.zeros((480, 640, 3), dtype=np.uint8)

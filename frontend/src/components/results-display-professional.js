@@ -77,7 +77,7 @@ class ResultsDisplayProfessional {
         if (this.summaryContainer) {
             this.summaryContainer.innerHTML = `
                 <div class="no-results">
-                    <span class="no-results-icon">📊</span>
+                    <span class="no-results-icon"></span>
                     <p>No classification results yet</p>
                     <p class="hint-text">Results will appear here after classification</p>
                 </div>
@@ -157,7 +157,7 @@ class ResultsDisplayProfessional {
                     <div class="damage-section">
                         <h4>Damage Assessment</h4>
                         <div class="damage-indicator damage-found">
-                            ⚠️ Damage Detected
+                             Damage Detected
                         </div>
                         ${results.damage_type ? `
                             <div class="damage-details">
@@ -170,14 +170,14 @@ class ResultsDisplayProfessional {
                     <div class="damage-section">
                         <h4>Damage Assessment</h4>
                         <div class="damage-indicator no-damage">
-                            ✅ No Damage Found
+                             No Damage Found
                         </div>
                     </div>
                 `}
                 
                 <div class="return-status">
                     <div class="status-badge ${results.return_valid ? 'valid' : 'invalid'}">
-                        ${results.return_valid ? '✅ Return Valid' : '❌ Return Invalid'}
+                        ${results.return_valid ? ' Return Valid' : ' Return Invalid'}
                     </div>
                     ${results.reason ? `<p class="return-reason">${results.reason}</p>` : ''}
                 </div>
@@ -321,7 +321,7 @@ class ResultsDisplayProfessional {
                 <span>${results.condition || 'N/A'}</span>
             </div>
             <div class="history-status">
-                ${results.return_valid ? '✅ Valid' : '❌ Invalid'}
+                ${results.return_valid ? ' Valid' : ' Invalid'}
             </div>
         `;
         
@@ -456,7 +456,7 @@ class ResultsDisplayProfessional {
                 // Enable export buttons
                 this.enableExportButtons();
 
-                console.log('✅ Restored classification result from previous session');
+                console.log(' Restored classification result from previous session');
             }
         } catch (e) {
             console.error('Failed to restore current result:', e);

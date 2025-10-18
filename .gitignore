@@ -87,3 +87,8 @@ text_zoom_experiments/
 backend/cv60_ebus_module/
 cv60_ebus_module/
 OCR_test/
+
+# Excluded directories
+Copy-S3-bucket/
+archive/
+Copy-captured_frames/

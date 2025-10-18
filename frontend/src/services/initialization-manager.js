@@ -91,6 +91,28 @@ class InitializationManager {
      */
     async initializeBackend() {
         try {
+            // ALWAYS call force reset on initialization to ensure fresh camera
+            // This handles both first load (no-op if no sessions) and refresh (cleanup)
+            console.log(' Calling force reset to ensure fresh camera & clean memory...');
+            try {
+                const resetResponse = await fetch('http://localhost:8000/api/session/force-reset', {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (resetResponse.ok) {
+                    const resetData = await resetResponse.json();
+                    console.log(' Force reset complete:', resetData.stats);
+                } else {
+                    console.warn('Force reset failed, but continuing initialization');
+                }
+            } catch (resetError) {
+                console.warn('Force reset error (backend may be starting):', resetError);
+            }
+
             // Check if backend is running
             const response = await fetch('http://localhost:8000/api/health', {
                 method: 'GET',
@@ -100,34 +122,6 @@ class InitializationManager {
             if (response.ok) {
                 const data = await response.json();
                 console.log('Backend health check:', data);
-
-                // Detect page refresh and call force reset
-                const isRefresh = sessionStorage.getItem('appInitialized');
-                if (isRefresh) {
-                    console.log('🔄 Page refresh detected - forcing camera & memory reset');
-                    try {
-                        const resetResponse = await fetch('http://localhost:8000/api/session/force-reset', {
-                            method: 'POST',
-                            mode: 'cors',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            }
-                        });
-
-                        if (resetResponse.ok) {
-                            const resetData = await resetResponse.json();
-                            console.log('✓ Force reset complete:', resetData.stats);
-                        } else {
-                            console.warn('Force reset failed, but continuing initialization');
-                        }
-                    } catch (resetError) {
-                        console.warn('Force reset error:', resetError);
-                    }
-                }
-
-                // Mark app as initialized for future refreshes
-                sessionStorage.setItem('appInitialized', 'true');
-
                 await this.delay(500); // Show progress
             } else {
                 throw new Error('Backend server is not responding');
@@ -193,13 +187,13 @@ class InitializationManager {
                     if (featuresResponse.ok) {
                         const features = await featuresResponse.json();
                         window.videoDisplay.setTapToFocusEnabled(features.tap_to_focus_enabled);
-                        console.log(`✓ VideoDisplay initialized, tap-to-focus: ${features.tap_to_focus_enabled ? 'enabled' : 'disabled'}`);
+                        console.log(` VideoDisplay initialized, tap-to-focus: ${features.tap_to_focus_enabled ? 'enabled' : 'disabled'}`);
                     } else {
-                        console.log('✓ VideoDisplay initialized with tap-to-focus (default: enabled)');
+                        console.log(' VideoDisplay initialized with tap-to-focus (default: enabled)');
                     }
                 } catch (error) {
                     console.warn('Failed to fetch camera features, tap-to-focus defaulting to enabled');
-                    console.log('✓ VideoDisplay initialized with tap-to-focus');
+                    console.log(' VideoDisplay initialized with tap-to-focus');
                 }
             }
 
@@ -337,23 +331,23 @@ class InitializationManager {
                         // Parse the message to extract step type
                         const message = update.message;
                         let stepClass = 'vlm-step';
-                        let icon = '⚙️';
+                        let icon = '';
                         
                         if (message.includes('GPU') || message.includes('CUDA')) {
                             stepClass = 'vlm-step-gpu';
                             icon = '🎮';
                         } else if (message.includes('Loading') || message.includes('model')) {
                             stepClass = 'vlm-step-model';
-                            icon = '📥';
+                            icon = '';
                         } else if (message.includes('Memory') || message.includes('Allocating')) {
                             stepClass = 'vlm-step-memory';
-                            icon = '💾';
+                            icon = '';
                         } else if (message.includes('Compiling') || message.includes('optimization')) {
                             stepClass = 'vlm-step-compile';
-                            icon = '⚡';
+                            icon = '';
                         } else if (message.includes('Warmup') || message.includes('inference')) {
                             stepClass = 'vlm-step-warmup';
-                            icon = '🔥';
+                            icon = '';
                         } else if (message.includes('complete') || message.includes('ready')) {
                             stepClass = 'vlm-step-complete';
                             icon = '✨';
@@ -376,7 +370,7 @@ class InitializationManager {
                     const gpuInfo = result.gpu_info || {};
                     const warmupResults = result.warmup_results || {};
                     
-                    let statusText = '✅ VLM Engine Optimized';
+                    let statusText = ' VLM Engine Optimized';
                     if (duration) {
                         statusText += ` (${duration.toFixed(1)}s)`;
                     }
@@ -836,7 +830,7 @@ async function applyCameraResolution() {
                 }
             `;
 
-            console.log(`✓ Applied dynamic camera resolution: ${width}x${height} (${aspect_ratio}:1)`);
+            console.log(` Applied dynamic camera resolution: ${width}x${height} (${aspect_ratio}:1)`);
         } else {
             console.warn('Failed to fetch camera resolution, using defaults');
         }

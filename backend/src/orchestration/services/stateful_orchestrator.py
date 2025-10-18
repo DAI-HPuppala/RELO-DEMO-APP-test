@@ -72,7 +72,7 @@ class StatefulOrchestrator:
             logger.info("GPU optimization already initialized")
             return True
         
-        logger.info("🚀 Initializing GPU optimization for VLM inference...")
+        logger.info(" Initializing GPU optimization for VLM inference...")
         
         try:
             success = await self.inference_engine.initialize_gpu_optimization(progress_callback)
@@ -83,11 +83,11 @@ class StatefulOrchestrator:
                 
                 # Get optimization details
                 opt_status = self.inference_engine.get_optimization_status()
-                logger.info(f"✅ GPU optimization initialized: {opt_status.get('optimization_level', 'unknown')} level")
+                logger.info(f" GPU optimization initialized: {opt_status.get('optimization_level', 'unknown')} level")
                 logger.info(f"GPU memory available: {opt_status.get('gpu_memory_mb', 0)}MB")
             else:
                 self.gpu_optimization_status = "failed"
-                logger.error("❌ GPU optimization failed - GPU required for operation")
+                logger.error(" GPU optimization failed - GPU required for operation")
                 raise RuntimeError("GPU optimization required but failed")
             
             return success
@@ -176,7 +176,7 @@ class StatefulOrchestrator:
             # If it exists with completed inferences, previous results could contaminate new run
             old_state = self.session_state.agent_states[agent_name]
             if self.manual_mode and old_state.inference_count > 0:
-                logger.error(f"⚠️ CONTAMINATION RISK: Agent {agent_name} has existing state with {old_state.inference_count} inferences in manual mode!")
+                logger.error(f" CONTAMINATION RISK: Agent {agent_name} has existing state with {old_state.inference_count} inferences in manual mode!")
                 logger.error(f"   Old inference contexts could contaminate new run. Forcing reset...")
                 # Force reset to prevent contamination
                 del self.session_state.agent_states[agent_name]
@@ -184,7 +184,7 @@ class StatefulOrchestrator:
                     agent_name=agent_name,
                     timer_seconds=timer_seconds
                 )
-                logger.info(f"✅ Forced fresh state for {agent_name} - preventing context contamination")
+                logger.info(f" Forced fresh state for {agent_name} - preventing context contamination")
             else:
                 logger.warning(f"Agent state for {agent_name} already exists with inference_count={old_state.inference_count} (auto mode continuation)")
 
@@ -239,15 +239,7 @@ class StatefulOrchestrator:
             if inference_num > 1:
                 previous_context = agent_state.get_previous_context()
                 if previous_context:
-                    logger.info(f"  📚 Using context from inference #{previous_context['inference_num']} for {agent_name}")
-                    # Log the context details
-                    logger.info("*" * 30 + f" CONTEXT FOR {agent_name.upper()} " + "*" * 30)
-                    logger.info(f"  Previous Attributes: {previous_context.get('attributes', {})}")
-                    logger.info(f"  Previous Confidence: {previous_context.get('confidence', 0.0):.1%}")
-                    logger.info(f"  Frames Used: {previous_context.get('frames_used', 'unknown')}")
-                    logger.info("*" * (60 + len(agent_name)))
-                else:
-                    logger.debug(f"No previous context available for {agent_name} inference #{inference_num}")
+                    logger.info(f"Using context from inference #{previous_context['inference_num']} for {agent_name}")
 
             # Run inference with context and cycle metadata
             # Get redo attempt number for this agent (0 = not a redo)
@@ -283,11 +275,11 @@ class StatefulOrchestrator:
                 self.first_inference_times[agent_name] = inference_duration
                 # Update buffer to be first_inference_time - 0.3s (aggressive timing)
                 buffer_time = inference_duration - 0.3
-                logger.info(f"📊 {agent_name} inference #1 took {inference_duration:.2f}s")
-                logger.info(f"⏱️  Dynamic buffer updated to {buffer_time:.2f}s (inference time - 0.3s for aggressive second run)")
+                logger.info(f" {agent_name} inference #1 took {inference_duration:.2f}s")
+                logger.info(f"⏱  Dynamic buffer updated to {buffer_time:.2f}s (inference time - 0.3s for aggressive second run)")
                 logger.info(f"   Second inference will run if time remaining > {buffer_time:.2f}s")
             elif self.manual_mode:
-                logger.debug(f"📊 {agent_name} inference #{inference_num} took {inference_duration:.2f}s (manual mode: using fixed 1.0s buffer)")
+                logger.debug(f" {agent_name} inference #{inference_num} took {inference_duration:.2f}s (manual mode: using fixed 1.0s buffer)")
 
             # Add result
             agent_state.add_inference_result(result)
@@ -298,7 +290,7 @@ class StatefulOrchestrator:
                 # We use the first frame as it's the most representative (new frame, not shared)
                 frame_to_store = frames[0] if frames else None
                 agent_state.add_inference_context(len(frames), result, frame_to_store)
-                logger.info(f"  💾 Context saved for {agent_name} future inferences (including frame for batch processing)")
+                logger.info(f"   Context saved for {agent_name} future inferences (including frame for batch processing)")
             
             # Log the raw inference result
             logger.info(f"{agent_name} inference #{inference_num} raw result: {result.raw_response}")
@@ -574,7 +566,7 @@ class StatefulOrchestrator:
     def reset_for_new_cycle(self) -> None:
         """Reset orchestrator state for a new cycle (both auto and manual modes)"""
         self.first_inference_times.clear()
-        logger.info(f"🔄 Cleared dynamic buffer timings for new cycle (mode: {'manual' if self.manual_mode else 'auto'})")
+        logger.info(f" Cleared dynamic buffer timings for new cycle (mode: {'manual' if self.manual_mode else 'auto'})")
     
     async def get_performance_metrics(self) -> Dict[str, Any]:
         """Get comprehensive performance metrics"""

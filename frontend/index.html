@@ -47,7 +47,7 @@
                         </svg>
                     </div>
                     <div class="step-text">
-                        <div class="step-title">Zebra CV60 Initialization</div>
+                        <div class="step-title">OAK-D Camera Initialization</div>
                         <div class="step-status">Waiting...</div>
                     </div>
                 </div>
@@ -187,9 +187,7 @@
                             </div>
                         </div>
                         <!-- FPS Overlay -->
-                        <div class="fps-overlay" id="fpsOverlay">
-                            <span id="fpsDisplay">0 FPS</span>
-                        </div>
+                        
                     </div>
                 </div>
             </section>
@@ -421,6 +419,12 @@
     </div> <!-- End of mainApp -->
 
     <!-- Scripts -->
+    <!-- Load console banner first (displays once on page load) -->
+    <script src="src/console-banner.js"></script>
+
+    <!-- Load cleanup manager (handles page refresh cleanup) -->
+    <script src="src/services/cleanup-manager.js"></script>
+
     <!-- Load configuration -->
     <script src="src/config/agents.js"></script>
     

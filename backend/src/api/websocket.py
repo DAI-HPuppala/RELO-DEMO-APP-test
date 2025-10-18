@@ -3,7 +3,10 @@ import json
 import logging
 import os
 import time
-from typing import Dict, Any
+import csv
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Any, List
 from fastapi import WebSocket, WebSocketDisconnect
 import asyncio
 
@@ -104,6 +107,167 @@ def start_cleanup_task():
     if _cleanup_task is None:
         _cleanup_task = asyncio.create_task(cleanup_stale_monitoring_controls())
         logger.info("Started periodic cleanup task for monitoring_controls")
+
+
+def escape_csv_value(value):
+    """Escape CSV values to handle commas, quotes, and newlines."""
+    if value is None:
+        return ''
+
+    string_value = str(value)
+
+    # Check if value needs escaping
+    if ',' in string_value or '"' in string_value or '\n' in string_value:
+        # Escape quotes by doubling them
+        escaped = string_value.replace('"', '""')
+        return f'"{escaped}"'
+
+    return string_value
+
+
+async def generate_clean_csv(table_data: List[Dict]) -> str:
+    """
+    Generate clean CSV (data only, no metadata).
+    Reverses order to oldest→newest (opposite of frontend table display).
+
+    Args:
+        table_data: List of row data from frontend (newest first)
+
+    Returns:
+        CSV string content
+    """
+    if not table_data:
+        return ''
+
+    # Headers matching frontend clean CSV export
+    headers = ['#', 'Type', 'Color', 'Pattern', 'Brand', 'Size', 'Neckline',
+               'Sleeve', 'Closure', 'Damaged', 'Defect', 'Time',
+               'Initial Images', 'Detail Images', 'Damage Images']
+
+    rows = [','.join(headers)]
+
+    # Reverse to get oldest→newest order
+    reversed_data = list(reversed(table_data))
+
+    for row_data in reversed_data:
+        cells = row_data.get('cells', [])
+        metadata = row_data.get('metadata', {})
+
+        # Ensure we have at least 12 cells (visible columns)
+        while len(cells) < 12:
+            cells.append('')
+
+        # Escape cell values
+        escaped_cells = [escape_csv_value(cell) for cell in cells[:12]]
+
+        # Add final images from metadata
+        final_images = metadata.get('final_images', {})
+
+        def format_image_list(images):
+            if not images or not isinstance(images, list) or len(images) == 0:
+                return '-'
+            return f'"{"; ".join(images)}"'
+
+        escaped_cells.append(format_image_list(final_images.get('initial_classifier', [])))
+        escaped_cells.append(format_image_list(final_images.get('detail_extractor', [])))
+        escaped_cells.append(format_image_list(final_images.get('damage_detector', [])))
+
+        rows.append(','.join(escaped_cells))
+
+    return '\n'.join(rows)
+
+
+async def generate_metadata_csv(table_data: List[Dict]) -> str:
+    """
+    Generate metadata CSV (full details with images, cycle info, inference counts).
+    Reverses order to oldest→newest (opposite of frontend table display).
+
+    Args:
+        table_data: List of row data from frontend (newest first)
+
+    Returns:
+        CSV string content
+    """
+    if not table_data:
+        return ''
+
+    # Headers matching frontend metadata CSV export
+    headers = [
+        '#', 'Cycle ID', 'Mode', 'Type', 'Color', 'Pattern', 'Brand', 'Size',
+        'Neckline', 'Sleeve', 'Closure', 'Damage', 'Damage Type', 'Timestamp',
+        'Initial Inferences', 'Detail Inferences', 'Damage Inferences', 'Edited Cells',
+        'Final Initial Image', 'Final Detail Image', 'Final Damage Image',
+        'All Initial Images', 'All Detail Images', 'All Damage Images'
+    ]
+
+    rows = [','.join(headers)]
+
+    # Reverse to get oldest→newest order
+    reversed_data = list(reversed(table_data))
+
+    for row_data in reversed_data:
+        cells = row_data.get('cells', [])
+        metadata = row_data.get('metadata', {})
+        cycle_id = row_data.get('cycle_id', 'unknown')
+
+        # Ensure we have at least 12 cells
+        while len(cells) < 12:
+            cells.append('')
+
+        # Build row with metadata
+        row = []
+
+        # Basic cells (visible columns)
+        row.extend([escape_csv_value(cell) for cell in cells[:12]])
+
+        # Add cycle ID after row number
+        row.insert(1, escape_csv_value(cycle_id))
+
+        # Add mode
+        mode = metadata.get('mode', 'unknown')
+        row.insert(2, escape_csv_value(mode))
+
+        # Timestamp is already in cells[11], so we have it
+
+        # Add inference counts
+        inference_counts = metadata.get('inference_counts', {})
+        row.append(escape_csv_value(inference_counts.get('initial_classifier', 0)))
+        row.append(escape_csv_value(inference_counts.get('detail_extractor', 0)))
+        row.append(escape_csv_value(inference_counts.get('damage_detector', 0)))
+
+        # Add edited cells info
+        edits = metadata.get('edits', {})
+        edited_cells_list = list(edits.keys()) if edits else []
+        row.append(escape_csv_value('; '.join(edited_cells_list) if edited_cells_list else '-'))
+
+        # Add final images (single image per agent)
+        final_images = metadata.get('final_images', {})
+
+        def format_single_image(images):
+            if not images or not isinstance(images, list) or len(images) == 0:
+                return '-'
+            # Return first image (final successful image)
+            return escape_csv_value(images[0])
+
+        row.append(format_single_image(final_images.get('initial_classifier', [])))
+        row.append(format_single_image(final_images.get('detail_extractor', [])))
+        row.append(format_single_image(final_images.get('damage_detector', [])))
+
+        # Add all images (all attempts including retries)
+        saved_images = metadata.get('saved_images', {})
+
+        def format_all_images(images):
+            if not images or not isinstance(images, list) or len(images) == 0:
+                return '-'
+            return f'"{"; ".join(images)}"'
+
+        row.append(format_all_images(saved_images.get('initial_classifier', [])))
+        row.append(format_all_images(saved_images.get('detail_extractor', [])))
+        row.append(format_all_images(saved_images.get('damage_detector', [])))
+
+        rows.append(','.join(row))
+
+    return '\n'.join(rows)
 
 
 async def setup_orchestrator_vlm(orchestrator):
@@ -569,18 +733,8 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
                 msg_type = v1_msg.get('type')
                 agent = v1_msg.get('agent', 'N/A')
                 
-                # Log what we're sending to frontend with clear naming
-                if msg_type == "progress_update" and v1_msg.get('partial_results'):
-                    logger.info(f"[TO FRONTEND - PROGRESSIVE] Sending progressive results for {agent}")
-                    logger.info(f"[TO FRONTEND - PROGRESSIVE] Attributes: {v1_msg.get('partial_results')}")
-                elif msg_type == "agent_completed":
-                    logger.info(f"[TO FRONTEND - AGENT FINAL] Sending finalized results for {agent}")
-                    logger.info(f"[TO FRONTEND - AGENT FINAL] Attributes: {v1_msg.get('results')}")
-                elif msg_type == "final_results":
-                    logger.info(f"[TO FRONTEND - FINAL CLASSIFICATION] Sending complete classification")
-                    logger.info(f"[TO FRONTEND - FINAL CLASSIFICATION] Results: {v1_msg.get('results')}")
-                else:
-                    logger.info(f"[TO FRONTEND] Sending {msg_type} for {agent}")
+                # Debug logging for development (converted to DEBUG level for production)
+                logger.debug(f"Sending {msg_type} to frontend for {agent}")
                 
                 result = await webrtc_manager.send_data_channel_message(session_id, v1_msg)
                 if not result:
@@ -941,6 +1095,103 @@ async def handle_websocket_message(message: Dict[str, Any], websocket: WebSocket
         
         return result
     
+    elif msg_type == "auto_export_csv":
+        # Auto-export CSV files when table limit is reached
+        session_id = message.get("session_id")
+        table_data = message.get("table_data", [])
+
+        # Validate input
+        if not table_data:
+            logger.warning(f"Auto-export received empty table_data for session {session_id}")
+            return {
+                "type": "error",
+                "error_code": "EMPTY_TABLE_DATA",
+                "message": "No table data to export",
+                "recoverable": False
+            }
+
+        if not isinstance(table_data, list):
+            logger.error(f"Auto-export received invalid table_data type: {type(table_data)}")
+            return {
+                "type": "error",
+                "error_code": "INVALID_TABLE_DATA",
+                "message": "Table data must be a list",
+                "recoverable": False
+            }
+
+        try:
+            # Ensure exports directory exists
+            exports_dir = Path(__file__).parent.parent.parent / "exports"
+
+            if not exports_dir.exists():
+                exports_dir.mkdir(parents=True, exist_ok=True)
+
+            # Check directory is writable
+            if not os.access(exports_dir, os.W_OK):
+                logger.error(f"Exports directory is not writable: {exports_dir}")
+                return {
+                    "type": "error",
+                    "error_code": "DIRECTORY_NOT_WRITABLE",
+                    "message": f"Cannot write to exports directory: {exports_dir}",
+                    "recoverable": False
+                }
+
+            # Generate timestamp for filenames
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+            # Generate CSVs
+            clean_csv = await generate_clean_csv(table_data)
+            if not clean_csv:
+                logger.warning("Clean CSV generation returned empty string")
+
+            metadata_csv = await generate_metadata_csv(table_data)
+            if not metadata_csv:
+                logger.warning("Metadata CSV generation returned empty string")
+
+            # Define filenames
+            clean_filename = f"relo_classification_{timestamp}.csv"
+            metadata_filename = f"relo_classification_metadata_{timestamp}.csv"
+
+            # Write files
+            clean_filepath = exports_dir / clean_filename
+            metadata_filepath = exports_dir / metadata_filename
+
+            try:
+                with open(clean_filepath, 'w', encoding='utf-8') as f:
+                    f.write(clean_csv)
+            except Exception as write_error:
+                logger.error(f"Failed to write clean CSV: {write_error}")
+                raise
+
+            try:
+                with open(metadata_filepath, 'w', encoding='utf-8') as f:
+                    f.write(metadata_csv)
+            except Exception as write_error:
+                logger.error(f"Failed to write metadata CSV: {write_error}")
+                raise
+
+            logger.info(f"Auto-export completed: {clean_filename}, {metadata_filename} ({len(table_data)} rows)")
+
+            return {
+                "type": "auto_export_success",
+                "session_id": session_id,
+                "files": {
+                    "clean_csv": clean_filename,
+                    "metadata_csv": metadata_filename
+                },
+                "row_count": len(table_data),
+                "export_directory": str(exports_dir.absolute())
+            }
+
+        except Exception as e:
+            logger.error(f"Error during auto-export: {e}", exc_info=True)
+            return {
+                "type": "error",
+                "error_code": "AUTO_EXPORT_FAILED",
+                "message": f"Failed to export CSVs: {str(e)}",
+                "recoverable": False
+            }
+
     elif msg_type == "associate_session":
         # Associate WebSocket with existing session
         session_id = message.get("session_id")
@@ -1157,7 +1408,12 @@ async def run_v1_to_v2_monitoring_flow(session_id: str, orchestrator, monitoring
 
             # Create a new session ID for each cycle (keeps base session ID with cycle suffix)
             cycle_session_id = f"{session_id}_cycle_{_global_cycle_counter}"
-            logger.info(f"Starting monitoring cycle {_global_cycle_counter} with session {cycle_session_id}")
+
+            # Log cycle start with box format
+            logger.info("=" * 80)
+            logger.info(f"CYCLE {_global_cycle_counter} STARTED")
+            logger.info(f"Session: {cycle_session_id}")
+            logger.info("=" * 80)
             
             # Track cycle timing
             cycle_start_time = time.time()
@@ -1562,7 +1818,13 @@ async def run_manual_mode_flow(session_id: str, orchestrator, monitoring_control
 
                 # Create cycle session ID
                 cycle_session_id = f"{session_id}_manual_cycle_{_global_cycle_counter}"
-                logger.info(f"Starting manual mode cycle {_global_cycle_counter}")
+
+                # Log cycle start with box format
+                logger.info("=" * 80)
+                logger.info(f"CYCLE {_global_cycle_counter} STARTED (MANUAL MODE)")
+                logger.info(f"Session: {cycle_session_id}")
+                logger.info("=" * 80)
+
                 session_first_cycle = False
 
                 # Send cycle started message to frontend

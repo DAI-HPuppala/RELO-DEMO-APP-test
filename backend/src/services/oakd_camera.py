@@ -58,7 +58,15 @@ class OakDVideoTrack(VideoStreamTrack):
     def _initialize_oakd(self):
         """Initialize OAK-D Pro camera using DepthAI with retry logic."""
         if not DEPTHAI_AVAILABLE:
-            logger.error("DepthAI SDK not available, using test pattern")
+            logger.error("DepthAI SDK not available - cannot initialize OAK-D camera", exc_info=True)
+            logger.warning("Falling back to test pattern mode - no real camera frames will be available")
+            self.is_initialized = False
+            self._start_capture_thread()
+            return False
+
+        # Validate IP address format
+        if not OAKD_POE_FALLBACK_IP:
+            logger.error("OAKD_POE_FALLBACK_IP is not configured")
             self.is_initialized = False
             self._start_capture_thread()
             return False
@@ -71,51 +79,90 @@ class OakDVideoTrack(VideoStreamTrack):
                 logger.info(f"Initializing OAK-D Pro camera (attempt {attempt + 1}/{max_retries})...")
 
                 # Create pipeline (exactly like reference)
-                self._pipeline = self._create_pipeline()
+                try:
+                    self._pipeline = self._create_pipeline()
+                    if not self._pipeline:
+                        raise RuntimeError("Failed to create pipeline - pipeline is None")
+                    logger.info("Pipeline created successfully")
+                except Exception as pipeline_error:
+                    logger.error(f"Pipeline creation failed: {pipeline_error}", exc_info=True)
+                    raise
 
                 # Connect to device and start pipeline
                 # Use static IP directly for PoE (more reliable after reloads)
                 logger.info(f"Connecting directly to OAK-D PoE at static IP: {OAKD_POE_FALLBACK_IP}")
-                device_info = dai.DeviceInfo(OAKD_POE_FALLBACK_IP)
+
+                try:
+                    device_info = dai.DeviceInfo(OAKD_POE_FALLBACK_IP)
+                except Exception as device_info_error:
+                    logger.error(f"Failed to create DeviceInfo for IP {OAKD_POE_FALLBACK_IP}: {device_info_error}", exc_info=True)
+                    raise
 
                 # Connect to the device
-                self._device = dai.Device(self._pipeline, device_info)
-                if device_info:
-                    logger.info(f"✓ Connected to OAK-D Pro camera successfully")
-                else:
-                    logger.info(f"✓ Connected to OAK-D Pro camera at fallback IP: {OAKD_POE_FALLBACK_IP}")
+                try:
+                    self._device = dai.Device(self._pipeline, device_info)
+                    if not self._device:
+                        raise RuntimeError(f"Device connection returned None for IP {OAKD_POE_FALLBACK_IP}")
+
+                    if device_info:
+                        logger.info(f"Connected to OAK-D Pro camera successfully")
+                    else:
+                        logger.warning(f"Connected to OAK-D Pro camera but device_info is None (IP: {OAKD_POE_FALLBACK_IP})")
+                except Exception as device_error:
+                    logger.error(f"Device connection failed for IP {OAKD_POE_FALLBACK_IP}: {device_error}", exc_info=True)
+                    logger.warning("Possible network issue or camera not powered - check camera connection and power")
+                    raise
 
                 # Get output queue with minimal buffering for low latency
                 # Reduced from 4 to 1 to minimize hardware queue delay
-                self._q_rgb = self._device.getOutputQueue(name="rgb", maxSize=1, blocking=False)
+                try:
+                    self._q_rgb = self._device.getOutputQueue(name="rgb", maxSize=1, blocking=False)
+                    if not self._q_rgb:
+                        raise RuntimeError("Failed to get RGB output queue - queue is None")
+                    logger.info("RGB output queue created successfully (maxSize=1, non-blocking)")
+                except Exception as queue_error:
+                    logger.error(f"Failed to create RGB output queue: {queue_error}", exc_info=True)
+                    raise
 
                 # Get control input queue for tap-to-focus
-                self._q_control = self._device.getInputQueue(name="control", maxSize=8, blocking=False)
+                try:
+                    self._q_control = self._device.getInputQueue(name="control", maxSize=8, blocking=False)
+                    if not self._q_control:
+                        logger.warning("Control input queue is None - tap-to-focus may not work")
+                    else:
+                        logger.info("Control input queue created successfully (maxSize=8, non-blocking)")
+                except Exception as control_error:
+                    logger.warning(f"Failed to create control input queue: {control_error}")
+                    # Non-fatal - continue without control queue
 
                 self.is_initialized = True
-                logger.info(f"OAK-D Pro camera initialized successfully (attempt {attempt + 1}/{max_retries})")
+                logger.info(f"OAK-D Pro camera fully initialized (attempt {attempt + 1}/{max_retries})")
                 self._start_capture_thread()
                 return True
 
             except Exception as e:
-                logger.error(f"Initialization attempt {attempt + 1}/{max_retries} failed: {e}")
+                logger.error(f"Initialization attempt {attempt + 1}/{max_retries} failed: {e}", exc_info=True)
 
                 # Cleanup partial initialization
                 if self._device:
                     try:
+                        logger.info("Cleaning up partial device initialization")
                         self._device.close()
-                    except:
-                        pass
+                    except Exception as cleanup_error:
+                        logger.warning(f"Error during device cleanup: {cleanup_error}")
                     self._device = None
+
                 self._q_rgb = None
+                self._q_control = None
                 self._pipeline = None
 
                 if attempt < max_retries - 1:
-                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    logger.warning(f"Retrying in {retry_delay} seconds...")
                     time.sleep(retry_delay)
                     continue
                 else:
-                    logger.error(f"All {max_retries} attempts failed - falling back to test pattern")
+                    logger.error(f"All {max_retries} initialization attempts failed - falling back to test pattern")
+                    logger.warning("OAK-D camera unavailable - check hardware connection, network, and power supply")
                     self.is_initialized = False
                     self._start_capture_thread()
                     return False
@@ -177,41 +224,87 @@ class OakDVideoTrack(VideoStreamTrack):
 
     def _capture_frames(self):
         """Capture frames from OAK-D Pro camera or generate test pattern."""
+        consecutive_errors = 0
+        max_consecutive_errors = 10
+
         while not self._stop_capture:
             try:
                 frame = None
 
                 if self.is_initialized and self._q_rgb:
                     # Get frame from OAK-D Pro
-                    in_rgb = self._q_rgb.get()
-                    if in_rgb is not None:
-                        # Already in BGR format from camera
-                        frame = in_rgb.getCvFrame()
-                        self._last_valid_frame = frame.copy()
-                        # Log raw frame resolution from OAK-D Pro only once
-                        if not hasattr(self, '_resolution_logged'):
-                            logger.info(f"📐 OAK-D Pro raw frame resolution: {frame.shape[1]}x{frame.shape[0]} (WxH)")
-                            self._resolution_logged = True
+                    try:
+                        in_rgb = self._q_rgb.get()
+                        if in_rgb is not None:
+                            # Validate frame data
+                            try:
+                                frame = in_rgb.getCvFrame()
+                                if frame is None:
+                                    logger.warning("getCvFrame() returned None - invalid frame data")
+                                    consecutive_errors += 1
+                                elif frame.size == 0:
+                                    logger.warning("Received empty frame (size=0) from OAK-D camera")
+                                    consecutive_errors += 1
+                                    frame = None
+                                else:
+                                    # Valid frame
+                                    self._last_valid_frame = frame.copy()
+                                    consecutive_errors = 0  # Reset error counter
+
+                                    # Log raw frame resolution from OAK-D Pro only once
+                                    if not hasattr(self, '_resolution_logged'):
+                                        logger.info(f"OAK-D Pro raw frame resolution: {frame.shape[1]}x{frame.shape[0]} (WxH)")
+                                        self._resolution_logged = True
+                            except Exception as frame_error:
+                                logger.error(f"Error extracting frame from buffer: {frame_error}", exc_info=True)
+                                consecutive_errors += 1
+                                frame = None
+                        else:
+                            # Queue returned None - possible timeout or no data
+                            if consecutive_errors == 0:
+                                logger.warning("RGB queue returned None - camera may be disconnected or not streaming")
+                            consecutive_errors += 1
+                    except Exception as queue_error:
+                        logger.error(f"Error reading from RGB queue: {queue_error}", exc_info=True)
+                        consecutive_errors += 1
+                elif self.is_initialized and not self._q_rgb:
+                    if consecutive_errors == 0:
+                        logger.error("Camera initialized but RGB queue is None - invalid state")
+                    consecutive_errors += 1
+                else:
+                    # Not initialized - this is expected in test mode
+                    pass
+
+                # Check for too many consecutive errors
+                if consecutive_errors >= max_consecutive_errors:
+                    logger.error(f"Too many consecutive frame errors ({consecutive_errors}) - camera may be disconnected")
+                    logger.warning("Falling back to test pattern - check camera hardware and network connection")
+                    self.is_initialized = False
+                    consecutive_errors = 0
 
                 # Generate test pattern if no real frame
                 if frame is None:
                     frame = self._generate_test_pattern()
 
                 # Add frame to queue
-                try:
-                    self._frame_queue.put_nowait(frame)
-                except:
-                    # Queue full, remove oldest frame and add newest
+                if frame is not None:
                     try:
-                        self._frame_queue.get_nowait()
                         self._frame_queue.put_nowait(frame)
                     except:
-                        pass
+                        # Queue full, remove oldest frame and add newest
+                        try:
+                            self._frame_queue.get_nowait()
+                            self._frame_queue.put_nowait(frame)
+                        except Exception as queue_add_error:
+                            logger.warning(f"Failed to add frame to queue: {queue_add_error}")
+                else:
+                    logger.error("Generated test pattern is None - this should not happen")
 
                 # No artificial delay - OAK-D controls frame rate at hardware level
 
             except Exception as e:
-                logger.error(f"Error in capture thread: {e}")
+                logger.error(f"Unhandled error in capture thread: {e}", exc_info=True)
+                consecutive_errors += 1
                 time.sleep(0.1)
 
     def _generate_test_pattern(self):
@@ -274,7 +367,8 @@ class OakDVideoTrack(VideoStreamTrack):
                         if self._last_valid_frame is not None:
                             frame = self._last_valid_frame
                         else:
-                            logger.warning("No frames available from initialized camera")
+                            # Expected during initialization - camera pipeline filling buffers
+                            logger.debug("No frames available yet (camera initializing)")
                             frame = self._generate_test_pattern()
                     else:
                         frame = self._generate_test_pattern()
@@ -294,14 +388,29 @@ class OakDVideoTrack(VideoStreamTrack):
             x: Normalized x coordinate (0-1)
             y: Normalized y coordinate (0-1)
         """
-        if not self.is_initialized or not self._device:
+        # Validate inputs
+        if x is None or y is None:
+            logger.error("Focus point coordinates cannot be None")
+            return
+
+        if not (0 <= x <= 1 and 0 <= y <= 1):
+            logger.error(f"Focus point coordinates out of range: x={x}, y={y} (must be 0-1)")
+            return
+
+        if not self.is_initialized:
             logger.warning("Cannot set focus point - camera not initialized")
+            return
+
+        if not self._device:
+            logger.error("Cannot set focus point - device is None")
             return
 
         try:
             # Convert normalized coordinates to pixel coordinates
             pixel_x = int(x * self.CAMERA_WIDTH)
             pixel_y = int(y * self.CAMERA_HEIGHT)
+
+            logger.info(f"Setting focus point at normalized ({x:.3f}, {y:.3f}) = pixel ({pixel_x}, {pixel_y})")
 
             # Calculate focus region around tap point (200x200 pixel region)
             region_width = 200
@@ -312,24 +421,33 @@ class OakDVideoTrack(VideoStreamTrack):
             # Ensure region doesn't exceed camera bounds
             if start_x + region_width > self.CAMERA_WIDTH:
                 start_x = self.CAMERA_WIDTH - region_width
+                logger.debug(f"Adjusted start_x to {start_x} to fit within camera bounds")
             if start_y + region_height > self.CAMERA_HEIGHT:
                 start_y = self.CAMERA_HEIGHT - region_height
+                logger.debug(f"Adjusted start_y to {start_y} to fit within camera bounds")
 
             # Create and send camera control command
-            ctrl = dai.CameraControl()
-            ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.AUTO)
-            ctrl.setAutoFocusRegion(startX=start_x, startY=start_y, width=region_width, height=region_height)
-            ctrl.setAutoFocusTrigger()
+            try:
+                ctrl = dai.CameraControl()
+                ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.AUTO)
+                ctrl.setAutoFocusRegion(startX=start_x, startY=start_y, width=region_width, height=region_height)
+                ctrl.setAutoFocusTrigger()
+            except Exception as ctrl_error:
+                logger.error(f"Failed to create camera control command: {ctrl_error}", exc_info=True)
+                return
 
             # Send control to camera via control queue
             if self._q_control:
-                self._q_control.send(ctrl)
-                logger.info(f"✓ Tap-to-focus: ({pixel_x}, {pixel_y}), region ({start_x}, {start_y}, {region_width}x{region_height})")
+                try:
+                    self._q_control.send(ctrl)
+                    logger.info(f"Tap-to-focus set: pixel ({pixel_x}, {pixel_y}), region ({start_x}, {start_y}, {region_width}x{region_height})")
+                except Exception as send_error:
+                    logger.error(f"Failed to send focus control command: {send_error}", exc_info=True)
             else:
-                logger.warning("Camera control queue not available")
+                logger.warning("Camera control queue not available - tap-to-focus disabled")
 
         except Exception as e:
-            logger.error(f"Error setting focus point: {e}")
+            logger.error(f"Unhandled error setting focus point: {e}", exc_info=True)
 
     def stop(self):
         """Stop the video track and cleanup resources."""
@@ -396,14 +514,21 @@ class OakDCameraService:
             numpy.ndarray: Depth map in millimeters, or None on failure
         """
         if not DEPTHAI_AVAILABLE:
-            logger.error("DepthAI not available for depth capture")
+            logger.error("DepthAI not available for depth capture - SDK not installed")
             return None
 
         try:
             logger.info("Creating stereo depth pipeline for height measurement...")
 
             # Create pipeline with stereo depth
-            pipeline = dai.Pipeline()
+            try:
+                pipeline = dai.Pipeline()
+                if not pipeline:
+                    logger.error("Failed to create depth pipeline - pipeline is None")
+                    return None
+            except Exception as pipeline_error:
+                logger.error(f"Error creating depth pipeline: {pipeline_error}", exc_info=True)
+                return None
 
             # Mono cameras for stereo depth
             mono_left = pipeline.create(dai.node.MonoCamera)
@@ -435,25 +560,54 @@ class OakDCameraService:
             stereo.depth.link(xout_depth.input)
 
             # Connect to device
-            with dai.Device(pipeline) as device:
-                logger.info("✅ Connected to OAK-D for depth capture")
+            try:
+                with dai.Device(pipeline) as device:
+                    if not device:
+                        logger.error("Failed to connect to device for depth capture - device is None")
+                        return None
 
-                # Get depth queue
-                q_depth = device.getOutputQueue(name="depth", maxSize=4, blocking=False)
+                    logger.info("Connected to OAK-D for depth capture")
 
-                # Wait a moment for auto-exposure to stabilize
-                import time
-                time.sleep(0.5)
+                    # Get depth queue
+                    try:
+                        q_depth = device.getOutputQueue(name="depth", maxSize=4, blocking=False)
+                        if not q_depth:
+                            logger.error("Failed to get depth output queue - queue is None")
+                            return None
+                    except Exception as queue_error:
+                        logger.error(f"Error creating depth output queue: {queue_error}", exc_info=True)
+                        return None
 
-                # Capture depth frame
-                depth_frame = q_depth.get()
-                depth_array = depth_frame.getFrame()
+                    # Wait a moment for auto-exposure to stabilize
+                    import time
+                    logger.debug("Waiting for camera auto-exposure to stabilize...")
+                    time.sleep(0.5)
 
-                logger.info(f"📏 Captured depth frame: {depth_array.shape}")
-                return depth_array
+                    # Capture depth frame
+                    try:
+                        depth_frame = q_depth.get()
+                        if not depth_frame:
+                            logger.error("Depth queue returned None - no depth data available")
+                            return None
+
+                        depth_array = depth_frame.getFrame()
+                        if depth_array is None or depth_array.size == 0:
+                            logger.error("Invalid depth frame - empty or None")
+                            return None
+
+                        logger.info(f"Captured depth frame successfully: {depth_array.shape}")
+                        return depth_array
+
+                    except Exception as capture_error:
+                        logger.error(f"Error capturing depth frame from queue: {capture_error}", exc_info=True)
+                        return None
+
+            except Exception as device_error:
+                logger.error(f"Error connecting to device for depth capture: {device_error}", exc_info=True)
+                return None
 
         except Exception as e:
-            logger.error(f"Error capturing depth frame: {e}")
+            logger.error(f"Unhandled error capturing depth frame: {e}", exc_info=True)
             return None
 
     @staticmethod

@@ -15,12 +15,6 @@ class VideoDisplay {
 
         // Setup tap-to-focus
         this.setupTapToFocus();
-
-        console.log('VideoDisplay initialized:', {
-            video: this.videoElement?.id,
-            overlay: this.overlayElement?.id,
-            fps: this.fpsElement?.id
-        });
     }
 
     /**
@@ -33,13 +27,7 @@ class VideoDisplay {
         }
 
         this.videoElement.addEventListener('click', (event) => {
-            console.log('Video clicked!', {
-                enabled: this.tapToFocusEnabled,
-                hasClient: !!this.webrtcClient
-            });
-
             if (!this.tapToFocusEnabled) {
-                console.warn('Tap-to-focus is disabled');
                 return;
             }
 
@@ -52,8 +40,6 @@ class VideoDisplay {
             const x = (event.clientX - rect.left) / rect.width;
             const y = (event.clientY - rect.top) / rect.height;
 
-            console.log('Tap-to-focus:', { x, y });
-
             // Send normalized coordinates (0-1)
             this.webrtcClient.tapToFocus(x, y);
 
@@ -63,7 +49,6 @@ class VideoDisplay {
 
         // Add cursor pointer to indicate clickable
         this.videoElement.style.cursor = 'crosshair';
-        console.log('✓ Tap-to-focus setup complete on', this.videoElement.id);
     }
 
     /**
@@ -124,7 +109,6 @@ class VideoDisplay {
             this.videoElement.srcObject = stream;
             this.hideOverlay();
             this.startFpsMonitoring();
-            console.log('Video stream set');
         }
     }
 

@@ -291,7 +291,7 @@ SYSTEM You are an advanced vision-language AI optimized for rapid clothing analy
                                         logger.debug(f"Model creation: {result['status']}")
                                 except json.JSONDecodeError:
                                     pass
-                        logger.info(f"✅ Created optimized model: {self.optimized_model_name}")
+                        logger.info(f" Created optimized model: {self.optimized_model_name}")
                         return True
                     else:
                         error_text = await response.text()
@@ -337,7 +337,7 @@ SYSTEM You are an advanced vision-language AI optimized for rapid clothing analy
                     load_time = int((time.time() - start_time) * 1000)
                     
                     if response.status == 200:
-                        logger.info(f"🚀 Aggressive GPU model loaded in {load_time}ms: {model_to_use}")
+                        logger.info(f" Aggressive GPU model loaded in {load_time}ms: {model_to_use}")
                         return model_to_use
                     else:
                         error_text = await response.text()

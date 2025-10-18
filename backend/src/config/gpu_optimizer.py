@@ -100,7 +100,7 @@ class GPUOptimizer:
         
         # RTX A1000 specific optimizations (8GB VRAM)
         if self.is_rtx_a1000:
-            logger.info("🎯 RTX A1000 detected - applying specific optimizations")
+            logger.info(" RTX A1000 detected - applying specific optimizations")
             # With 8GB total and ~2.8GB model, we can be aggressive
             safety_margin = 500  # Smaller margin for RTX A1000
             

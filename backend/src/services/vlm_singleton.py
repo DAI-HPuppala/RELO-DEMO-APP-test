@@ -54,11 +54,11 @@ class VLMSingleton:
 
         # Core components - choose based on provider
         if self.provider == ModelProvider.HUGGINGFACE:
-            logger.info("🔧 Using HuggingFace provider for VLM")
+            logger.info(" Using HuggingFace provider for VLM")
             self.vlm_client = VLMHuggingFaceClient()
             self.ultra_vlm_service = None  # Not used with HuggingFace
         else:  # Ollama
-            logger.info("🔧 Using Ollama provider for VLM")
+            logger.info(" Using Ollama provider for VLM")
             self.vlm_client = VLMGPULoader()
             self.ultra_vlm_service = UltraVLMService()
 
@@ -122,16 +122,16 @@ class VLMSingleton:
             self.progress_callbacks = [progress_callback] if progress_callback else []
             
             logger.info("=" * 60)
-            logger.info("🚀 STARTING UNIFIED VLM INITIALIZATION")
+            logger.info(" STARTING UNIFIED VLM INITIALIZATION")
             logger.info("=" * 60)
             
             try:
                 # Step 1: GPU Detection and Setup (10%)
-                await self._update_progress("🔍 Detecting GPU and setting up CUDA context...", 5)
+                await self._update_progress(" Detecting GPU and setting up CUDA context...", 5)
                 gpu_status = await self._detect_and_setup_gpu()
                 
                 # Step 2: Model Loading to GPU (30%)
-                await self._update_progress("📥 Loading Qwen2.5-VL model to GPU memory...", 15)
+                await self._update_progress(" Loading Qwen2.5-VL model to GPU memory...", 15)
                 model_status = await self._load_model_to_gpu()
                 
                 # Step 3: CUDA Context Creation (40%)
@@ -139,19 +139,19 @@ class VLMSingleton:
                 cuda_status = await self._create_cuda_context()
                 
                 # Step 4: Memory Allocation (50%)
-                await self._update_progress("💾 Allocating GPU memory for inference...", 40)
+                await self._update_progress(" Allocating GPU memory for inference...", 40)
                 memory_status = await self._allocate_gpu_memory()
                 
                 # Step 5: Model Compilation (70%)
-                await self._update_progress("⚙️ Compiling model for GPU execution...", 55)
+                await self._update_progress(" Compiling model for GPU execution...", 55)
                 compilation_status = await self._compile_model()
                 
                 # Step 6: Warmup Inference Runs (90%)
-                await self._update_progress("🔥 Running warmup inference sequences...", 70)
+                await self._update_progress(" Running warmup inference sequences...", 70)
                 warmup_status = await self._run_warmup_sequences()
                 
                 # Step 7: Final Verification (100%)
-                await self._update_progress("✅ Verifying VLM readiness...", 90)
+                await self._update_progress(" Verifying VLM readiness...", 90)
                 verification_status = await self._verify_readiness()
                 
                 # Mark as initialized
@@ -161,7 +161,7 @@ class VLMSingleton:
                 await self._update_progress("✨ VLM initialization complete!", 100)
                 
                 logger.info("=" * 60)
-                logger.info(f"✅ VLM INITIALIZED SUCCESSFULLY in {self.initialization_duration:.2f}s")
+                logger.info(f" VLM INITIALIZED SUCCESSFULLY in {self.initialization_duration:.2f}s")
                 logger.info("=" * 60)
                 
                 return {

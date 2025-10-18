@@ -152,10 +152,10 @@ class GPUInitializer:
                         )
                         
                         if gpu_check.returncode == 0 and 'ollama' in gpu_check.stdout.lower():
-                            logger.info("✅ GPU inference confirmed - Ollama using GPU!")
+                            logger.info(" GPU inference confirmed - Ollama using GPU!")
                             return True
                         else:
-                            logger.warning("⚠️ Inference completed but GPU usage not detected")
+                            logger.warning(" Inference completed but GPU usage not detected")
                             return False
                     else:
                         logger.error(f"Inference failed with status {response.status}")
@@ -218,7 +218,7 @@ class GPUInitializer:
             if await self.test_ollama_gpu_inference():
                 self.gpu_initialized = True
                 logger.info("="*60)
-                logger.info("✅ GPU INITIALIZATION SUCCESSFUL!")
+                logger.info(" GPU INITIALIZATION SUCCESSFUL!")
                 logger.info("="*60)
                 return True
             
@@ -226,7 +226,7 @@ class GPUInitializer:
             await asyncio.sleep(2)
         
         logger.error("="*60)
-        logger.error("❌ GPU INITIALIZATION FAILED AFTER ALL ATTEMPTS")
+        logger.error(" GPU INITIALIZATION FAILED AFTER ALL ATTEMPTS")
         logger.error("="*60)
         return False
     

@@ -91,7 +91,7 @@ class ProviderFactory:
         else:
             raise ValueError(f"Unsupported provider: {provider}")
 
-        logger.info(f"🔧 Provider configuration: {config}")
+        logger.info(f" Provider configuration: {config}")
 
         return config
 
@@ -157,7 +157,7 @@ def is_ollama_provider() -> bool:
 
 # Log provider configuration on module import
 logger.info("="*60)
-logger.info("🔧 Model Provider Configuration")
+logger.info(" Model Provider Configuration")
 provider_info = ProviderFactory.get_provider_info()
 logger.info(f"   Provider: {provider_info['provider'].upper()}")
 logger.info(f"   API URL: {provider_info['api_url']}")

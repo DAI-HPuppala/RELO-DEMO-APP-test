@@ -86,9 +86,9 @@ class UltraVLMService:
             "last_gpu_check": 0
         }
         
-        logger.info(f"🚀 ULTRA-AGGRESSIVE VLMService initialized: {self.base_model_name}")
-        logger.info(f"🎯 Performance target: <{self.target_inference_time}ms inference")
-        logger.info("🔥 Maximum GPU optimization enabled")
+        logger.info(f" ULTRA-AGGRESSIVE VLMService initialized: {self.base_model_name}")
+        logger.info(f" Performance target: <{self.target_inference_time}ms inference")
+        logger.info(" Maximum GPU optimization enabled")
 
     async def initialize_and_warmup(self, progress_callback=None) -> Dict[str, Any]:
         """
@@ -98,7 +98,7 @@ class UltraVLMService:
         """
         async with self._warmup_lock:
             if self.warmup_completed:
-                logger.info("🔥 VLM already at maximum performance, skipping warmup")
+                logger.info(" VLM already at maximum performance, skipping warmup")
                 return {
                     "status": "already_optimized", 
                     "warmup_duration_ms": self.warmup_duration_ms,
@@ -106,63 +106,63 @@ class UltraVLMService:
                     "target_time_ms": self.target_inference_time
                 }
             
-            logger.info("🚀 STARTING MAXIMUM GPU OPTIMIZATION FOR <800ms INFERENCE")
-            logger.info("🔥 Implementing RELO-DEMO-APP aggressive strategies")
+            logger.info(" STARTING MAXIMUM GPU OPTIMIZATION FOR <800ms INFERENCE")
+            logger.info(" Implementing RELO-DEMO-APP aggressive strategies")
             self.warmup_start_time = time.time()
             
             try:
                 # Step 1: Aggressive GPU Memory Analysis
                 if progress_callback:
-                    await progress_callback("🔍 Analyzing GPU for maximum allocation...", 5)
+                    await progress_callback(" Analyzing GPU for maximum allocation...", 5)
                 
                 gpu_performance = self.gpu_manager.monitor_gpu_performance()
                 if gpu_performance.get("gpu_available"):
-                    logger.info(f"🎯 GPU Status: {gpu_performance['performance_status'].upper()}")
-                    logger.info(f"💾 GPU Memory: {gpu_performance['free_memory_mb']}MB free")
-                    logger.info(f"⚡ GPU Utilization: {gpu_performance['gpu_utilization_percent']}%")
+                    logger.info(f" GPU Status: {gpu_performance['performance_status'].upper()}")
+                    logger.info(f" GPU Memory: {gpu_performance['free_memory_mb']}MB free")
+                    logger.info(f" GPU Utilization: {gpu_performance['gpu_utilization_percent']}%")
                     self.cuda_optimized = True
                 
                 # Step 2: Create and Load Optimized Model
                 if progress_callback:
-                    await progress_callback("🔥 Creating ultra-optimized Qwen2.5-VL model...", 15)
+                    await progress_callback(" Creating ultra-optimized Qwen2.5-VL model...", 15)
                 
                 loaded_model = await self.model_optimizer.ensure_optimized_model_loaded()
                 if loaded_model:
                     self.optimized_model_name = loaded_model
                     self.gpu_memory_locked = True
-                    logger.info(f"✅ Ultra-optimized model loaded: {self.optimized_model_name}")
+                    logger.info(f" Ultra-optimized model loaded: {self.optimized_model_name}")
                 else:
-                    logger.warning("⚠️ Model loading failed completely")
+                    logger.warning(" Model loading failed completely")
                     self.optimized_model_name = self.base_model_name
                 
                 # Step 3: Aggressive Model Warming
                 if progress_callback:
-                    await progress_callback("⚡ GPU model warming for maximum speed...", 35)
+                    await progress_callback(" GPU model warming for maximum speed...", 35)
                 
                 warmup_image = await self._load_aggressive_warmup_image()
                 
                 # Step 4: Multi-stage Performance Benchmarking
                 if progress_callback:
-                    await progress_callback("🚀 Running aggressive performance benchmark...", 45)
+                    await progress_callback(" Running aggressive performance benchmark...", 45)
                 
                 # Aggressive multi-stage benchmark
                 benchmark_results = await self._run_aggressive_performance_benchmark(warmup_image)
                 
                 # Step 5: GPU Memory Lock-in Validation
                 if progress_callback:
-                    await progress_callback("🔒 Validating GPU memory lock-in...", 65)
+                    await progress_callback(" Validating GPU memory lock-in...", 65)
                 
                 gpu_lock_status = await self._validate_aggressive_gpu_lock()
                 
                 # Step 6: Performance Validation
                 if progress_callback:
-                    await progress_callback("🎯 Final performance validation...", 85)
+                    await progress_callback(" Final performance validation...", 85)
                 
                 final_performance = await self._validate_target_performance()
                 
                 # Step 7: Complete Ultra-Optimization
                 if progress_callback:
-                    await progress_callback("🎉 MAXIMUM OPTIMIZATION ACHIEVED!", 100)
+                    await progress_callback(" MAXIMUM OPTIMIZATION ACHIEVED!", 100)
                 
                 self.warmup_duration_ms = int((time.time() - self.warmup_start_time) * 1000)
                 self.warmup_completed = True
@@ -175,12 +175,12 @@ class UltraVLMService:
                 avg_bench_time = sum(benchmark_results) / len(benchmark_results) if benchmark_results else 0
                 target_met = avg_bench_time < self.target_inference_time
                 
-                logger.info(f"🎉 ULTRA-AGGRESSIVE WARMUP COMPLETED: {self.warmup_duration_ms}ms")
-                logger.info(f"🎯 Benchmark Average: {avg_bench_time:.0f}ms (Target: <{self.target_inference_time}ms)")
-                logger.info(f"🏆 Target Achievement: {'✅ EXCEEDED' if target_met else '⚠️ CLOSE'}")
-                logger.info(f"🔒 GPU Memory Lock: {'✅ MAXIMUM' if self.is_gpu_locked else '⚠️ PARTIAL'}")
-                logger.info(f"⚡ CUDA Optimization: {'✅ AGGRESSIVE' if self.cuda_optimized else '❌ DISABLED'}")
-                logger.info(f"🚀 Model Optimization: {'✅ ULTRA' if self.model_compiled else '⚠️ STANDARD'}")
+                logger.info(f" ULTRA-AGGRESSIVE WARMUP COMPLETED: {self.warmup_duration_ms}ms")
+                logger.info(f" Benchmark Average: {avg_bench_time:.0f}ms (Target: <{self.target_inference_time}ms)")
+                logger.info(f" Target Achievement: {' EXCEEDED' if target_met else ' CLOSE'}")
+                logger.info(f" GPU Memory Lock: {' MAXIMUM' if self.is_gpu_locked else ' PARTIAL'}")
+                logger.info(f" CUDA Optimization: {' AGGRESSIVE' if self.cuda_optimized else ' DISABLED'}")
+                logger.info(f" Model Optimization: {' ULTRA' if self.model_compiled else ' STANDARD'}")
                 
                 return {
                     "status": "ultra_optimized",
@@ -208,7 +208,7 @@ class UltraVLMService:
                     self.performance_mode = "fallback"
                     
                     fallback_time = int((time.time() - self.warmup_start_time) * 1000)
-                    logger.warning(f"⚠️ Fallback warmup completed in {fallback_time}ms")
+                    logger.warning(f" Fallback warmup completed in {fallback_time}ms")
                     
                     return {
                         "status": "fallback_completed",
@@ -238,7 +238,7 @@ class UltraVLMService:
                 async with session.post(f"{self.ollama_host}/api/generate", json=payload) as response:
                     if response.status == 200:
                         self.is_model_loaded = True
-                        logger.info("✅ Fallback model ready")
+                        logger.info(" Fallback model ready")
                     else:
                         raise Exception(f"Fallback model failed: {response.status}")
         except Exception as e:
@@ -316,7 +316,7 @@ class UltraVLMService:
         
         benchmark_times = []
         
-        logger.info(f"🚀 Running {len(benchmark_prompts)} aggressive benchmark tests...")
+        logger.info(f" Running {len(benchmark_prompts)} aggressive benchmark tests...")
         
         for i, prompt in enumerate(benchmark_prompts, 1):
             try:
@@ -353,7 +353,7 @@ class UltraVLMService:
                 
                 benchmark_times.append(benchmark_time)
                 
-                status = "🎯 EXCELLENT" if benchmark_time < self.target_inference_time else "⚠️ SLOW"
+                status = " EXCELLENT" if benchmark_time < self.target_inference_time else " SLOW"
                 logger.info(f"Benchmark {i}/3: {benchmark_time}ms {status}")
                 
                 # Small delay to prevent overwhelming GPU
@@ -402,13 +402,13 @@ class UltraVLMService:
             
             # Aggressive validation - must be very fast for GPU lock
             if validation_time < 2000:  # <2s indicates excellent GPU lock
-                logger.info(f"🔒 AGGRESSIVE GPU LOCK CONFIRMED - {validation_time}ms")
+                logger.info(f" AGGRESSIVE GPU LOCK CONFIRMED - {validation_time}ms")
                 return True
             elif validation_time < 5000:  # <5s indicates partial GPU lock
-                logger.warning(f"⚠️ PARTIAL GPU LOCK - {validation_time}ms (acceptable)")
+                logger.warning(f" PARTIAL GPU LOCK - {validation_time}ms (acceptable)")
                 return True
             else:
-                logger.error(f"❌ WEAK GPU LOCK - {validation_time}ms (too slow)")
+                logger.error(f" WEAK GPU LOCK - {validation_time}ms (too slow)")
                 return False
                 
         except Exception as e:
@@ -430,7 +430,7 @@ class UltraVLMService:
             test_time = int((time.time() - test_start) * 1000)
             target_met = test_time < self.target_inference_time
             
-            logger.info(f"🎯 Performance validation: {test_time}ms ({'✅ TARGET MET' if target_met else '⚠️ CLOSE'})")
+            logger.info(f" Performance validation: {test_time}ms ({' TARGET MET' if target_met else ' CLOSE'})")
             
             return {
                 "validation_time_ms": test_time,
@@ -453,7 +453,7 @@ class UltraVLMService:
         """Run ULTRA-FAST inference with aggressive GPU optimization for <800ms target"""
         
         if not self.warmup_completed:
-            logger.warning("⚠️ VLM not ultra-optimized - inference will be slower than <800ms target")
+            logger.warning(" VLM not ultra-optimized - inference will be slower than <800ms target")
         
         # Use inference lock to prevent concurrent calls that could slow performance
         async with self._inference_lock:
@@ -522,13 +522,13 @@ class UltraVLMService:
                 
                 # Ultra-aggressive performance logging
                 if excellent_performance:
-                    logger.info(f"🏆 ULTRA-FAST: {inference_time}ms (avg: {self.avg_inference_time:.0f}ms, target: <{self.target_inference_time}ms)")
+                    logger.info(f" ULTRA-FAST: {inference_time}ms (avg: {self.avg_inference_time:.0f}ms, target: <{self.target_inference_time}ms)")
                 elif target_met:
-                    logger.info(f"🚀 FAST: {inference_time}ms (avg: {self.avg_inference_time:.0f}ms, target: <{self.target_inference_time}ms)")
+                    logger.info(f" FAST: {inference_time}ms (avg: {self.avg_inference_time:.0f}ms, target: <{self.target_inference_time}ms)")
                 elif inference_time < self.performance_threshold:
-                    logger.info(f"✅ GOOD: {inference_time}ms (avg: {self.avg_inference_time:.0f}ms, target: <{self.target_inference_time}ms)")
+                    logger.info(f" GOOD: {inference_time}ms (avg: {self.avg_inference_time:.0f}ms, target: <{self.target_inference_time}ms)")
                 else:
-                    logger.warning(f"⚠️ SLOW INFERENCE: {inference_time}ms ⚠️ (avg: {self.avg_inference_time:.0f}ms, target: <{self.target_inference_time}ms)")
+                    logger.warning(f" SLOW INFERENCE: {inference_time}ms  (avg: {self.avg_inference_time:.0f}ms, target: <{self.target_inference_time}ms)")
                 
                 # Parse response with error handling
                 content = result.get("response", "{}")
@@ -611,15 +611,7 @@ class UltraVLMService:
         """Ultra-aggressive frame preprocessing for maximum speed"""
         processed_frames = []
 
-        # Create directory for saving VLM preprocessed frames
-        base_dir = Path("/home/denaliai/RELO-CLASSIFIER-DEV/RELO-DEMO-APP-test-RELO-DEV-APP-test/captured_frames")
-        vlm_dir = base_dir / "vlm_preprocessed" / "ultra_vlm"
-        vlm_dir.mkdir(parents=True, exist_ok=True)
-
-        # Generate timestamp for this batch
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-
-        logger.debug(f"🚀 AGGRESSIVE preprocessing {len(frames)} frames for <{self.target_inference_time}ms target")
+        logger.debug(f" AGGRESSIVE preprocessing {len(frames)} frames for <{self.target_inference_time}ms target")
 
         for i, frame in enumerate(frames, 1):
             try:
@@ -643,29 +635,6 @@ class UltraVLMService:
                 if image.size != self.max_image_size:
                     image = image.resize(self.max_image_size, Image.Resampling.NEAREST)  # Fastest resampling
 
-                # SAVE THE EXACT PREPROCESSED IMAGE THAT ULTRA VLM WILL SEE
-                try:
-                    filename = f"vlm_ultra_{timestamp}_frame{i}_preprocessed.jpg"
-                    filepath = vlm_dir / filename
-
-                    # Save with ultra quality settings
-                    image.save(str(filepath), format='JPEG', quality=self.image_quality, optimize=True)
-
-                    logger.info("="*80)
-                    logger.info(f"⚡ ULTRA VLM PREPROCESSED FRAME SAVED")
-                    logger.info(f"  📷 Frame {i}/{len(frames)} saved to:")
-                    logger.info(f"     {filepath}")
-                    logger.info(f"  🔧 Ultra processing applied:")
-                    logger.info(f"     - Format: BGR (same as frontend)")
-                    logger.info(f"     - Resolution: {image.size[0]}x{image.size[1]} (from 640x480)")
-                    logger.info(f"     - Quality: JPEG {self.image_quality} (ultra speed)")
-                    logger.info(f"     - Resampling: NEAREST (fastest)")
-                    logger.info(f"  ⚡ This EXACT image is sent to ULTRA VLM for inference")
-                    logger.info("="*80)
-
-                except Exception as save_e:
-                    logger.error(f"❌ Failed to save ultra VLM preprocessed frame {i}: {save_e}")
-
                 processed_frames.append(np.array(image))
 
             except Exception as e:
@@ -673,9 +642,9 @@ class UltraVLMService:
                 continue
 
         if processed_frames:
-            logger.debug(f"✅ {len(processed_frames)}/{len(frames)} frames preprocessed for ultra-fast inference")
+            logger.debug(f" {len(processed_frames)}/{len(frames)} frames preprocessed for ultra-fast inference")
         else:
-            logger.error("❌ No frames successfully preprocessed")
+            logger.error(" No frames successfully preprocessed")
 
         return processed_frames
 
@@ -722,7 +691,7 @@ class UltraVLMService:
             except asyncio.TimeoutError as e:
                 last_exception = e
                 timeout_wait = 0.5 * (attempt + 1)  # Shorter waits for speed
-                logger.warning(f"⚡ Timeout attempt {attempt + 1}/{self.max_retries}, retry in {timeout_wait}s")
+                logger.warning(f" Timeout attempt {attempt + 1}/{self.max_retries}, retry in {timeout_wait}s")
                 if attempt < self.max_retries - 1:
                     await asyncio.sleep(timeout_wait)
                 continue
@@ -730,7 +699,7 @@ class UltraVLMService:
             except Exception as e:
                 last_exception = e
                 error_wait = 0.3 * (attempt + 1)  # Very short waits
-                logger.warning(f"🔄 Error attempt {attempt + 1}/{self.max_retries}: {str(e)[:200]}")
+                logger.warning(f" Error attempt {attempt + 1}/{self.max_retries}: {str(e)[:200]}")
                 if attempt < self.max_retries - 1:
                     await asyncio.sleep(error_wait)
                 continue

@@ -32,11 +32,8 @@ env_path = backend_dir / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+# Use the main app's logging configuration
+# No need to configure logging here since this is imported by the main app
 logger = logging.getLogger(__name__)
 
 
@@ -80,7 +77,7 @@ class HuggingFaceModelServer:
         self.cache_dir = Path.home() / ".cache" / "huggingface"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"🚀 Initializing HuggingFace Model Server")
+        logger.info(f"Initializing HuggingFace Model Server")
         logger.info(f"   Model: {self.model_name}")
         logger.info(f"   Device: {self.device}")
         logger.info(f"   Port: {self.port}")
@@ -115,11 +112,11 @@ class HuggingFaceModelServer:
         Supports multiple formats: GGUF, safetensors, pytorch
         """
         try:
-            logger.info(f"📥 Loading model: {self.model_name}")
+            logger.info(f"Loading model: {self.model_name}")
 
             # Detect model format
             model_format = self._detect_model_format()
-            logger.info(f"🔍 Detected model format: {model_format}")
+            logger.info(f"Detected model format: {model_format}")
 
             if model_format == 'gguf':
                 await self._load_gguf_model()
@@ -127,8 +124,8 @@ class HuggingFaceModelServer:
                 await self._load_transformers_model(prefer_safetensors=(model_format == 'safetensors'))
 
         except Exception as e:
-            logger.error(f"❌ Failed to load model: {e}")
-            logger.error("💡 Installation requirements:")
+            logger.error(f"Failed to load model: {e}")
+            logger.error("Installation requirements:")
             logger.error("   Standard models: pip install transformers torch accelerate pillow")
             logger.error("   GGUF models: pip install llama-cpp-python pillow")
             raise
@@ -138,7 +135,7 @@ class HuggingFaceModelServer:
         try:
             from llama_cpp import Llama
 
-            logger.info("🧠 Loading GGUF model with llama-cpp-python...")
+            logger.info("Loading GGUF model with llama-cpp-python...")
 
             # For GGUF, model_name should be a path or HF repo with .gguf file
             # Auto-download from HuggingFace if needed
@@ -146,18 +143,18 @@ class HuggingFaceModelServer:
                 # It's a HuggingFace repo, try to download
                 from huggingface_hub import hf_hub_download, list_repo_files
 
-                logger.info(f"📦 Downloading GGUF model from HuggingFace: {self.model_name}")
+                logger.info(f"Downloading GGUF model from HuggingFace: {self.model_name}")
 
                 # Get quantization level from environment (e.g., "Q4_0", "Q6_K")
                 quantization = os.getenv("GGUF_QUANTIZATION", "Q4_0")
-                logger.info(f"🔧 Using quantization: {quantization}")
+                logger.info(f"Using quantization: {quantization}")
 
                 # List all files in the repo to find the right GGUF file
                 try:
                     repo_files = list_repo_files(repo_id=self.model_name)
                     gguf_files = [f for f in repo_files if f.endswith('.gguf')]
 
-                    logger.info(f"📋 Found {len(gguf_files)} GGUF files in repo")
+                    logger.info(f"Found {len(gguf_files)} GGUF files in repo")
 
                     # Find the file matching the quantization level
                     matching_file = None
@@ -169,22 +166,22 @@ class HuggingFaceModelServer:
                     if not matching_file:
                         # Fallback to first GGUF file if no match
                         matching_file = gguf_files[0] if gguf_files else None
-                        logger.warning(f"⚠️ No file matching {quantization}, using: {matching_file}")
+                        logger.warning(f"No file matching {quantization}, using: {matching_file}")
                     else:
-                        logger.info(f"✅ Found matching file: {matching_file}")
+                        logger.info(f"Found matching file: {matching_file}")
 
                     if not matching_file:
                         raise ValueError(f"No GGUF files found in {self.model_name}")
 
                     # Download the specific GGUF file
-                    logger.info(f"📥 Downloading: {matching_file}")
+                    logger.info(f"Downloading: {matching_file}")
                     model_file = hf_hub_download(
                         repo_id=self.model_name,
                         filename=matching_file,
                         cache_dir=str(self.cache_dir)
                     )
                     model_path = model_file
-                    logger.info(f"💾 Model cached at: {model_path}")
+                    logger.info(f"Model cached at: {model_path}")
 
                     # Download mmproj file for vision models (if exists)
                     mmproj_file = None
@@ -192,22 +189,22 @@ class HuggingFaceModelServer:
                     if mmproj_files:
                         # Prefer Q8_0 for quality, fallback to F16
                         mmproj_preferred = next((f for f in mmproj_files if 'Q8_0' in f), mmproj_files[0])
-                        logger.info(f"📥 Downloading vision projector: {mmproj_preferred}")
+                        logger.info(f"Downloading vision projector: {mmproj_preferred}")
                         mmproj_file = hf_hub_download(
                             repo_id=self.model_name,
                             filename=mmproj_preferred,
                             cache_dir=str(self.cache_dir)
                         )
-                        logger.info(f"💾 Vision projector cached at: {mmproj_file}")
+                        logger.info(f"Vision projector cached at: {mmproj_file}")
 
                 except Exception as e:
-                    logger.error(f"❌ Failed to download GGUF model: {e}")
+                    logger.error(f"Failed to download GGUF model: {e}")
                     raise
             else:
                 model_path = self.model_name
 
             # Load GGUF model with optimized settings for VLM
-            logger.info(f"⚙️ Loading GGUF model into memory...")
+            logger.info(f"Loading GGUF model into memory...")
 
             # Prepare kwargs
             model_kwargs = {
@@ -220,7 +217,7 @@ class HuggingFaceModelServer:
 
             # Add mmproj for vision models if available
             if mmproj_file:
-                logger.info(f"🎨 Loading with vision projector: {mmproj_file}")
+                logger.info(f"Loading with vision projector: {mmproj_file}")
                 model_kwargs["mmproj"] = mmproj_file
                 model_kwargs["chat_format"] = "llava-1-6"  # Use llava chat format for vision
 
@@ -229,7 +226,7 @@ class HuggingFaceModelServer:
             # For GGUF, we don't need a separate processor
             self.processor = None
 
-            logger.info(f"✅ GGUF model loaded successfully on {self.device}")
+            logger.info(f"GGUF model loaded successfully on {self.device}")
 
             # Log model info
             if self.device == "cuda":
@@ -238,11 +235,11 @@ class HuggingFaceModelServer:
             logger.info(f"   Quantization: {os.getenv('GGUF_QUANTIZATION', 'Q4_0')}")
 
         except ImportError:
-            logger.error("❌ llama-cpp-python not installed")
+            logger.error("llama-cpp-python not installed")
             logger.error("   Install with: pip install llama-cpp-python")
             raise
         except Exception as e:
-            logger.error(f"❌ Failed to load GGUF model: {e}")
+            logger.error(f"Failed to load GGUF model: {e}")
             raise
 
     async def _load_transformers_model(self, prefer_safetensors: bool = True):
@@ -250,7 +247,7 @@ class HuggingFaceModelServer:
         try:
             from transformers import AutoProcessor, AutoModelForVision2Seq, BitsAndBytesConfig
 
-            logger.info(f"📦 Loading processor...")
+            logger.info(f"Loading processor...")
             self.processor = AutoProcessor.from_pretrained(
                 self.model_name,
                 trust_remote_code=True
@@ -258,7 +255,6 @@ class HuggingFaceModelServer:
 
             # Check quantization setting from environment
             quantization = os.getenv("TRANSFORMERS_QUANTIZATION", "4bit").lower()
-            logger.info(f"🔧 Quantization mode: {quantization}")
 
             # Prepare load kwargs
             load_kwargs = {
@@ -268,7 +264,7 @@ class HuggingFaceModelServer:
 
             # Configure quantization
             if quantization == "4bit" and self.device == "cuda":
-                logger.info("🧮 Configuring 4-bit quantization (bitsandbytes)...")
+                logger.info(f"Quantization: 4-bit NF4 (~3-4GB VRAM)")
                 quantization_config = BitsAndBytesConfig(
                     load_in_4bit=True,
                     bnb_4bit_compute_dtype=torch.float16,
@@ -276,26 +272,22 @@ class HuggingFaceModelServer:
                     bnb_4bit_quant_type="nf4"
                 )
                 load_kwargs["quantization_config"] = quantization_config
-                logger.info("   4-bit NF4 quantization enabled (~3-4GB VRAM)")
 
             elif quantization == "8bit" and self.device == "cuda":
-                logger.info("🧮 Configuring 8-bit quantization (bitsandbytes)...")
+                logger.info(f"Quantization: 8-bit (~5-6GB VRAM)")
                 quantization_config = BitsAndBytesConfig(
                     load_in_8bit=True
                 )
                 load_kwargs["quantization_config"] = quantization_config
-                logger.info("   8-bit quantization enabled (~5-6GB VRAM)")
 
             else:
                 # Full precision
                 load_kwargs["torch_dtype"] = torch.bfloat16 if self.device == "cuda" else torch.float32
-                logger.info(f"   Full precision mode: {load_kwargs['torch_dtype']}")
 
             if prefer_safetensors:
                 load_kwargs["use_safetensors"] = True
-                logger.info("   Using safetensors format (preferred)")
 
-            logger.info(f"🧠 Loading model to GPU with {quantization} quantization...")
+            logger.info(f"Loading model to GPU...")
             self.model = AutoModelForVision2Seq.from_pretrained(
                 self.model_name,
                 **load_kwargs
@@ -304,16 +296,10 @@ class HuggingFaceModelServer:
             if self.device == "cpu":
                 self.model = self.model.to(self.device)
 
-            logger.info(f"✅ Model loaded successfully on {self.device}")
-            logger.info(f"   Parameters: {sum(p.numel() for p in self.model.parameters()) / 1e9:.2f}B")
-
-            if torch.cuda.is_available():
-                logger.info(f"   GPU Memory Total: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
-                logger.info(f"   GPU Memory Allocated: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB")
-                logger.info(f"   GPU Memory Reserved: {torch.cuda.memory_reserved(0) / 1e9:.2f} GB")
+            logger.info(f"Model loaded successfully on {self.device}")
 
         except Exception as e:
-            logger.error(f"❌ Failed to load transformers model: {e}")
+            logger.error(f"Failed to load transformers model: {e}")
             raise
 
     def decode_base64_image(self, base64_str: str) -> Image.Image:
@@ -477,7 +463,7 @@ class HuggingFaceModelServer:
             # Count tokens
             eval_count = len(outputs[0]) - len(inputs["input_ids"][0])
 
-            logger.info(f"✅ Generated response in {total_duration/1e6:.0f}ms "
+            logger.info(f"Generated response in {total_duration/1e6:.0f}ms "
                        f"(eval: {eval_duration/1e6:.0f}ms, tokens: {eval_count})")
 
             return GenerateResponse(
@@ -491,7 +477,7 @@ class HuggingFaceModelServer:
             )
 
         except Exception as e:
-            logger.error(f"❌ Generation failed: {e}", exc_info=True)
+            logger.error(f"Generation failed: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -518,9 +504,9 @@ async def startup_event():
     server = HuggingFaceModelServer(model_name=model_name, port=port)
 
     # Pre-load model
-    logger.info("🔥 Pre-loading model for faster inference...")
+    logger.info("Pre-loading model for faster inference...")
     await server.load_model()
-    logger.info("✅ Server ready!")
+    logger.info("Server ready!")
 
 
 @app.post("/api/generate")
@@ -586,7 +572,7 @@ def main():
     port = int(os.getenv("HF_SERVER_PORT", "11435"))
 
     logger.info("="*60)
-    logger.info("🚀 Starting HuggingFace Model Server")
+    logger.info("Starting HuggingFace Model Server")
     logger.info(f"   Model: {model_name}")
     logger.info(f"   Host: {host}:{port}")
     logger.info(f"   Device: {'CUDA' if torch.cuda.is_available() else 'CPU'}")

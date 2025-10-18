@@ -30,7 +30,7 @@ class OllamaOptimizer:
         
     async def apply_optimal_configuration(self) -> Dict[str, Any]:
         """Apply SOTA optimal configuration to Ollama"""
-        logger.info("🚀 Applying optimal Ollama configuration...")
+        logger.info(" Applying optimal Ollama configuration...")
         
         # Get optimal GPU configuration
         gpu_config = gpu_optimizer.calculate_optimal_config(target_fps=10)
@@ -38,7 +38,7 @@ class OllamaOptimizer:
         # Extract CUDA optimizations
         cuda_opts = gpu_config.cuda_optimizations
         
-        logger.info(f"📊 Optimization level: {gpu_config.optimization_level.value}")
+        logger.info(f" Optimization level: {gpu_config.optimization_level.value}")
         logger.info(f"   GPU layers: {cuda_opts.get('num_gpu', 'auto')}")
         logger.info(f"   Batch size: {cuda_opts.get('num_batch', 'default')}")
         logger.info(f"   Context size: {cuda_opts.get('num_ctx', 'default')}")
@@ -83,7 +83,7 @@ class OllamaOptimizer:
                 ) as response:
                     if response.status == 200:
                         result = await response.json()
-                        logger.info("✅ Configuration applied successfully")
+                        logger.info(" Configuration applied successfully")
                         return True
                     else:
                         error = await response.text()
@@ -96,7 +96,7 @@ class OllamaOptimizer:
     
     async def optimize_for_batch_inference(self, batch_size: int) -> Dict[str, Any]:
         """Optimize specifically for batch inference"""
-        logger.info(f"🎯 Optimizing for batch size: {batch_size}")
+        logger.info(f" Optimizing for batch size: {batch_size}")
         
         # Check if batch can fit
         if not gpu_optimizer.can_fit_batch(batch_size):
@@ -123,7 +123,7 @@ class OllamaOptimizer:
     
     async def enable_flash_attention(self) -> bool:
         """Enable Flash Attention if available"""
-        logger.info("⚡ Attempting to enable Flash Attention...")
+        logger.info(" Attempting to enable Flash Attention...")
         
         # Check if Flash Attention is available
         test_config = {
@@ -147,7 +147,7 @@ class OllamaOptimizer:
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as response:
                     if response.status == 200:
-                        logger.info("✅ Flash Attention enabled successfully")
+                        logger.info(" Flash Attention enabled successfully")
                         return True
                     else:
                         logger.warning("Flash Attention not available on this system")
@@ -159,7 +159,7 @@ class OllamaOptimizer:
     
     async def set_permanent_gpu_residence(self) -> bool:
         """Configure model to stay in GPU permanently (no unloading)"""
-        logger.info("🔒 Setting permanent GPU residence...")
+        logger.info(" Setting permanent GPU residence...")
         
         try:
             async with aiohttp.ClientSession() as session:
@@ -177,7 +177,7 @@ class OllamaOptimizer:
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as response:
                     if response.status == 200:
-                        logger.info("✅ Model set to permanent GPU residence")
+                        logger.info(" Model set to permanent GPU residence")
                         return True
                         
         except Exception as e:
@@ -187,7 +187,7 @@ class OllamaOptimizer:
     
     async def unload_model(self) -> bool:
         """Unload model from GPU (for cleanup)"""
-        logger.info("🔓 Unloading model from GPU...")
+        logger.info(" Unloading model from GPU...")
         
         try:
             async with aiohttp.ClientSession() as session:
@@ -204,7 +204,7 @@ class OllamaOptimizer:
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as response:
                     if response.status == 200:
-                        logger.info("✅ Model unloaded from GPU")
+                        logger.info(" Model unloaded from GPU")
                         return True
                         
         except Exception as e:
@@ -241,7 +241,7 @@ class OllamaOptimizer:
     
     async def benchmark_inference(self, num_runs: int = 5) -> Dict[str, Any]:
         """Benchmark inference performance"""
-        logger.info(f"📊 Running {num_runs} benchmark inferences...")
+        logger.info(f" Running {num_runs} benchmark inferences...")
         
         times = []
         prompts = [
@@ -306,7 +306,7 @@ ollama_optimizer = OllamaOptimizer()
 
 async def optimize_ollama_at_startup():
     """Function to be called at startup to optimize Ollama"""
-    logger.info("🚀 Optimizing Ollama at startup...")
+    logger.info(" Optimizing Ollama at startup...")
     
     # Apply optimal configuration
     config_result = await ollama_optimizer.apply_optimal_configuration()

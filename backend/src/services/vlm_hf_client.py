@@ -10,6 +10,8 @@ import hashlib
 import logging
 import os
 import time
+import random
+import string
 from collections import deque, OrderedDict
 import numpy as np
 import cv2
@@ -23,6 +25,10 @@ from PIL import Image
 from .provider_factory import get_provider_config, ModelProvider
 
 logger = logging.getLogger(__name__)
+
+def generate_uuid():
+    """Generate a 5-character UUID (alphanumeric)"""
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
 
 
 class VLMHuggingFaceClient:
@@ -64,7 +70,7 @@ class VLMHuggingFaceClient:
         # Load preprocessing configuration
         self._load_preprocessing_config()
 
-        logger.info(f"🚀 HuggingFace VLM Client initialized")
+        logger.info(f" HuggingFace VLM Client initialized")
         logger.info(f"   Server: {self.hf_host}")
         logger.info(f"   Model: {self.model_name}")
 
@@ -114,7 +120,7 @@ class VLMHuggingFaceClient:
         new_damage_content = ', '.join(new_pairs)
         new_json = raw_json[:match.start(1)] + new_damage_content + raw_json[match.end(1):]
 
-        logger.info(f"📋 Parsed {len(matches)} damage instances ({len(type_counts)} unique types)")
+        logger.info(f" Parsed {len(matches)} damage instances ({len(type_counts)} unique types)")
         return new_json
 
     def _load_preprocessing_config(self):
@@ -190,7 +196,7 @@ class VLMHuggingFaceClient:
                     async with session.get(f"{self.hf_host}/health", timeout=aiohttp.ClientTimeout(total=5)) as response:
                         if response.status == 200:
                             health_data = await response.json()
-                            logger.info(f"✅ HuggingFace server is healthy: {health_data}")
+                            logger.info(f" HuggingFace server is healthy: {health_data}")
                             self.is_loaded = True
                         else:
                             raise RuntimeError(f"HuggingFace server health check failed: {response.status}")
@@ -276,7 +282,6 @@ class VLMHuggingFaceClient:
             async with self.optimized_inference():
                 # Convert frames to base64 (same logic as VLMGPULoader)
                 base64_images = []
-                processed_frames = []
 
                 for frame_idx, frame in enumerate(frames):
                     # Ensure frame is uint8
@@ -303,7 +308,7 @@ class VLMHuggingFaceClient:
                         # Cache hit
                         base64_img = self._image_cache[cache_key]
                         self._cache_hits += 1
-                        logger.info(f"🎯 Cache HIT for {agent_name} frame[{frame_idx}] - "
+                        logger.info(f" Cache HIT for {agent_name} frame[{frame_idx}] - "
                                   f"Resolution: {target_resolution[0]}x{target_resolution[1]}")
                     else:
                         # Cache miss - process image
@@ -323,11 +328,7 @@ class VLMHuggingFaceClient:
 
                         # Log resolution
                         final_width, final_height = image.size
-                        logger.info(f"🔄 Resized resolution for {agent_name} frame[{frame_idx}]: {final_width}x{final_height}")
-
-                        # Save debug frames if enabled
-                        if self.debug_save_frames:
-                            processed_frames.append((image, frame_idx, agent_name))
+                        logger.info(f" Resized resolution for {agent_name} frame[{frame_idx}]: {final_width}x{final_height}")
 
                         # Convert to base64
                         buffer = BytesIO()
@@ -338,13 +339,9 @@ class VLMHuggingFaceClient:
                         self._image_cache[cache_key] = base64_img
                         self._manage_cache_size()
 
-                        logger.debug(f"📦 Cache MISS for {agent_name} frame[{frame_idx}] - Added to cache")
+                        logger.debug(f" Cache MISS for {agent_name} frame[{frame_idx}] - Added to cache")
 
                     base64_images.append(base64_img)
-
-                # Save processed frames
-                if self.debug_save_frames and processed_frames:
-                    await self._save_vlm_frames(processed_frames, agent_name)
 
                 # Agent-specific token limits - Increased to prevent JSON truncation
                 if agent_name == "initial_classifier":
@@ -426,7 +423,7 @@ class VLMHuggingFaceClient:
                                             if isinstance(parsed, dict):
                                                 attributes = parsed
                                                 recovered = True
-                                                logger.info(f"✅ Recovered truncated JSON ({len(parsed)} fields)")
+                                                logger.info(f" Recovered truncated JSON ({len(parsed)} fields)")
                                         except:
                                             pass
 
@@ -450,7 +447,7 @@ class VLMHuggingFaceClient:
                                                     attributes[key] = int(raw_val) if '.' not in raw_val else float(raw_val)
                                                 except:
                                                     attributes[key] = raw_val
-                                        logger.info(f"✅ Extracted {len(attributes)} fields via regex fallback")
+                                        logger.info(f" Extracted {len(attributes)} fields via regex fallback")
                                     else:
                                         attributes = {"raw_text": raw_response}
 
@@ -569,25 +566,25 @@ class VLMHuggingFaceClient:
                 amount = config.get('sharpen_amount', 1.5)
                 gaussian = cv2.GaussianBlur(frame_rgb, (blur_size, blur_size), config.get('sharpen_sigma', 1.0))
                 frame_rgb = cv2.addWeighted(frame_rgb, amount, gaussian, -(amount - 1), 0)
-                logger.info(f"🔍 Applied sharpening for {agent_name} (amount={amount})")
+                logger.info(f" Applied sharpening for {agent_name} (amount={amount})")
             elif preprocess_type == 'edge_enhance':
                 kernel_size = config.get('edge_kernel', 3)
                 kernel = np.array([[-1]*kernel_size, [-1, kernel_size**2, -1], [-1]*kernel_size])
                 frame_rgb = cv2.filter2D(frame_rgb, -1, kernel * config.get('edge_strength', 1.5))
-                logger.info(f"🔍 Applied edge enhancement for {agent_name}")
+                logger.info(f" Applied edge enhancement for {agent_name}")
             elif preprocess_type == 'contrast':
                 frame_rgb = cv2.convertScaleAbs(frame_rgb, alpha=config.get('contrast_alpha', 1.3), beta=config.get('contrast_beta', 10))
-                logger.info(f"🔍 Applied contrast for {agent_name}")
+                logger.info(f" Applied contrast for {agent_name}")
 
         elif agent_name == 'initial_classifier':
             if preprocess_type == 'contrast':
                 frame_rgb = cv2.convertScaleAbs(frame_rgb, alpha=config.get('contrast_alpha', 1.2), beta=config.get('contrast_beta', 5))
-                logger.info(f"🎨 Applied contrast for {agent_name}")
+                logger.info(f" Applied contrast for {agent_name}")
             elif preprocess_type == 'sharpen':
                 amount = config.get('sharpen_amount', 1.2)
                 gaussian = cv2.GaussianBlur(frame_rgb, (5, 5), config.get('sharpen_sigma', 0.8))
                 frame_rgb = cv2.addWeighted(frame_rgb, amount, gaussian, -(amount - 1), 0)
-                logger.info(f"🎨 Applied sharpening for {agent_name} (amount={amount})")
+                logger.info(f" Applied sharpening for {agent_name} (amount={amount})")
             elif preprocess_type == 'denoise':
                 frame_rgb = cv2.fastNlMeansDenoisingColored(
                     frame_rgb,
@@ -597,26 +594,9 @@ class VLMHuggingFaceClient:
                     config.get('denoise_template', 7),
                     config.get('denoise_search', 21)
                 )
-                logger.info(f"🎨 Applied denoising for {agent_name}")
+                logger.info(f" Applied denoising for {agent_name}")
 
         return frame_rgb
-
-    async def _save_vlm_frames(self, processed_frames: List[tuple], agent_name: str) -> None:
-        """Save processed frames for debugging"""
-        try:
-            base_dir = Path("/home/denaliai/RELO-CLASSIFIER-DEV/RELO-DEMO-APP-test-RELO-DEV-APP-test/captured_frames")
-            vlm_dir = base_dir / "vlm_preprocessed" / f"{agent_name}_vlm"
-            vlm_dir.mkdir(parents=True, exist_ok=True)
-
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-
-            for pil_image, frame_idx, agent in processed_frames:
-                filename = f"{agent_name}_final_frame{frame_idx+1}_{timestamp}.jpg"
-                filepath = vlm_dir / filename
-                await asyncio.to_thread(pil_image.save, str(filepath), 'JPEG', quality=95)
-                logger.info(f"💾 VLM-ready frame saved: {filepath}")
-        except Exception as e:
-            logger.error(f"Error saving VLM frames: {e}")
 
     def _get_image_hash(self, frame: np.ndarray) -> str:
         """Generate unique hash for frame content"""

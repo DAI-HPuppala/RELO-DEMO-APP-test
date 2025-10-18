@@ -93,7 +93,6 @@ class ProfessionalApplicationController {
                 // Remove inline styles to let CSS handle the width properly
                 instructionsContainer.style.maxWidth = '';
                 instructionsContainer.style.width = '';
-                console.log(`[Professional App] Instructions container width reset to CSS defaults`);
             } catch (error) {
                 console.warn('[Professional App] Error syncing instructions container width:', error);
             }
@@ -126,8 +125,6 @@ class ProfessionalApplicationController {
      * Initialize the application
      */
     async init() {
-        console.log('[Professional App] Initializing enhanced application');
-        
         // Ensure sticky header on initialization
         setTimeout(() => this.ensureTableHeaderSticky(), 100);
         
@@ -216,7 +213,6 @@ class ProfessionalApplicationController {
         modeRadios.forEach(radio => {
             radio.addEventListener('change', (e) => {
                 this.mode = e.target.value;
-                console.log('[Professional App] Mode changed to:', this.mode);
 
                 // Update mode indicator immediately
                 const modeIndicator = document.getElementById('modeIndicator');
@@ -389,7 +385,6 @@ class ProfessionalApplicationController {
     makeEditable(cell, row, cellIndex) {
         // Prevent editing if row is selected
         if (row.classList.contains('row-selected')) {
-            console.log('[Professional App] Cannot edit selected rows');
             return;
         }
 
@@ -526,13 +521,11 @@ class ProfessionalApplicationController {
      */
     undoLastEdit() {
         if (!this.currentEditCell) {
-            console.log('[Professional App] No cell selected for undo');
             return;
         }
 
         const history = this.editHistory.get(this.currentEditCell);
         if (!history || history.length === 0) {
-            console.log('[Professional App] No edit history for this cell');
             this.showUndoTooltip('No changes to undo');
             return;
         }
@@ -1323,7 +1316,7 @@ class ProfessionalApplicationController {
                     btnText.textContent = 'Save';
                     nextBtn.setAttribute('data-tooltip', 'Save results');
                     if (btnIcon) {
-                        btnIcon.textContent = '✓';  // Checkmark for save
+                        btnIcon.textContent = '';  // Checkmark for save
                     }
                     console.log('[Professional App] Next button changed to Save with checkmark icon');
                 }
@@ -1383,49 +1376,164 @@ class ProfessionalApplicationController {
     }
 
     /**
-     * Check table row limit and trigger warning if exceeded
+     * Check table row limit and trigger auto-export if exceeded
      */
-    checkTableRowLimit() {
+    async checkTableRowLimit() {
         const limit = this.webrtcClient.tableRowLimit || 200;
         const currentRows = this.currentRowIndex;
 
         console.log(`[Professional App] Table row check: ${currentRows}/${limit} rows`);
 
         if (currentRows >= limit) {
-            console.log('[Professional App] ⚠️ Table row limit reached, triggering warning');
+            console.log('[Professional App]  Table row limit reached, triggering auto-export');
 
-            // Stop monitoring immediately - user must manually restart after handling warning
+            // Stop monitoring immediately
             this.stopMonitoring();
 
-            // Show warning modal with export options
-            this.showCustomModal({
-                title: '⚠️ Table Memory Warning',
-                message: `Your classification table has <strong>${currentRows} rows</strong> (limit: ${limit}).<br><br>
-                          To maintain optimal performance, please export your data and clear the table.<br><br>
-                          <strong>Choose an export format:</strong>`,
-                buttons: [
-                    {
-                        text: 'Cancel',
-                        className: 'btn-cancel',
-                        onClick: null
-                    },
-                    {
-                        text: 'Export CSV (Data Only) & Clear',
-                        className: 'btn-confirm',
-                        onClick: () => this.exportAndClearTable('clean_csv')
-                    },
-                    {
-                        text: 'Export CSV (Metadata) & Clear',
-                        className: 'btn-confirm',
-                        onClick: () => this.exportAndClearTable('csv_metadata')
-                    },
-                    {
-                        text: 'Export Both & Clear',
-                        className: 'btn-confirm',
-                        onClick: () => this.exportAndClearTable('both')
-                    }
-                ]
+            // Auto-export and clear
+            await this.autoExportAndClear();
+        }
+    }
+
+    /**
+     * Auto-export CSVs, clear table, show notification, and restart monitoring
+     */
+    async autoExportAndClear() {
+        console.log('[Professional App] Starting auto-export and clear process...');
+
+        try {
+            // Collect all table data from DOM
+            const tableData = this.collectTableDataForExport();
+
+            if (tableData.length === 0) {
+                console.warn('[Professional App] No table data to export');
+                return;
+            }
+
+            // Send to backend for CSV generation
+            const exportMessage = {
+                type: 'auto_export_csv',
+                session_id: this.webrtcClient.sessionId,
+                table_data: tableData
+            };
+
+            console.log(`[Professional App] Sending ${tableData.length} rows to backend for auto-export`);
+
+            // Send via WebSocket and wait for response
+            this.webrtcClient.sendMessage(exportMessage);
+
+            // Wait for backend confirmation (with timeout)
+            const confirmationReceived = await this.waitForExportConfirmation(5000);
+
+            if (!confirmationReceived) {
+                console.error('[Professional App] Auto-export confirmation timeout');
+                this.showToastNotification('Auto-export may have failed - check backend logs');
+                return;
+            }
+
+            // Clear table and cache
+            this.clearAllTableData();
+
+            // Show success notification
+            this.showToastNotification('Auto-exported classification table and cleared');
+
+            // Reset cycle counter to #1
+            this.currentRowIndex = 0;
+            console.log('[Professional App] Cycle counter reset to #1');
+
+            // Auto-restart monitoring based on current mode
+            setTimeout(() => {
+                this.autoRestartMonitoring();
+            }, 500); // Small delay to ensure everything is cleared
+
+        } catch (error) {
+            console.error('[Professional App] Error during auto-export:', error);
+            this.showToastNotification('Auto-export failed - please check backend connection');
+        }
+    }
+
+    /**
+     * Collect all table data for export (includes cells and metadata)
+     */
+    collectTableDataForExport() {
+        const tbody = document.getElementById('resultsTableBody');
+        if (!tbody) {
+            console.error('[Professional App] Table body not found');
+            return [];
+        }
+
+        const rows = tbody.querySelectorAll('tr:not(.empty-row)');
+        const tableData = [];
+
+        rows.forEach(row => {
+            const cells = Array.from(row.querySelectorAll('td')).map(cell => cell.textContent.trim());
+            const metadataStr = row.getAttribute('data-metadata');
+            const cycleId = row.getAttribute('data-cycle-id') || 'unknown';
+
+            let metadata = {};
+            if (metadataStr) {
+                try {
+                    metadata = JSON.parse(metadataStr);
+                } catch (e) {
+                    console.warn('[Professional App] Failed to parse row metadata:', e);
+                }
+            }
+
+            tableData.push({
+                cells: cells,
+                metadata: metadata,
+                cycle_id: cycleId
             });
+        });
+
+        return tableData;
+    }
+
+    /**
+     * Wait for export confirmation from backend
+     * @param {number} timeout - Timeout in milliseconds
+     * @returns {Promise<boolean>} - True if confirmed, false if timeout
+     */
+    waitForExportConfirmation(timeout) {
+        return new Promise((resolve) => {
+            let confirmed = false;
+            const timeoutId = setTimeout(() => {
+                if (!confirmed) {
+                    resolve(false);
+                }
+            }, timeout);
+
+            // Set up one-time listener for export confirmation
+            const confirmHandler = (event) => {
+                if (event.detail && event.detail.type === 'auto_export_success') {
+                    confirmed = true;
+                    clearTimeout(timeoutId);
+                    window.removeEventListener('websocket_message', confirmHandler);
+                    console.log('[Professional App] Auto-export confirmed by backend');
+                    resolve(true);
+                }
+            };
+
+            window.addEventListener('websocket_message', confirmHandler);
+        });
+    }
+
+    /**
+     * Auto-restart monitoring based on current mode
+     */
+    autoRestartMonitoring() {
+        console.log('[Professional App] Auto-restarting monitoring...');
+
+        // Check if we're in manual or automatic mode
+        const manualModeCheckbox = document.getElementById('manualModeCheckbox');
+        const isManualMode = manualModeCheckbox && manualModeCheckbox.checked;
+
+        if (isManualMode) {
+            console.log('[Professional App] Restarting in manual mode');
+            this.startManualMode();
+        } else {
+            console.log('[Professional App] Restarting in automatic mode');
+            this.startMonitoring();
         }
     }
 
@@ -1444,7 +1552,7 @@ class ProfessionalApplicationController {
 
         // Show warning modal with export options
         this.showCustomModal({
-            title: '⚠️ Table Memory Warning',
+            title: ' Table Memory Warning',
             message: `Your classification table has <strong>${currentRows} rows</strong> (limit: ${limit}).<br><br>
                       To maintain optimal performance, please export your data and clear the table.<br><br>
                       <strong>Choose an export format:</strong>`,
@@ -1565,7 +1673,7 @@ class ProfessionalApplicationController {
                 window.gc();
             }
 
-            console.log('[Professional App] ✅ Table cleared successfully');
+            console.log('[Professional App]  Table cleared successfully');
             this.updateSystemStatus('Table cleared - ready for new classifications');
         }, totalAnimationTime);
     }
@@ -3152,6 +3260,68 @@ class ProfessionalApplicationController {
     }
 
     /**
+     * Show toast notification (auto-disappears after 2 seconds)
+     * @param {string} message - Message to display
+     */
+    showToastNotification(message) {
+        console.log(`[Professional App] Showing toast notification: ${message}`);
+
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.textContent = message;
+
+        // Add inline styles as fallback in case CSS hasn't loaded
+        toast.style.position = 'fixed';
+        toast.style.top = '-100px';
+        toast.style.right = '20px';
+        toast.style.background = '#4caf50';
+        toast.style.color = 'white';
+        toast.style.padding = '1rem 1.5rem';
+        toast.style.borderRadius = '8px';
+        toast.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+        toast.style.fontFamily = 'Roboto, sans-serif';
+        toast.style.fontSize = '0.875rem';
+        toast.style.fontWeight = '500';
+        toast.style.zIndex = '10000';
+        toast.style.minWidth = '300px';
+        toast.style.maxWidth = '400px';
+        toast.style.display = 'flex';
+        toast.style.alignItems = 'center';
+        toast.style.gap = '0.75rem';
+
+        // Add to body
+        document.body.appendChild(toast);
+        console.log('[Professional App] Toast added to DOM');
+
+        // Force reflow to ensure animation triggers
+        toast.offsetHeight;
+
+        // Animate in
+        toast.style.transition = 'top 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.4s';
+        toast.style.top = '20px';
+        toast.style.opacity = '1';
+
+        console.log('[Professional App] Toast animation triggered');
+
+        // Auto-hide after 4 seconds
+        setTimeout(() => {
+            console.log('[Professional App] Starting toast fade-out');
+            toast.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+
+            // Remove from DOM after fade-out animation
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    document.body.removeChild(toast);
+                    console.log('[Professional App] Toast removed from DOM');
+                }
+            }, 300);
+        }, 4000);
+    }
+
+    /**
      * Show confirmation modal (convenience wrapper)
      * @param {string} message - Message to display
      * @param {Function} onConfirm - Callback when user confirms
@@ -3980,7 +4150,7 @@ class ProfessionalApplicationController {
             if (exportAllBtn) exportAllBtn.disabled = !hasData;
             if (exportSelectedBtn) exportSelectedBtn.disabled = !hasData;
 
-            console.log(`[Professional App] ✅ Restored ${rows.length} rows from localStorage`);
+            console.log(`[Professional App]  Restored ${rows.length} rows from localStorage`);
         } catch (e) {
             console.error('[Professional App] Failed to restore table from localStorage:', e);
         }

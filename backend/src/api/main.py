@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
 import logging
-from logging.handlers import TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -26,11 +26,12 @@ from services.vlm_singleton import vlm_singleton, get_vlm_status
 from services.ollama_optimizer import optimize_ollama_at_startup
 from services.gpu_initializer import ensure_gpu_ready, gpu_initializer
 
-# Configure logging with time-based rotation
+# Configure logging with size-based rotation
 # Production-ready hybrid approach:
 # - New session directory on each app restart (tracks app lifecycle)
-# - Time-based rotation within session (handles long-running apps)
+# - Size-based rotation within session (rotates when file gets too large)
 # - NEVER delete logs (infinite retention with backupCount=0)
+# - Timestamped backup files for easy identification
 
 base_log_directory = Path(__file__).parent.parent.parent / os.getenv("LOG_DIRECTORY", "logs")
 base_log_directory.mkdir(parents=True, exist_ok=True)
@@ -41,26 +42,83 @@ session_log_directory = base_log_directory / f"session_{session_start_timestamp}
 session_log_directory.mkdir(parents=True, exist_ok=True)
 
 # Get rotation settings from environment
-rotation_interval_hours = int(os.getenv("LOG_ROTATION_INTERVAL", "5"))
-# backupCount=0 means NEVER delete old logs (infinite retention)
+# LOG_MAX_SIZE_MB: Maximum log file size in MB before rotation (default: 50MB)
+# LOG_ROTATION_BACKUP_COUNT: Number of backup files to keep (0 = infinite retention)
+max_size_mb = int(os.getenv("LOG_MAX_SIZE_MB", "50"))
+max_bytes = max_size_mb * 1024 * 1024  # Convert MB to bytes
 backup_count = int(os.getenv("LOG_ROTATION_BACKUP_COUNT", "0"))
 log_level = os.getenv("LOG_LEVEL", "DEBUG").upper()
 
 # Create log file path in session directory
 log_file = session_log_directory / "relo_backend.log"
 
-# Create time-based rotating file handler
-# 'H' means rotate every N hours, where N is the interval
+# Create size-based rotating file handler with auto-recreate on missing file
+# Rotates when file exceeds max_bytes
 # backupCount=0 means keep ALL rotated logs forever (never delete)
-file_handler = TimedRotatingFileHandler(
+# Custom namer adds timestamp to backup files
+class ResilientRotatingFileHandler(RotatingFileHandler):
+    """RotatingFileHandler that recreates the log file if it's deleted/moved."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add custom namer to include timestamp in backup files
+        self.namer = self._timestamped_namer
+        self._last_rotated_file = None
+
+    def _timestamped_namer(self, default_name):
+        """Add timestamp to backup filenames instead of just .1, .2, etc."""
+        # default_name will be like: /path/to/relo_backend.log.1
+        # We want: /path/to/relo_backend_2025-10-17_14-30-00.log (keeps .log extension)
+        base_path = Path(default_name).parent
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        rotated_name = str(base_path / f"relo_backend_{timestamp}.log")
+        self._last_rotated_file = rotated_name
+        return rotated_name
+
+    def doRollover(self):
+        """Perform rollover and log the rotation event."""
+        # Perform the actual rotation
+        super().doRollover()
+
+        # Log the rotation event with reference to the archived file
+        if self._last_rotated_file:
+            # Create a log record manually to avoid recursion
+            msg = f"📁 Log rotation: Previous log archived to {self._last_rotated_file}"
+            continuation_msg = f"📝 Continuing logging in new file: {self.baseFilename}"
+
+            # Write directly to the new file
+            try:
+                if self.stream:
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    self.stream.write(f"[{timestamp}] [INFO] {msg}\n")
+                    self.stream.write(f"[{timestamp}] [INFO] {continuation_msg}\n")
+                    self.stream.flush()
+            except Exception:
+                pass  # Don't fail on logging the rotation event
+
+    def emit(self, record):
+        """Emit a record, recreating the log file if it doesn't exist."""
+        try:
+            # Check if log file exists, recreate if missing
+            if not Path(self.baseFilename).exists():
+                # Ensure directory exists
+                Path(self.baseFilename).parent.mkdir(parents=True, exist_ok=True)
+                # Close old stream if exists
+                if self.stream:
+                    self.stream.close()
+                    self.stream = None
+                # Reopen the file (will create it)
+                self.stream = self._open()
+            super().emit(record)
+        except Exception:
+            self.handleError(record)
+
+file_handler = ResilientRotatingFileHandler(
     filename=str(log_file),
-    when='H',  # Rotate by hours
-    interval=rotation_interval_hours,
-    backupCount=backup_count,  # 0 = never delete
-    encoding='utf-8',
-    utc=False  # Use local time
+    maxBytes=max_bytes,  # Rotate when file exceeds this size
+    backupCount=backup_count,  # 0 = never delete old logs
+    encoding='utf-8'
 )
-file_handler.suffix = "%Y-%m-%d_%H-%M"  # Backup filename: relo_backend.log.2025-10-16_14-00
 
 # Create console handler
 console_handler = logging.StreamHandler()
@@ -77,7 +135,7 @@ logging.basicConfig(
     handlers=[file_handler, console_handler]
 )
 logger = logging.getLogger(__name__)
-logger.info(f"📝 Logging: {session_log_directory} (rotates every {rotation_interval_hours}h, never deleted)")
+logger.info(f"📝 Logging: {session_log_directory} (rotates at {max_size_mb}MB, never deleted)")
 
 # Configure logging for all services - COMPREHENSIVE LOGGING
 # Enable all important service logs
@@ -104,7 +162,7 @@ async def lifespan(app: FastAPI):
     global session_manager, webrtc_manager
     
     # Startup
-    logger.info("🚀 Starting Returns Classifier API")
+    logger.info(" Starting Returns Classifier API")
 
     try:
         model_provider = os.getenv("MODEL_PROVIDER", "ollama").lower()
@@ -136,7 +194,7 @@ async def lifespan(app: FastAPI):
             else:
                 logger.warning("Ollama optimization incomplete")
 
-        logger.info("✅ All services initialized")
+        logger.info(" All services initialized")
     except Exception as e:
         logger.error(f"Error initializing managers: {e}")
         raise
@@ -462,7 +520,7 @@ async def force_reset_camera_and_memory():
     Returns cleanup stats.
     """
     try:
-        logger.info("🔄 Force reset requested - clearing camera and memory")
+        logger.info(" Force reset requested - clearing camera and memory")
 
         cleanup_stats = {
             "video_track_reset": False,
@@ -477,23 +535,28 @@ async def force_reset_camera_and_memory():
 
         # 1. Force reset video track (even if not stale)
         if webrtc_manager:
-            # Check if video track exists
-            if webrtc_manager._video_track:
-                logger.info("Forcing video track reset")
+            # IMPORTANT: Video track is a CLASS variable, not instance variable
+            # Access it via WebRTCManager class, not the instance
+            from services.webrtc_manager import WebRTCManager
+
+            if WebRTCManager._video_track:
+                logger.info("Forcing video track reset (class variable)")
                 try:
-                    if hasattr(webrtc_manager._video_track, 'stop'):
-                        webrtc_manager._video_track.stop()
-                    webrtc_manager._video_track = None
+                    if hasattr(WebRTCManager._video_track, 'stop'):
+                        WebRTCManager._video_track.stop()
+                    WebRTCManager._video_track = None
                     cleanup_stats["video_track_reset"] = True
-                    logger.info("✓ Video track reset complete")
+                    logger.info(" Video track reset complete")
                 except Exception as e:
                     logger.error(f"Error resetting video track: {e}")
+            else:
+                logger.info("No video track to reset")
 
             # 2. Clear all frame buffers
             buffer_count = len(webrtc_manager.frame_buffers)
             webrtc_manager.frame_buffers.clear()
             cleanup_stats["frame_buffers_cleared"] = buffer_count
-            logger.info(f"✓ Cleared {buffer_count} frame buffers")
+            logger.info(f" Cleared {buffer_count} frame buffers")
 
             # Count active connections
             cleanup_stats["peer_connections_active"] = len(webrtc_manager.peer_connections)
@@ -509,7 +572,7 @@ async def force_reset_camera_and_memory():
             del websocket.monitoring_controls[session_id]
 
         cleanup_stats["monitoring_controls_cleared"] = len(stale_monitoring)
-        logger.info(f"✓ Cleared {len(stale_monitoring)} stale monitoring_controls")
+        logger.info(f" Cleared {len(stale_monitoring)} stale monitoring_controls")
 
         # 4. Clear stale orchestrators (ones not in active connections)
         stale_orchestrators = []
@@ -525,12 +588,12 @@ async def force_reset_camera_and_memory():
             del websocket.orchestrators[session_id]
 
         cleanup_stats["orchestrators_cleared"] = len(stale_orchestrators)
-        logger.info(f"✓ Cleared {len(stale_orchestrators)} stale orchestrators")
+        logger.info(f" Cleared {len(stale_orchestrators)} stale orchestrators")
 
         # 5. VLM stays loaded (intentional - no reinit needed)
-        logger.info("✓ VLM model preserved (no reinit)")
+        logger.info(" VLM model preserved (no reinit)")
 
-        logger.info(f"🎉 Force reset complete: {cleanup_stats}")
+        logger.info(f" Force reset complete: {cleanup_stats}")
 
         return {
             "success": True,

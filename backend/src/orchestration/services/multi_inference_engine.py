@@ -10,6 +10,8 @@ from typing import List, Any, Dict, Optional
 import numpy as np
 import cv2
 import os
+import random
+import string
 from datetime import datetime
 from pathlib import Path
 
@@ -19,6 +21,10 @@ from config.frame_config import frame_config
 from services.vlm_singleton import vlm_singleton
 
 logger = logging.getLogger(__name__)
+
+def generate_uuid():
+    """Generate a 5-character UUID (alphanumeric)"""
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
 
 class MultiInferenceEngine:
     """GPU-accelerated multi-image inference engine using VLM Singleton"""
@@ -227,13 +233,11 @@ class MultiInferenceEngine:
         """
         Save frames to disk with enhanced metadata-rich filenames.
 
-        Filename format: {agent}_c{cycle:03d}_i{inf:02d}_{mode}_{suffix}.jpg
+        Filename format: {PREFIX}_{UUID}_c{cycle:03d}_i{inf:02d}_{mode}.jpg
         Examples:
-            - initial_classifier_c001_i01_auto.jpg (auto mode, main frame)
-            - initial_classifier_c001_i01_manual.jpg (manual mode, main frame)
-            - initial_classifier_c001_i01_auto_redo_1.jpg (auto mode, first redo)
-            - initial_classifier_c001_i01_manual_redo_2.jpg (manual mode, second redo)
-            - damage_detector_c001_i01_auto_shared.jpg (auto mode, shared from initial)
+            - IC_A3F9K_c001_i01_auto.jpg (initial_classifier)
+            - DE_B2D7M_c001_i01_manual.jpg (detail_extractor)
+            - DD_X8Q4N_c001_i01_auto_redo_1.jpg (damage_detector with redo)
         """
         saved_paths = []
 
@@ -241,13 +245,44 @@ class MultiInferenceEngine:
             # Use frame_config to get correct agent directory
             agent_dir = self.frame_config.get_agent_frame_dir(agent_name)
 
+            # Verify directory exists and is writable
+            if not agent_dir.exists():
+                agent_dir.mkdir(parents=True, exist_ok=True)
+
             # Initialize cycle tracking
             if cycle_num not in self.saved_images:
                 self.saved_images[cycle_num] = {}
+                logger.debug(f"Initialized image tracking for cycle {cycle_num}")
             if agent_name not in self.saved_images[cycle_num]:
                 self.saved_images[cycle_num][agent_name] = []
 
+            # Determine prefix based on agent_name
+            if agent_name == "initial_classifier":
+                prefix = "IC"
+            elif agent_name == "detail_extractor":
+                prefix = "DE"
+            elif agent_name == "damage_detector":
+                prefix = "DD"
+            else:
+                prefix = "XX"  # Unknown agent
+
             for idx, frame in enumerate(frames):
+                # Validate frame data
+                if frame is None:
+                    logger.error(f"Frame {idx} is None, skipping save for {agent_name}")
+                    continue
+
+                if not isinstance(frame, np.ndarray):
+                    logger.error(f"Frame {idx} is not a numpy array (type={type(frame)}), skipping save for {agent_name}")
+                    continue
+
+                if frame.size == 0:
+                    logger.error(f"Frame {idx} is empty (size=0), skipping save for {agent_name}")
+                    continue
+
+                # Generate UUID for this frame
+                uuid = generate_uuid()
+
                 # Build suffix based on context
                 suffix_parts = []
 
@@ -264,16 +299,24 @@ class MultiInferenceEngine:
 
                 suffix = "_" + "_".join(suffix_parts) if suffix_parts else ""
 
-                # Generate filename: {agent}_c{cycle:03d}_i{inf:02d}_{mode}_{suffix}.jpg
-                filename = f"{agent_name}_c{cycle_num:03d}_i{inference_num:02d}{suffix}.jpg"
+                # Generate filename: {PREFIX}_{UUID}_c{cycle:03d}_i{inf:02d}_{suffix}.jpg
+                filename = f"{prefix}_{uuid}_c{cycle_num:03d}_i{inference_num:02d}{suffix}.jpg"
                 filepath = agent_dir / filename
 
+                # Check if file already exists (should not happen with UUID)
+                if filepath.exists():
+                    logger.warning(f"File already exists (UUID collision?): {filepath}")
+
                 # Save frame using JPEG quality from ENV
-                success = cv2.imwrite(
-                    str(filepath),
-                    frame,
-                    [cv2.IMWRITE_JPEG_QUALITY, self.frame_config.jpeg_quality]
-                )
+                try:
+                    success = cv2.imwrite(
+                        str(filepath),
+                        frame,
+                        [cv2.IMWRITE_JPEG_QUALITY, self.frame_config.jpeg_quality]
+                    )
+                except Exception as cv2_error:
+                    logger.error(f"cv2.imwrite raised exception for {filepath}: {cv2_error}")
+                    success = False
 
                 if success:
                     # Store relative path for CSV export
@@ -470,8 +513,8 @@ class MultiInferenceEngine:
                     from PIL import Image, ImageDraw, ImageFont
 
                     # Build filename for annotated version
-                    # Original: damage_detector_c001_i01_auto.jpg
-                    # Annotated: damage_detector_c001_i01_auto_annotated.jpg
+                    # Original: damage_detector/DD_A3F9K_c001_i01_auto.jpg
+                    # Annotated: damage_detector/DD_A3F9K_c001_i01_auto_annotated.jpg
                     original_filename = saved_path.split('/')[-1]  # Get filename from path
                     base_name = original_filename.rsplit('.', 1)[0]  # Remove extension
                     annotated_filename = f"{base_name}_annotated.jpg"

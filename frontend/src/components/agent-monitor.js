@@ -24,7 +24,6 @@ class AgentMonitor {
      */
     init() {
         this.createAgentMonitorUI();
-        console.log('[AgentMonitor] Initialized');
     }
     
     /**
@@ -287,9 +286,7 @@ class AgentMonitor {
      */
     onAgentStarted(data) {
         const { agent, timer_seconds, sequence_position, total_agents, mode } = data;
-        
-        console.log(`[AgentMonitor] Agent started: ${agent} (${sequence_position}/${total_agents})`);
-        
+
         this.currentAgent = agent;
         this.mode = mode || 'automatic';
         
@@ -354,8 +351,6 @@ class AgentMonitor {
                 statusText.textContent = `${frames_collected} frames`;
             }
         }
-        
-        console.log(`[AgentMonitor] ${agent}: ${progress}% (${timer_remaining?.toFixed(1)}s remaining, ${frames_collected} frames)`);
     }
     
     /**
@@ -363,9 +358,7 @@ class AgentMonitor {
      */
     onAgentCompleted(data) {
         const { agent, results } = data;
-        
-        console.log(`[AgentMonitor] Agent completed: ${agent}`, results);
-        
+
         // Stop timer if running
         if (this.timers[agent]) {
             clearInterval(this.timers[agent]);
@@ -463,8 +456,6 @@ class AgentMonitor {
      * Reset all agents
      */
     reset() {
-        console.log('[AgentMonitor] Resetting all agents');
-        
         // Clear all timers
         Object.keys(this.timers).forEach(agent => {
             clearInterval(this.timers[agent]);
@@ -518,7 +509,6 @@ class AgentMonitor {
         if (modeEl) {
             modeEl.textContent = `Mode: ${mode}`;
         }
-        console.log(`[AgentMonitor] Mode set to: ${mode}`);
     }
 }
 

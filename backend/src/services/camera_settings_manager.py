@@ -27,12 +27,12 @@ class CameraSettingsManager:
             if PERSISTENT_SETTINGS_FILE.exists():
                 with open(PERSISTENT_SETTINGS_FILE, 'r') as f:
                     settings = json.load(f)
-                logger.info(f"✅ Loaded persistent camera settings from {PERSISTENT_SETTINGS_FILE}")
+                logger.info(f" Loaded persistent camera settings from {PERSISTENT_SETTINGS_FILE}")
                 return settings
             elif DEFAULT_SETTINGS_FILE.exists():
                 with open(DEFAULT_SETTINGS_FILE, 'r') as f:
                     settings = json.load(f)
-                logger.info(f"📋 Loaded default camera settings from {DEFAULT_SETTINGS_FILE}")
+                logger.info(f" Loaded default camera settings from {DEFAULT_SETTINGS_FILE}")
                 return settings
             else:
                 logger.warning("No settings file found, using factory defaults")
@@ -81,8 +81,8 @@ class CameraSettingsManager:
                 with open(PERSISTENT_SETTINGS_FILE, 'w') as f:
                     json.dump(self.current_settings, f, indent=2)
 
-                logger.info(f"💾 Camera settings saved permanently to {PERSISTENT_SETTINGS_FILE}")
-                logger.info(f"✅ Settings will persist across reboots")
+                logger.info(f" Camera settings saved permanently to {PERSISTENT_SETTINGS_FILE}")
+                logger.info(f" Settings will persist across reboots")
             else:
                 logger.info("📝 Camera settings updated (session only, not persistent)")
 
@@ -144,7 +144,7 @@ class CameraSettingsManager:
             if preset_file.exists():
                 with open(preset_file, 'r') as f:
                     preset = json.load(f)
-                logger.info(f"📥 Loaded preset: {preset_name}")
+                logger.info(f" Loaded preset: {preset_name}")
                 return preset
             else:
                 logger.warning(f"Preset not found: {preset_name}")
@@ -165,7 +165,7 @@ class CameraSettingsManager:
             with open(preset_file, 'w') as f:
                 json.dump(preset, f, indent=2)
 
-            logger.info(f"💾 Saved preset: {preset_name} to {preset_file}")
+            logger.info(f" Saved preset: {preset_name} to {preset_file}")
             return True
         except Exception as e:
             logger.error(f"Error saving preset {preset_name}: {e}")
